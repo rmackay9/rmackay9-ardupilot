@@ -29,6 +29,15 @@ static void get_pilot_desired_lean_angles(int16_t roll_in, int16_t pitch_in, int
     pitch_out = pitch_in * _scaler;
 }
 
+// get_pilot_desired_heading - transform pilot's yaw input into a desired heading
+// returns desired angle in centi-degrees
+// To-Do: return heading as a float?
+static float get_pilot_desired_yaw_rate(int16_t stick_angle)
+{
+    // convert pilot input to the desired yaw rate
+    return stick_angle * g.acro_yaw_p;
+}
+
 static void
 get_stabilize_roll(int32_t target_angle)
 {
@@ -429,23 +438,6 @@ void set_yaw_rate_target( int32_t desired_rate, uint8_t earth_or_body_frame ) {
         yaw_rate_target_bf = desired_rate;
     }else{
         yaw_rate_target_ef = desired_rate;
-    }
-}
-
-// update_rate_contoller_targets - converts earth frame rates to body frame rates for rate controllers
-void
-update_rate_contoller_targets()
-{
-    if( rate_targets_frame == EARTH_FRAME ) {
-        // convert earth frame rates to body frame rates
-        roll_rate_target_bf     = roll_rate_target_ef - sin_pitch * yaw_rate_target_ef;
-        pitch_rate_target_bf    = cos_roll_x  * pitch_rate_target_ef + sin_roll * cos_pitch_x * yaw_rate_target_ef;
-        yaw_rate_target_bf      = cos_pitch_x * cos_roll_x * yaw_rate_target_ef - sin_roll * pitch_rate_target_ef;
-    }else if( rate_targets_frame == BODY_EARTH_FRAME ) {
-        // add converted earth frame rates to body frame rates
-        acro_roll_rate = roll_rate_target_ef - sin_pitch * yaw_rate_target_ef;
-        acro_pitch_rate = cos_roll_x  * pitch_rate_target_ef + sin_roll * cos_pitch_x * yaw_rate_target_ef;
-        acro_yaw_rate = cos_pitch_x * cos_roll_x * yaw_rate_target_ef - sin_roll * pitch_rate_target_ef;
     }
 }
 
