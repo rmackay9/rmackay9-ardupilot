@@ -34,8 +34,8 @@ public:
                         AP_InertialSensor& ins,
                         const AP_Vehicle::MultiCopter &parms,
                         AP_Motors& motors,
-                        APM_PI pi_angle_roll, APM_PI pi_angle_pitch, APM_PI pi_angle_yaw,
-                        AC_PID pid_rate_roll, AC_PID pid_rate_pitch, AC_PID pid_rate_yaw,
+                        APM_PI& pi_angle_roll, APM_PI& pi_angle_pitch, APM_PI& pi_angle_yaw,
+                        AC_PID& pid_rate_roll, AC_PID& pid_rate_pitch, AC_PID& pid_rate_yaw,
                         int16_t& motor_roll, int16_t& motor_pitch, int16_t& motor_yaw, int16_t& motor_throttle
                         ) :
 		_ahrs(ahrs),
