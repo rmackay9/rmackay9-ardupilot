@@ -28,6 +28,9 @@
 #define AC_ATTITUDE_RATE_STAB_PITCH_OVERSHOOT_ANGLE_MAX 3000.0f // earth-frame rate stabilize controller's maximum overshoot angle
 #define AC_ATTITUDE_RATE_STAB_YAW_OVERSHOOT_ANGLE_MAX   1000.0f // earth-frame rate stabilize controller's maximum overshoot angle
 
+#define AC_ATTITUDE_100HZ_DT                            0.0100f // delta time in seconds for 100hz update rate
+#define AC_ATTITUDE_400HZ_DT                            0.0025f // delta time in seconds for 400hz update rate
+
 class AC_AttitudeControl {
 public:
 	AC_AttitudeControl( AP_AHRS &ahrs,
@@ -51,10 +54,18 @@ public:
         _motor_roll(motor_roll),
         _motor_pitch(motor_pitch),
         _motor_yaw(motor_yaw),
-        _motor_throttle(motor_throttle)
+        _motor_throttle(motor_throttle),
+        _dt(AC_ATTITUDE_100HZ_DT)
 		{
 			AP_Param::setup_object_defaults(this, var_info);
 		}
+
+    //
+    // initialisation functions
+    //
+
+    // set_dt - sets time delta in seconds for all controllers (i.e. 100hz = 0.01, 400hz = 0.0025)
+    void set_dt(float delta_sec) { _dt = delta_sec; }
 
     //
     // angle controller (earth-frame) methods
@@ -86,9 +97,9 @@ public:
     // rate_stab_ef_to_rate_ef_roll - converts earth-frame stabilized rate targets to regular earth-frame rate targets for roll, pitch and yaw axis
     //   targets rates in centi-degrees/second taken from _rate_stab_ef_target
     //   results in centi-degrees/sec put into _rate_ef_target
-    void rate_stab_ef_to_rate_ef_roll(float dt);
-    void rate_stab_ef_to_rate_ef_pitch(float dt);
-    void rate_stab_ef_to_rate_ef_yaw(float dt);
+    void rate_stab_ef_to_rate_ef_roll();
+    void rate_stab_ef_to_rate_ef_pitch();
+    void rate_stab_ef_to_rate_ef_yaw();
 
     //
     // stabilized rate controller (body-frame) methods
@@ -101,9 +112,9 @@ public:
     // rate_stab_bf_to_rate_ef_roll - converts body-frame stabilized rate targets to regular body-frame rate targets for roll, pitch and yaw axis
     //   targets rates in centi-degrees/second taken from _rate_stab_bf_target
     //   results in centi-degrees/sec put into _rate_bf_target
-    void rate_stab_bf_to_rate_bf_roll(float dt);
-    void rate_stab_bf_to_rate_bf_pitch(float dt);
-    void rate_stab_bf_to_rate_bf_yaw(float dt);
+    void rate_stab_bf_to_rate_bf_roll();
+    void rate_stab_bf_to_rate_bf_pitch();
+    void rate_stab_bf_to_rate_bf_yaw();
 
     //
     // rate controller (earth-frame) methods
@@ -160,9 +171,9 @@ private:
     // body-frame rate controller
     //
 	// rate_bf_to_motor_roll - ask the rate controller to calculate the motor outputs to achieve the target body-frame rate (in centi-degrees/sec) for roll, pitch and yaw
-    float rate_bf_to_motor_roll(float rate_target_cds, float dt);
-    float rate_bf_to_motor_pitch(float rate_target_cds, float dt);
-    float rate_bf_to_motor_yaw(float rate_target_cds, float dt);
+    float rate_bf_to_motor_roll(float rate_target_cds);
+    float rate_bf_to_motor_pitch(float rate_target_cds);
+    float rate_bf_to_motor_yaw(float rate_target_cds);
 
     //
     // throttle methods
@@ -211,16 +222,13 @@ private:
 
     // internal variables
     // To-Do: make rate targets a typedef instead of Vector3f?
+    float               _dt;                    // time delta in seconds
     Vector3f            _angle_ef_target;      // angle controller earth-frame targets
     Vector3f            _rate_stab_ef_target;  // stabilized rate controller earth-frame rate targets
     Vector3f            _rate_ef_target;       // rate controller earth-frame targets
     Vector3f            _rate_stab_bf_target;  // stabilized rate controller body-frame rate targets
     Vector3f            _rate_stab_bf_error;   // stabilized rate controller body-frame angle errors
     Vector3f            _rate_bf_target;       // rate controller body-frame targets
-
-    // timers
-    uint32_t            _rate_control_last_update_micros;   // last time the body-frame rate controller ran in micros
-    uint32_t            _angle_control_last_update_micros;  // last time the earth-frame angle controller ran in micros
 
     // precalculated values for efficiency saves
     // To-Do: could these be changed to references and passed into the constructor?

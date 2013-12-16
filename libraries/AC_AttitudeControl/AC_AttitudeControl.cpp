@@ -85,12 +85,12 @@ void AC_AttitudeControl::angle_to_rate_ef_yaw()
 // rate_stab_ef_to_rate_ef_roll - converts earth-frame stabilized rate targets to regular earth-frame rate targets for roll, pitch and yaw axis
 //   targets rates in centi-degrees/second taken from _rate_stab_ef_target
 //   results in centi-degrees/sec put into _rate_ef_target
-void AC_AttitudeControl::rate_stab_ef_to_rate_ef_roll(float dt)
+void AC_AttitudeControl::rate_stab_ef_to_rate_ef_roll()
 {
     float angle_error;
 
     // convert the input to the desired roll rate
-    _angle_ef_target.x += _rate_stab_ef_target.x * dt;
+    _angle_ef_target.x += _rate_stab_ef_target.x * _dt;
     _angle_ef_target.x = wrap_180_cd(_angle_ef_target.x);
 
     // ensure targets are within the lean angle limits
@@ -111,12 +111,12 @@ void AC_AttitudeControl::rate_stab_ef_to_rate_ef_roll(float dt)
     _rate_ef_target.x = _pi_angle_roll.get_p(angle_error) + _rate_stab_ef_target.x;
 }
 
-void AC_AttitudeControl::rate_stab_ef_to_rate_ef_pitch(float dt)
+void AC_AttitudeControl::rate_stab_ef_to_rate_ef_pitch()
 {
    float angle_error;
 
     // convert the input to the desired roll rate
-    _angle_ef_target.y += _rate_stab_ef_target.y * dt;
+    _angle_ef_target.y += _rate_stab_ef_target.y * _dt;
     _angle_ef_target.y = wrap_180_cd(_angle_ef_target.y);
 
     // ensure targets are within the lean angle limits
@@ -138,12 +138,12 @@ void AC_AttitudeControl::rate_stab_ef_to_rate_ef_pitch(float dt)
     _rate_ef_target.y = _pi_angle_pitch.get_p(angle_error) + _rate_stab_ef_target.y;
 }
 
-void AC_AttitudeControl::rate_stab_ef_to_rate_ef_yaw(float dt)
+void AC_AttitudeControl::rate_stab_ef_to_rate_ef_yaw()
 {
    float angle_error;
 
     // convert the input to the desired roll rate
-    _angle_ef_target.z += _rate_stab_ef_target.z * dt;
+    _angle_ef_target.z += _rate_stab_ef_target.z * _dt;
     _angle_ef_target.z = wrap_360_cd(_angle_ef_target.z);
 
     // calculate angle error with maximum of +- max_angle_overshoot
@@ -167,7 +167,7 @@ void AC_AttitudeControl::rate_stab_ef_to_rate_ef_yaw(float dt)
 // rate_stab_bf_to_rate_ef_roll - converts body-frame stabilized rate targets to regular body-frame rate targets for roll, pitch and yaw axis
 //   targets rates in centi-degrees/second taken from _rate_stab_bf_target
 //   results in centi-degrees/sec put into _rate_bf_target
-void AC_AttitudeControl::rate_stab_bf_to_rate_bf_roll(float dt)
+void AC_AttitudeControl::rate_stab_bf_to_rate_bf_roll()
 {
     // calculate rate correction from angle errors
     // To-Do: do we still need to have this rate correction calculated from the previous iteration's errors?
@@ -177,7 +177,7 @@ void AC_AttitudeControl::rate_stab_bf_to_rate_bf_roll(float dt)
     _rate_bf_target.x = _rate_stab_bf_target.x + rate_correction;
 
     // calculate body-frame angle error by integrating body-frame rate error
-    _rate_stab_bf_error.x += (_rate_stab_bf_target.x - (_ins.get_gyro().x * AC_ATTITUDE_CONTROL_DEGX100)) * dt;
+    _rate_stab_bf_error.x += (_rate_stab_bf_target.x - (_ins.get_gyro().x * AC_ATTITUDE_CONTROL_DEGX100)) * _dt;
 
     // limit maximum error
     _rate_stab_bf_error.x = constrain_float(_rate_stab_bf_error.x, -AC_ATTITUDE_RATE_STAB_ROLL_OVERSHOOT_ANGLE_MAX, AC_ATTITUDE_RATE_STAB_ROLL_OVERSHOOT_ANGLE_MAX);
@@ -185,7 +185,7 @@ void AC_AttitudeControl::rate_stab_bf_to_rate_bf_roll(float dt)
     // To-Do: handle case of motors being disarmed or g.rc_3.servo_out == 0 and set error to zero
 }
 
-void AC_AttitudeControl::rate_stab_bf_to_rate_bf_pitch(float dt)
+void AC_AttitudeControl::rate_stab_bf_to_rate_bf_pitch()
 {
     // calculate rate correction from angle errors
     // To-Do: do we still need to have this rate correction calculated from the previous iteration's errors?
@@ -195,7 +195,7 @@ void AC_AttitudeControl::rate_stab_bf_to_rate_bf_pitch(float dt)
     _rate_bf_target.y = _rate_stab_bf_target.y + rate_correction;
 
     // calculate body-frame angle error by integrating body-frame rate error
-    _rate_stab_bf_error.y += (_rate_stab_bf_target.y - (_ins.get_gyro().y * AC_ATTITUDE_CONTROL_DEGX100)) * dt;
+    _rate_stab_bf_error.y += (_rate_stab_bf_target.y - (_ins.get_gyro().y * AC_ATTITUDE_CONTROL_DEGX100)) * _dt;
 
     // limit maximum error
     _rate_stab_bf_error.y = constrain_float(_rate_stab_bf_error.y, -AC_ATTITUDE_RATE_STAB_PITCH_OVERSHOOT_ANGLE_MAX, AC_ATTITUDE_RATE_STAB_PITCH_OVERSHOOT_ANGLE_MAX);
@@ -203,7 +203,7 @@ void AC_AttitudeControl::rate_stab_bf_to_rate_bf_pitch(float dt)
     // To-Do: handle case of motors being disarmed or g.rc_3.servo_out == 0 and set error to zero
 }
 
-void AC_AttitudeControl::rate_stab_bf_to_rate_bf_yaw(float dt)
+void AC_AttitudeControl::rate_stab_bf_to_rate_bf_yaw()
 {
     // calculate rate correction from angle errors
     float rate_correction = _pi_angle_yaw.get_p(_rate_stab_bf_error.z);
@@ -212,7 +212,7 @@ void AC_AttitudeControl::rate_stab_bf_to_rate_bf_yaw(float dt)
     _rate_bf_target.y = _rate_stab_bf_target.y + rate_correction;
 
     // calculate body-frame angle error by integrating body-frame rate error
-    _rate_stab_bf_error.z += (_rate_stab_bf_target.z - (_ins.get_gyro().z * AC_ATTITUDE_CONTROL_DEGX100)) * dt;
+    _rate_stab_bf_error.z += (_rate_stab_bf_target.z - (_ins.get_gyro().z * AC_ATTITUDE_CONTROL_DEGX100)) * _dt;
 
     // limit maximum error
     _rate_stab_bf_error.z = constrain_float(_rate_stab_bf_error.z, -AC_ATTITUDE_RATE_STAB_YAW_OVERSHOOT_ANGLE_MAX, AC_ATTITUDE_RATE_STAB_YAW_OVERSHOOT_ANGLE_MAX);
@@ -241,22 +241,12 @@ void AC_AttitudeControl::rate_ef_targets_to_bf()
 // should be called at 100hz or more
 void AC_AttitudeControl::rate_controller_run()
 {	
-    // calculate time since last call
-    uint32_t now = hal.scheduler->micros();
-    float dt = (now - _rate_control_last_update_micros) / 1000000.0f;
-    _rate_control_last_update_micros = now;
-
-    // range check dt
-    if (dt >= 1.0f) {
-        dt = 0.0f;
-    }
-
     // call rate controllers and send output to motors object
     // To-Do: should the outputs from get_rate_roll, pitch, yaw be int16_t which is the input to the motors library?
     // To-Do: skip this step if the throttle out is zero?
-    _motor_roll = rate_bf_to_motor_roll(_rate_bf_target.x, dt);
-    _motor_pitch = rate_bf_to_motor_pitch(_rate_bf_target.y, dt);
-    _motor_yaw = rate_bf_to_motor_yaw(_rate_bf_target.z, dt);
+    _motor_roll = rate_bf_to_motor_roll(_rate_bf_target.x);
+    _motor_pitch = rate_bf_to_motor_pitch(_rate_bf_target.y);
+    _motor_yaw = rate_bf_to_motor_yaw(_rate_bf_target.z);
 
     // To-Do: what about throttle?
     //_motor_
@@ -270,7 +260,7 @@ void AC_AttitudeControl::rate_controller_run()
 //
 
 // rate_bf_to_motor_roll - ask the rate controller to calculate the motor outputs to achieve the target rate in centi-degrees / second
-float AC_AttitudeControl::rate_bf_to_motor_roll(float rate_target_cds, float dt)
+float AC_AttitudeControl::rate_bf_to_motor_roll(float rate_target_cds)
 {
     float p,i,d;            // used to capture pid values for logging
     float current_rate;     // this iteration's rate
@@ -289,11 +279,11 @@ float AC_AttitudeControl::rate_bf_to_motor_roll(float rate_target_cds, float dt)
 
     // update i term as long as we haven't breached the limits or the I term will certainly reduce
     if (!_motors.limit.roll_pitch || ((i>0&&rate_error<0)||(i<0&&rate_error>0))) {
-        i = _pid_rate_roll.get_i(rate_error, dt);
+        i = _pid_rate_roll.get_i(rate_error, _dt);
     }
 
     // get d term
-    d = _pid_rate_roll.get_d(rate_error, dt);
+    d = _pid_rate_roll.get_d(rate_error, _dt);
 
     // constrain output and return
     return constrain_float((p+i+d), -AC_ATTITUDE_RATE_RP_CONTROLLER_OUT_MAX, AC_ATTITUDE_RATE_RP_CONTROLLER_OUT_MAX);
@@ -302,7 +292,7 @@ float AC_AttitudeControl::rate_bf_to_motor_roll(float rate_target_cds, float dt)
 }
 
 // rate_bf_to_motor_pitch - ask the rate controller to calculate the motor outputs to achieve the target rate in centi-degrees / second
-float AC_AttitudeControl::rate_bf_to_motor_pitch(float rate_target_cds, float dt)
+float AC_AttitudeControl::rate_bf_to_motor_pitch(float rate_target_cds)
 {
     float p,i,d;            // used to capture pid values for logging
     float current_rate;     // this iteration's rate
@@ -321,11 +311,11 @@ float AC_AttitudeControl::rate_bf_to_motor_pitch(float rate_target_cds, float dt
 
     // update i term as long as we haven't breached the limits or the I term will certainly reduce
     if (!_motors.limit.roll_pitch || ((i>0&&rate_error<0)||(i<0&&rate_error>0))) {
-        i = _pid_rate_pitch.get_i(rate_error, dt);
+        i = _pid_rate_pitch.get_i(rate_error, _dt);
     }
 
     // get d term
-    d = _pid_rate_pitch.get_d(rate_error, dt);
+    d = _pid_rate_pitch.get_d(rate_error, _dt);
 
     // constrain output and return
     return constrain_float((p+i+d), -AC_ATTITUDE_RATE_RP_CONTROLLER_OUT_MAX, AC_ATTITUDE_RATE_RP_CONTROLLER_OUT_MAX);
@@ -334,7 +324,7 @@ float AC_AttitudeControl::rate_bf_to_motor_pitch(float rate_target_cds, float dt
 }
 
 // rate_bf_to_motor_yaw - ask the rate controller to calculate the motor outputs to achieve the target rate in centi-degrees / second
-float AC_AttitudeControl::rate_bf_to_motor_yaw(float rate_target_cds, float dt)
+float AC_AttitudeControl::rate_bf_to_motor_yaw(float rate_target_cds)
 {
     float p,i,d;            // used to capture pid values for logging
     float current_rate;     // this iteration's rate
@@ -356,11 +346,11 @@ float AC_AttitudeControl::rate_bf_to_motor_yaw(float rate_target_cds, float dt)
 
     // update i term as long as we haven't breached the limits or the I term will certainly reduce
     if (!_motors.limit.yaw || ((i>0&&rate_error<0)||(i<0&&rate_error>0))) {
-        i = _pid_rate_yaw.get_i(rate_error, dt);
+        i = _pid_rate_yaw.get_i(rate_error, _dt);
     }
 
     // get d value
-    d = _pid_rate_yaw.get_d(rate_error, dt);
+    d = _pid_rate_yaw.get_d(rate_error, _dt);
 
     // constrain output and return
     return constrain_float((p+i+d), -AC_ATTITUDE_RATE_YAW_CONTROLLER_OUT_MAX, AC_ATTITUDE_RATE_YAW_CONTROLLER_OUT_MAX);
