@@ -14,6 +14,7 @@
 #define POSCONTROL_ACCELERATION                 100.0f  // defines the default velocity vs distant curve.  maximum acceleration in cm/s/s that position controller asks for from acceleration controller
 #define POSCONTROL_ACCELERATION_MIN             50.0f   // minimum acceleration in cm/s/s - used for sanity checking _wp_accel parameter
 #define POSCONTROL_ACCEL_MAX                    980.0f  // max acceleration in cm/s/s that the loiter velocity controller will ask from the lower accel controller.
+#define POSCONTROL_STOPPING_DIST_Z_MAX          200.0f  // max stopping distance vertically   
                                                         // should be 1.5 times larger than POSCONTROL_ACCELERATION.
                                                         // max acceleration = max lean angle * 980 * pi / 180.  i.e. 23deg * 980 * 3.141 / 180 = 393 cm/s/s
 
@@ -29,7 +30,7 @@
 #define POSCONTROL_ALT_HOLD_P                   1.0f    // default throttle controller's altitude hold's P gain.
 #define POSCONTROL_ALT_HOLD_ACCEL_MAX           250.0f  // hard coded copy of throttle controller's maximum acceleration in cm/s.  To-Do: remove duplication with throttle controller definition
 
-#define POSCONTROL_MIN_LEASH_LENGTH             100.0f  // minimum leash lengths in cm
+#define POSCONTROL_LEASH_LENGTH_MIN             100.0f  // minimum leash lengths in cm
 
 #define POSCONTROL_DT_10HZ                      0.10f   // time difference in seconds for 10hz update rate
 
@@ -40,7 +41,8 @@ public:
     /// Constructor
     AC_PosControl(const AP_InertialNav& inav, const AP_AHRS& ahrs, const AC_AttitudeControl& attitude_control,
                   APM_PI& pi_alt_pos, AC_PID& pid_alt_rate, AC_PID& pid_alt_accel,
-                  APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon);
+                  APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon,
+                  int16_t& motor_throttle);
 
     ///
     /// initialisation functions
@@ -60,8 +62,8 @@ public:
     /// fly_to_z - fly to altitude in cm above home
     void fly_to_z(const float alt_cm);
 
-    /// climb - climb at rate provided in cm/s
-    void climb(const float rate_cms);
+    /// climb_at_rate - climb at rate provided in cm/s
+    void climb_at_rate(const float rate_cms);
 
     ///
     /// xy position controller
@@ -167,7 +169,7 @@ protected:
     const AP_AHRS&              _ahrs;
     const AC_AttitudeControl&   _attitude_control;
 
-    // references to pid controllers
+    // references to pid controllers and motors
     APM_PI&     _pi_alt_pos;
     AC_PID&     _pid_alt_rate;
     AC_PID&     _pid_alt_accel;
@@ -175,29 +177,37 @@ protected:
     APM_PI&	    _pid_pos_lon;
     AC_PID&	    _pid_rate_lat;
     AC_PID&	    _pid_rate_lon;
+    int16_t&    _motor_throttle;
 
-    // parameters
-    AP_Float    _speed_cms;         // maximum horizontal speed in cm/s while in loiter
-    AP_Float    _speed_up_cms;      // climb speed target in cm/s
-    AP_Float    _speed_down_cms;    // descent speed target in cm/s
-    uint8_t     _step;              // used to decide which portion of loiter controller to run during this iteration
-    uint32_t    _last_update;       // system time of last update_position_controller call
-    float       _dt;                // time difference since last update_position_controller call
-    float       _cos_yaw;           // short-cut to save on calcs required to convert roll-pitch frame to lat-lon frame
+    // internal variables
+    float       _dt;                    // time difference (in seconds) between calls from the main program
+    uint32_t    _last_update_ms;        // system time of last update_position_controller call
+    uint32_t    _last_update_rate_ms;   // system time of last call to rate_to_accel_z (alt hold accel controller)
+    uint32_t    _last_update_accel_ms;  // system time of last call to accel_to_motor_throttle (alt hold accel controller)
+    uint8_t     _step;                  // used to decide which portion of position controller to run during this iteration
+    float       _speed_cms;             // max horizontal speed in cm/s
+    float       _speed_up_cms;          // max climb rate in cm/s
+    float       _speed_down_cms;        // max descent rate in cm/s
+    float       _accel_cms;             // max horizontal acceleration in cm/s/s
+    float       _cos_yaw;               // short-cut to save on calcs required to convert roll-pitch frame to lat-lon frame
     float       _sin_yaw;
     float       _cos_pitch;
 
     // output from controller
-    int32_t     _desired_roll;      // fed to stabilize controllers at 50hz
-    int32_t     _desired_pitch;     // fed to stabilize controllers at 50hz
+    float       _desired_roll;          // desired roll angle in centi-degrees calculated by position controller
+    float       _desired_pitch;         // desired roll pitch in centi-degrees calculated by position controller
 
     // position controller internal variables
-    Vector3f    _target;   		    // loiter's target location in cm from home
-    Vector3f    _target_vel;        // pilot's latest desired velocity in earth-frame
-    Vector3f    _vel_last;          // previous iterations velocity in cm/s
-    float       _leash;             // horizontal leash length in cm.  used to stop the pilot from pushing the target location too far from the current location
-    float       _accel_cms;         // maximum acceleration in cm/s/s
-    int16_t     _lean_angle_max_cd; // maximum lean angle in centi-degrees
+    Vector3f    _pos_target;            // target location in cm from home
+    Vector3f    _pos_error;             // error between desired and actual position in cm
+    Vector3f    _vel_target;            // desired velocity in cm/s
+    Vector3f    _vel_error;             // error between desired and actual acceleration in cm/s.  To-Do: x & y actually used?
+    Vector3f    _vel_last;              // previous iterations velocity in cm/s
+    float       _vel_target_filt_z;     // filtered target vertical velocity
+    Vector3f    _accel_target;          // desired acceleration in cm/s/s  // To-Do: are xy actually required?
+    Vector3f    _accel_error;           // desired acceleration in cm/s/s  // To-Do: are xy actually required?
+    float       _leash;                 // horizontal leash length in cm.  used to stop the pilot from pushing the target location too far from the current location
+    int16_t     _lean_angle_max_cd;     // maximum lean angle in centi-degrees
 
 public:
     // for logging purposes

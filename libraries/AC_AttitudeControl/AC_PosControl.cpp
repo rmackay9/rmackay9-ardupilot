@@ -5,34 +5,14 @@
 extern const AP_HAL::HAL& hal;
 
 const AP_Param::GroupInfo AC_PosControl::var_info[] PROGMEM = {
-    // index 0 was used for the old orientation matrix
-
-    // @Param: SPEED
-    // @DisplayName: Position Controller Maximum Horizontal Speed
-    // @Description: Defines the speed in cm/s which the aircraft will attempt to maintain horizontally during a WP mission
+    // @Param: DUMMY
+    // @DisplayName: Dummy display name
+    // @Description: Dummy description
     // @Units: cm/s
     // @Range: 0 2000
     // @Increment: 50
     // @User: Standard
-    AP_GROUPINFO("SPEED",       0, AC_PosControl, _wp_speed_cms, WPNAV_WP_SPEED),
-
-    // @Param: SPEED_UP
-    // @DisplayName: Position Controller Maximum Speed Up
-    // @Description: Defines the speed in cm/s which the aircraft will attempt to maintain while climbing during a WP mission
-    // @Units: cm/s
-    // @Range: 0 1000
-    // @Increment: 50
-    // @User: Standard
-    AP_GROUPINFO("SPEED_UP",    1, AC_PosControl, _wp_speed_up_cms, WPNAV_WP_SPEED_UP),
-
-    // @Param: SPEED_DN
-    // @DisplayName: Position Controller Maximum Speed Down
-    // @Description: Defines the speed in cm/s which the aircraft will attempt to maintain while descending during a WP mission
-    // @Units: cm/s
-    // @Range: 0 1000
-    // @Increment: 50
-    // @User: Standard
-    AP_GROUPINFO("SPEED_DN",    2, AC_PosControl, _wp_speed_down_cms, WPNAV_WP_SPEED_DOWN),
+    AP_GROUPINFO("DUMMY",       0, AC_PosControl, _wp_speed_cms, WPNAV_WP_SPEED),
 
     AP_GROUPEND
 };
@@ -43,7 +23,8 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] PROGMEM = {
 //
 AC_PosControl::AC_PosControl(const AP_InertialNav& inav, const AP_AHRS& ahrs, const AC_AttitudeControl& attitude_control,
                             APM_PI& pi_alt_pos, AC_PID& pid_alt_rate, AC_PID& pid_alt_accel,
-                            APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon)
+                            APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon,
+                            int16_t& motor_throttle);
     _inav(inav),
     _ahrs(ahrs),
     _attitude_control(attitude_control),
@@ -54,20 +35,21 @@ AC_PosControl::AC_PosControl(const AP_InertialNav& inav, const AP_AHRS& ahrs, co
     _pid_pos_lon(pid_pos_lon),
     _pid_rate_lat(pid_rate_lat),
     _pid_rate_lon(pid_rate_lon),
+    _motor_throttle(motor_throttle),
+    _dt(POSCONTROL_DT_10HZ),
     _last_update(0),
+    _step(0),
+    _speed_cms(POSCONTROL_SPEED),
+    _speed_up_cms(POSCONTROL_SPEED_UP),
+    _speed_down_cms(POSCONTROL_SPEED_DOWN),
+    _accel_cms(POSCONTROL_ACCEL_MIN),   // To-Do: check this default
     _cos_yaw(1.0),
     _sin_yaw(0.0),
     _cos_pitch(1.0),
-    _desired_roll(0),
-    _desired_pitch(0),
-    _target(0,0,0),
-    _target_vel(0,0,0),
-    _vel_last(0,0,0),
-    _loiter_leash(WPNAV_MIN_LEASH_LENGTH),
-    _loiter_accel_cms(WPNAV_LOITER_ACCEL_MAX),
-    _lean_angle_max_cd(MAX_LEAN_ANGLE),
-    desired_vel(0,0),
-    desired_accel(0,0)
+    _desired_roll(0.0),
+    _desired_pitch(0.0),
+    _leash(POSCONTROL_LEASH_LENGTH_MIN),
+    _lean_angle_max_cd(MAX_LEAN_ANGLE)
 {
     AP_Param::setup_object_defaults(this, var_info);
 
@@ -75,65 +57,164 @@ AC_PosControl::AC_PosControl(const AP_InertialNav& inav, const AP_AHRS& ahrs, co
     calculate_leash_length();
 }
 
-// get_initial_alt_hold - get new target altitude based on current altitude and climb rate
-static int32_t
-get_initial_alt_hold( int32_t alt_cm, int16_t climb_rate_cms)
+///
+/// z-axis position controller
+///
+
+/// get_stopping_point_z - returns reasonable stopping altitude in cm above home
+float AC_PosControl::get_stopping_point_z()
 {
-    int32_t target_alt;
-    int32_t linear_distance;      // half the distace we swap between linear and sqrt and the distace we offset sqrt.
-    int32_t linear_velocity;      // the velocity we swap between linear and sqrt.
+    const Vector3f& curr_pos = _inav.get_position();
+    const Vector3f& curr_vel = _inav.get_velocity();
+    float target_alt;
+    float linear_distance;  // half the distace we swap between linear and sqrt and the distace we offset sqrt
+    float linear_velocity;  // the velocity we swap between linear and sqrt
 
-    linear_velocity = ALT_HOLD_ACCEL_MAX/g.pi_alt_hold.kP();
+    // calculate the velocity at which we switch from calculating the stopping point using a linear funcction to a sqrt function
+    linear_velocity = POSCONTROL_ALT_HOLD_ACCEL_MAX/pi_alt_pos.kP();
 
-    if (abs(climb_rate_cms) < linear_velocity) {
-        target_alt = alt_cm + climb_rate_cms/g.pi_alt_hold.kP();
+    if (fabs(curr_vel.z) < linear_velocity) {
+        // if our current velocity is below the cross-over point we use a linear function
+        target_alt = curr_pos.z + curr_vel.z/pi_alt_pos.kP();
     } else {
-        linear_distance = ALT_HOLD_ACCEL_MAX/(2*g.pi_alt_hold.kP()*g.pi_alt_hold.kP());
-        if (climb_rate_cms > 0){
-            target_alt = alt_cm + linear_distance + (int32_t)climb_rate_cms*(int32_t)climb_rate_cms/(2*ALT_HOLD_ACCEL_MAX);
+        linear_distance = POSCONTROL_ALT_HOLD_ACCEL_MAX/(2.0f*pi_alt_pos.kP()*pi_alt_pos.kP());
+        if (curr_vel.z > 0){
+            target_alt = curr_pos.z + (linear_distance + curr_vel.z*curr_vel.z/(2.0f*POSCONTROL_ALT_HOLD_ACCEL_MAX));
         } else {
-            target_alt = alt_cm - ( linear_distance + (int32_t)climb_rate_cms*(int32_t)climb_rate_cms/(2*ALT_HOLD_ACCEL_MAX) );
+            target_alt = curr_pos.z - (linear_distance + curr_vel.z*curr_vel.z/(2.0f*POSCONTROL_ALT_HOLD_ACCEL_MAX));
         }
     }
-    return constrain_int32(target_alt, alt_cm - ALT_HOLD_INIT_MAX_OVERSHOOT, alt_cm + ALT_HOLD_INIT_MAX_OVERSHOOT);
+    return constrain_float(target_alt, curr_pos.z - POSCONTROL_STOPPING_DIST_Z_MAX, curr_pos.z + POSCONTROL_STOPPING_DIST_Z_MAX);
 }
 
-// get_throttle_althold - hold at the desired altitude in cm
-// updates accel based throttle controller targets
-// Note: max_climb_rate is an optional parameter to allow reuse of this function by landing controller
-static void
-get_throttle_althold(int32_t target_alt, int16_t min_climb_rate, int16_t max_climb_rate)
+/// fly_to_z - fly to altitude in cm above home
+void AC_PosControl::fly_to_z(const float alt_cm);
 {
-    int32_t alt_error;
-    float desired_rate;
-    int32_t linear_distance;      // half the distace we swap between linear and sqrt and the distace we offset sqrt.
+    // call position controller
+    pos_to_rate_z(alt_cm,,);
+}
+
+/// climb_at_rate - climb at rate provided in cm/s
+void AC_PosControl::climb_at_rate(const float rate_cms)
+{
+}
+
+// pos_to_rate_z - fly or hold at the desired altitude in cm
+// calculates desired rate in earth-frame z axis and passes to rate_z controller
+// Note: max_climb_rate is an optional parameter to allow reuse of this function by landing controller
+void AC_PosControl::pos_to_rate_z(float alt_cm, float climb_rate_min, int16_t climb_rate_max)
+{
+    const Vector3f& curr_pos = _inav.get_position();
+    const Vector3f& curr_vel = _inav.get_velocity();
+    float linear_distance;  // half the distace we swap between linear and sqrt and the distace we offset sqrt.
 
     // calculate altitude error
-    alt_error    = target_alt - current_loc.alt;
+    _pos_error.z = alt_cm - curr_pos.z;
 
     // check kP to avoid division by zero
-    if( g.pi_alt_hold.kP() != 0 ) {
-        linear_distance = ALT_HOLD_ACCEL_MAX/(2*g.pi_alt_hold.kP()*g.pi_alt_hold.kP());
-        if( alt_error > 2*linear_distance ) {
-            desired_rate = safe_sqrt(2*ALT_HOLD_ACCEL_MAX*(alt_error-linear_distance));
-        }else if( alt_error < -2*linear_distance ) {
-            desired_rate = -safe_sqrt(2*ALT_HOLD_ACCEL_MAX*(-alt_error-linear_distance));
+    if (pi_alt_pos.kP() != 0) {
+        linear_distance = POSCONTROL_ALT_HOLD_ACCEL_MAX/(2.0f*pi_alt_pos.kP()*pi_alt_pos.kP());
+        if (alt_error > 2*linear_distance ) {
+            _vel_target.z = safe_sqrt(2.0f*POSCONTROL_ALT_HOLD_ACCEL_MAX*(alt_error-linear_distance));
+        }else if (alt_error < -2.0f*linear_distance) {
+            _vel_target.z = -safe_sqrt(2.0f*POSCONTROL_ALT_HOLD_ACCEL_MAX*(-alt_error-linear_distance));
         }else{
-            desired_rate = g.pi_alt_hold.get_p(alt_error);
+            _vel_target.z = pi_alt_pos.get_p(alt_error);
         }
     }else{
-        desired_rate = 0;
+        _vel_target.z = 0;
     }
 
-    desired_rate = constrain_float(desired_rate, min_climb_rate, max_climb_rate);
+    // To-Do: update limit flag if we need to constrain the desired rate
+    _vel_target.z = constrain_float(_vel_target.z, climb_rate_min, climb_rate_max);
 
     // call rate based throttle controller which will update accel based throttle controller targets
-    get_throttle_rate(desired_rate);
+    rate_to_accel_z(_vel_target.z);
+}
 
-    // update altitude error reported to GCS
-    altitude_error = alt_error;
+// rate_to_accel_z - calculates desired accel required to achieve climb_rate_cms
+// calculates desired acceleration and calls accel throttle controller
+void AC_PosControl::rate_to_accel_z(float vel_target_z)
+{
+    uint32_t now = hal.scheduler->millis();
+    const Vector3f& curr_vel = _inav.get_velocity();
+    float z_target_speed_delta;             // The change in requested speed
+    float p;                                // used to capture pid values for logging
+    float desired_accel;                    // the target acceleration if the accel based throttle is enabled, otherwise the output to be sent to the motors
 
-    // TO-DO: enabled PID logging for this controller
+    // reset target velocity if this controller has just been engaged
+    if (now - _last_update_rate > 100 ) {
+        // Reset Filter
+        _vel_error.z = 0;
+        _vel_target_filt_z = vel_target_z;
+        desired_accel = 0;
+    } else {
+        // calculate rate error and filter with cut off frequency of 2 Hz
+        //To-Do: adjust constant below based on update rate
+        _vel_error.z = _vel_error.z + 0.20085f * ((vel_target_z - curr_vel.z) - _vel_error.z);
+        // feed forward acceleration based on change in the filtered desired speed.
+        z_target_speed_delta = 0.20085f * (vel_target_z - _vel_target_filt_z);
+        _vel_target_filt_z = _vel_target_filt_z + z_target_speed_delta;
+        desired_accel = z_target_speed_delta / _dt;
+    }
+    _last_update_rate = now;
+
+    // calculate p
+    p = pid_alt_rate.kP() * _vel_error.z;
+
+    // consolidate and constrain target acceleration
+    desired_accel += p;
+    desired_accel = constrain_int32(desired_accel, -32000, 32000);
+
+    // To-Do: re-enable PID logging?
+    // TO-DO: ensure throttle cruise is updated some other way in the main code
+
+    // set target for accel based throttle controller
+    accel_to_motor_throttle(desired_accel);
+}
+
+// accel_to_motor_throttle - alt hold's acceleration controller
+// calculates a desired throttle which is sent directly to the motors
+void AC_PosControl::accel_to_motor_throttle(float accel_target_z)
+{
+    uint32_t now = millis();
+    float z_accel_meas;         // actual acceleration
+    int32_t p,i,d;              // used to capture pid values for logging
+
+    // Calculate Earth Frame Z acceleration
+    z_accel_meas = -(ahrs.get_accel_ef().z + GRAVITY_MSS) * 100.0f;
+
+    // reset target altitude if this controller has just been engaged
+    if (now - _last_update_accel_ms > 100) {
+        // Reset Filter
+        _accel_error.z = 0;
+    } else {
+        // calculate accel error and Filter with fc = 2 Hz
+        // To-Do: replace constant below with one that is adjusted for update rate
+        _accel_error.z = _accel_error.z + 0.11164f * (constrain_float(z_target_accel - z_accel_meas, -32000, 32000) - z_accel_error);
+    }
+    _last_update_accel_ms = now;
+
+    // separately calculate p, i, d values for logging
+    p = pid_alt_accel.get_p(_accel_error.z);
+
+    // get i term
+    i = pid_alt_accel.get_integrator();
+
+    // update i term as long as we haven't breached the limits or the I term will certainly reduce
+    if ((!_motors.limit.throttle_lower && !_motors.limit.throttle_upper) || (i>0&&_accel_error.z<0) || (i<0&&z_accel_error>0)) {
+        i = pid_alt_accel.get_i(_accel_error.z, _dt);
+    }
+
+    // get d term
+    d = pid_alt_accel.get_d(_accel_error.z, _dt);
+
+    // To-Do: pull min/max throttle from motors
+    // To-Do: where to get hover throttle?
+    // To-Do: can wer remove this contraint and let the motors handle it?
+    _motor_throttle = constrain_float(p+i+d+g.throttle_cruise, g.throttle_min, g.throttle_max);
+
+    // to-do add back in PID logging?
 }
 
 // get_throttle_althold_with_slew - altitude controller with slew to avoid step changes in altitude target
@@ -183,114 +264,6 @@ get_throttle_rate_stabilized(int16_t target_rate)
 
     get_throttle_althold(controller_desired_alt, -g.pilot_velocity_z_max-250, g.pilot_velocity_z_max+250);   // 250 is added to give head room to alt hold controller
 }
-
-// get_throttle_rate - calculates desired accel required to achieve desired z_target_speed
-// sets accel based throttle controller target
-static void
-get_throttle_rate(float z_target_speed)
-{
-    static uint32_t last_call_ms = 0;
-    static float z_rate_error = 0;   // The velocity error in cm.
-    static float z_target_speed_filt = 0;   // The filtered requested speed
-    float z_target_speed_delta;   // The change in requested speed
-    int32_t p;          // used to capture pid values for logging
-    int32_t output;     // the target acceleration if the accel based throttle is enabled, otherwise the output to be sent to the motors
-    uint32_t now = millis();
-
-    // reset target altitude if this controller has just been engaged
-    if( now - last_call_ms > 100 ) {
-        // Reset Filter
-        z_rate_error = 0;
-        z_target_speed_filt = z_target_speed;
-        output = 0;
-    } else {
-        // calculate rate error and filter with cut off frequency of 2 Hz
-        z_rate_error    = z_rate_error + 0.20085f * ((z_target_speed - climb_rate) - z_rate_error);
-        // feed forward acceleration based on change in the filtered desired speed.
-        z_target_speed_delta = 0.20085f * (z_target_speed - z_target_speed_filt);
-        z_target_speed_filt    = z_target_speed_filt + z_target_speed_delta;
-        output = z_target_speed_delta * 50.0f;   // To-Do: replace 50 with dt
-    }
-    last_call_ms = now;
-
-    // calculate p
-    p = g.pid_throttle_rate.kP() * z_rate_error;
-
-    // consolidate and constrain target acceleration
-    output += p;
-    output = constrain_int32(output, -32000, 32000);
-
-#if LOGGING_ENABLED == ENABLED
-    // log output if PID loggins is on and we are tuning the yaw
-    if( g.log_bitmask & MASK_LOG_PID && (g.radio_tuning == CH6_THROTTLE_RATE_KP || g.radio_tuning == CH6_THROTTLE_RATE_KD) ) {
-        pid_log_counter++;
-        if( pid_log_counter >= 10 ) {               // (update rate / desired output rate) = (50hz / 10hz) = 5hz
-            pid_log_counter = 0;
-            Log_Write_PID(CH6_THROTTLE_RATE_KP, z_rate_error, p, 0, 0, output, tuning_value);
-        }
-    }
-#endif
-
-    // set target for accel based throttle controller
-    set_throttle_accel_target(output);
-
-    // update throttle cruise
-    // TO-DO: this may not be correct because g.rc_3.servo_out has not been updated for this iteration
-    if( z_target_speed == 0 ) {
-        update_throttle_cruise(g.rc_3.servo_out);
-    }
-}
-
-///
-/// throttle controller
-///
-// get_throttle_accel - accelerometer based throttle controller
-// returns an actual throttle output (0 ~ 1000) to be sent to the motors
-static int16_t
-get_throttle_accel(int16_t z_target_accel)
-{
-    static float z_accel_error = 0;     // The acceleration error in cm.
-    static uint32_t last_call_ms = 0;   // the last time this controller was called
-    int32_t p,i,d;                      // used to capture pid values for logging
-    int16_t output;
-    float z_accel_meas;
-    uint32_t now = millis();
-
-    // Calculate Earth Frame Z acceleration
-    z_accel_meas = -(ahrs.get_accel_ef().z + GRAVITY_MSS) * 100;
-
-    // reset target altitude if this controller has just been engaged
-    if( now - last_call_ms > 100 ) {
-        // Reset Filter
-        z_accel_error = 0;
-    } else {
-        // calculate accel error and Filter with fc = 2 Hz
-        z_accel_error = z_accel_error + 0.11164f * (constrain_float(z_target_accel - z_accel_meas, -32000, 32000) - z_accel_error);
-    }
-    last_call_ms = now;
-
-    // separately calculate p, i, d values for logging
-    p = g.pid_throttle_accel.get_p(z_accel_error);
-
-    // get i term
-    i = g.pid_throttle_accel.get_integrator();
-
-    // replace below with check of throttle limit from attitude_control
-    // update i term as long as we haven't breached the limits or the I term will certainly reduce
-    if ((!motors.limit.throttle_lower && !motors.limit.throttle_upper) || (i>0&&z_accel_error<0) || (i<0&&z_accel_error>0)) {
-        i = g.pid_throttle_accel.get_i(z_accel_error, .01f);
-    }
-
-    d = g.pid_throttle_accel.get_d(z_accel_error, .01f);
-
-    output =  constrain_float(p+i+d+g.throttle_cruise, g.throttle_min, g.throttle_max);
-
-    // to-do add back in PID logging?
-
-    return output;
-}
-
-
 
 ///
 /// position controller
