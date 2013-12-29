@@ -2180,6 +2180,7 @@ static void update_trig(void){
 
     // update attitude controller with trig values
     attitude_control.set_cos_sin_yaw(cos_roll_x, cos_pitch_x, sin_roll, sin_pitch);
+    pos_control.set_cos_sin_yaw(cos_yaw, sin_yaw, cos_pitch_x);
 
     // update wp_nav controller with trig values
     wp_nav.set_cos_sin_yaw(cos_yaw, sin_yaw, cos_pitch_x);
