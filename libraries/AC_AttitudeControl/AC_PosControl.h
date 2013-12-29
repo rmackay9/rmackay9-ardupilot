@@ -112,6 +112,9 @@ public:
         _cos_pitch = cos_pitch;
     }
 
+    // set_throttle_hover - update estimated throttle required to maintain hover
+    void set_throttle_hover(float throttle) { _throttle_hover = throttle; }
+
 /*
     /// set_horizontal_velocity - allows main code to pass target horizontal velocity for wp navigation
     void set_horizontal_velocity(float velocity_cms) { _wp_speed_cms = velocity_cms; };
