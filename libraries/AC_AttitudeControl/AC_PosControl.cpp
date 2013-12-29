@@ -21,10 +21,9 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] PROGMEM = {
 // their values.
 //
 AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
-                             const AP_Motors& motors, const AC_AttitudeControl& attitude_control,
+                             const AP_Motors& motors, AC_AttitudeControl& attitude_control,
                              APM_PI& pi_alt_pos, AC_PID& pid_alt_rate, AC_PID& pid_alt_accel,
-                             APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon,
-                             int16_t& motor_throttle) :
+                             APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon) :
     _ahrs(ahrs),
     _inav(inav),
     _motors(motors),
@@ -36,15 +35,14 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
     _pi_pos_lon(pi_pos_lon),
     _pid_rate_lat(pid_rate_lat),
     _pid_rate_lon(pid_rate_lon),
-    _motor_throttle(motor_throttle),
     _dt(POSCONTROL_DT_10HZ),
     _last_update_ms(0),
     _last_update_rate_ms(0),
     _last_update_accel_ms(0),
     _step(0),
     _speed_cms(POSCONTROL_SPEED),
-    _speed_up_cms(POSCONTROL_SPEED_UP),
-    _speed_down_cms(POSCONTROL_SPEED_DOWN),
+    _vel_z_min(POSCONTROL_VEL_Z_MIN),
+    _vel_z_max(POSCONTROL_VEL_Z_MAX),
     _accel_cms(POSCONTROL_ACCEL_XY_MAX),   // To-Do: check this default
     _cos_yaw(1.0),
     _sin_yaw(0.0),
@@ -93,18 +91,48 @@ float AC_PosControl::get_stopping_point_z()
 void AC_PosControl::fly_to_z(const float alt_cm)
 {
     // call position controller
-    pos_to_rate_z(alt_cm,-250,250);
+    pos_to_rate_z(alt_cm);
 }
 
 /// climb_at_rate - climb at rate provided in cm/s
-void AC_PosControl::climb_at_rate(const float rate_cms)
+void AC_PosControl::climb_at_rate(const float rate_target_cms)
 {
+    const Vector3f& curr_pos = _inav.get_position();
+
+    // clear position limit flags
+    _limit.pos_up = false;
+    _limit.pos_down = false;
+
+    // adjust desired alt if motors have not hit their limits
+    // To-Do: should we use some other limits?  this controller's vel limits?
+    if ((rate_target_cms<0 && !_motors.limit.throttle_lower) || (rate_target_cms>0 && !_motors.limit.throttle_upper)) {
+        _pos_target.z += rate_target_cms * _dt;
+    }
+
+    // do not let target altitude get too far from current altitude
+    if (_pos_target.z < curr_pos.z - POSCONTROL_LEASH_Z) {
+        _pos_target.z = curr_pos.z - POSCONTROL_LEASH_Z;
+        _limit.pos_down = true;
+    }
+    if (_pos_target.z > curr_pos.z + POSCONTROL_LEASH_Z) {
+        _pos_target.z = curr_pos.z + POSCONTROL_LEASH_Z;
+        _limit.pos_up = true;
+    }
+
+    // do not let target alt get above limit
+    if (_alt_max > 0 && _pos_target.z > _alt_max) {
+        _pos_target.z = _alt_max;
+        _limit.pos_up = true;
+    }
+
+    // call position controller
+    pos_to_rate_z(_pos_target.z);
 }
 
 // pos_to_rate_z - position to rate controller for Z axis
 // calculates desired rate in earth-frame z axis and passes to rate controller
-// Note: max_climb_rate is an optional parameter to allow reuse of this function by landing controller
-void AC_PosControl::pos_to_rate_z(float alt_cm, float climb_rate_min, float climb_rate_max)
+// vel_up_max, vel_down_max should have already been set before calling this method
+void AC_PosControl::pos_to_rate_z(float alt_cm)
 {
     const Vector3f& curr_pos = _inav.get_position();
     float linear_distance;  // half the distace we swap between linear and sqrt and the distace we offset sqrt.
@@ -126,9 +154,6 @@ void AC_PosControl::pos_to_rate_z(float alt_cm, float climb_rate_min, float clim
         _vel_target.z = 0;
     }
 
-    // To-Do: update limit flag if we need to constrain the desired rate
-    _vel_target.z = constrain_float(_vel_target.z, climb_rate_min, climb_rate_max);
-
     // call rate based throttle controller which will update accel based throttle controller targets
     rate_to_accel_z(_vel_target.z);
 }
@@ -143,7 +168,20 @@ void AC_PosControl::rate_to_accel_z(float vel_target_z)
     float p;                                // used to capture pid values for logging
     float desired_accel;                    // the target acceleration if the accel based throttle is enabled, otherwise the output to be sent to the motors
 
-    // reset target velocity if this controller has just been engaged
+    // check speed limits
+    // To-Do: check these speed limits here or in the pos->rate controller
+    _limit.vel_up = false;
+    _limit.vel_down = false;
+    if (_vel_target.z < _vel_z_min) {
+        _vel_target.z = _vel_z_min;
+        _limit.vel_down = true;
+    }
+    if (_vel_target.z > _vel_z_max) {
+        _vel_target.z = _vel_z_max;
+        _limit.vel_up = true;
+    }
+
+    // reset velocity error and filter if this controller has just been engaged
     if (now - _last_update_rate_ms > 100 ) {
         // Reset Filter
         _vel_error.z = 0;
@@ -168,15 +206,15 @@ void AC_PosControl::rate_to_accel_z(float vel_target_z)
     desired_accel = constrain_int32(desired_accel, -32000, 32000);
 
     // To-Do: re-enable PID logging?
-    // TO-DO: ensure throttle cruise is updated some other way in the main code
+    // TO-DO: ensure throttle cruise is updated some other way in the main code or attitude control
 
     // set target for accel based throttle controller
-    accel_to_motor_throttle(desired_accel);
+    accel_to_throttle(desired_accel);
 }
 
-// accel_to_motor_throttle - alt hold's acceleration controller
+// accel_to_throttle - alt hold's acceleration controller
 // calculates a desired throttle which is sent directly to the motors
-void AC_PosControl::accel_to_motor_throttle(float accel_target_z)
+void AC_PosControl::accel_to_throttle(float accel_target_z)
 {
     uint32_t now = hal.scheduler->millis();
     float z_accel_meas;         // actual acceleration
@@ -203,6 +241,7 @@ void AC_PosControl::accel_to_motor_throttle(float accel_target_z)
     i = _pid_alt_accel.get_integrator();
 
     // update i term as long as we haven't breached the limits or the I term will certainly reduce
+    // To-Do: should this be replaced with limits check from attitude_controller?
     if ((!_motors.limit.throttle_lower && !_motors.limit.throttle_upper) || (i>0&&_accel_error.z<0) || (i<0&&_accel_error.z>0)) {
         i = _pid_alt_accel.get_i(_accel_error.z, _dt);
     }
@@ -213,7 +252,7 @@ void AC_PosControl::accel_to_motor_throttle(float accel_target_z)
     // To-Do: pull min/max throttle from motors
     // To-Do: where to get hover throttle?
     // To-Do: we had a contraint here but it's now removed, is this ok?  with the motors library handle it ok?
-    _motor_throttle = (int16_t)(p+i+d+_throttle_hover);
+    _attitude_control.set_throttle_out((int16_t)p+i+d+_throttle_hover, true);
 
     // to-do add back in PID logging?
 }
