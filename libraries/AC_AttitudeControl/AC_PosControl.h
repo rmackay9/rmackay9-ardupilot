@@ -13,7 +13,8 @@
 #include <AP_Motors.h>          // motors library
 
 
-// loiter maximum velocities and accelerations
+// position controller default definitions
+#define POSCONTROL_THROTTLE_HOVER               450.0f  // default throttle required to maintain hover
 #define POSCONTROL_ACCELERATION                 100.0f  // defines the default velocity vs distant curve.  maximum acceleration in cm/s/s that position controller asks for from acceleration controller
 #define POSCONTROL_ACCELERATION_MIN             50.0f   // minimum acceleration in cm/s/s - used for sanity checking _wp_accel parameter
 #define POSCONTROL_ACCEL_XY_MAX                 980.0f  // max horizontal acceleration in cm/s/s that the position velocity controller will ask from the lower accel controller
@@ -102,10 +103,7 @@ public:
     int32_t get_desired_pitch() const { return _desired_pitch; };
 */
     /// get_desired_alt - get desired altitude (in cm above home) from loiter or wp controller which should be fed into throttle controller
-    float get_desired_alt() const { return _target.z; }
-
-    /// set_desired_alt - set desired altitude (in cm above home)
-    void set_desired_alt(float desired_alt) { _target.z = desired_alt; }
+    float get_desired_alt() const { return _pos_target.z; }
 
     /// set_cos_sin_yaw - short-cut to save on calculations to convert from roll-pitch frame to lat-lon frame
     void set_cos_sin_yaw(float cos_yaw, float sin_yaw, float cos_pitch) {
@@ -132,18 +130,26 @@ public:
 
     /// get_waypoint_acceleration - returns acceleration in cm/s/s during missions
     float get_waypoint_acceleration() const { return _wp_accel_cms.get(); }
-
-    /// set_lean_angle_max - limits maximum lean angle
-    void set_lean_angle_max(int16_t angle_cd) { if (angle_cd >= 1000 && angle_cd <= 8000) {_lean_angle_max_cd = angle_cd;} }
+*/
 
     static const struct AP_Param::GroupInfo var_info[];
 
-protected:
+private:
     // flags structure
     struct poscontroller_flags {
         uint8_t dummy     : 1;    // dummy flag
     } _flags;
 
+    // pos_to_rate_z - position to rate controller for Z axis
+    void pos_to_rate_z(float alt_cm, float climb_rate_min, float climb_rate_max);
+
+    // rate_to_accel_z - calculates desired accel required to achieve the velocity target
+    void rate_to_accel_z(float vel_target_z);
+
+    // accel_to_motor_throttle - alt hold's acceleration controller
+    void accel_to_motor_throttle(float accel_target_z);
+
+    /*
     /// get_loiter_position_to_velocity - loiter position controller
     ///     converts desired position held in _target vector to desired velocity
     void get_position_to_velocity(float dt, float max_speed_cms);
@@ -164,10 +170,11 @@ protected:
 
     /// calculate_leash_length - calculates the maximum distance in cm that the target position may be from the current location
     void calculate_leash_length();
+    */
 
     // references to inertial nav and ahrs libraries
-    const AP_InertialNav&       _inav;
     const AP_AHRS&              _ahrs;
+    const AP_InertialNav&       _inav;
     const AP_Motors&            _motors;
     const AC_AttitudeControl&   _attitude_control;
 
@@ -175,11 +182,14 @@ protected:
     APM_PI&     _pi_alt_pos;
     AC_PID&     _pid_alt_rate;
     AC_PID&     _pid_alt_accel;
-    APM_PI&	    _pid_pos_lat;
-    APM_PI&	    _pid_pos_lon;
+    APM_PI&	    _pi_pos_lat;
+    APM_PI&	    _pi_pos_lon;
     AC_PID&	    _pid_rate_lat;
     AC_PID&	    _pid_rate_lon;
     int16_t&    _motor_throttle;
+
+    // parameters
+    AP_Float    _throttle_hover;        // estimated throttle required to maintain a level hover
 
     // internal variables
     float       _dt;                    // time difference (in seconds) between calls from the main program
@@ -209,7 +219,6 @@ protected:
     Vector3f    _accel_target;          // desired acceleration in cm/s/s  // To-Do: are xy actually required?
     Vector3f    _accel_error;           // desired acceleration in cm/s/s  // To-Do: are xy actually required?
     float       _leash;                 // horizontal leash length in cm.  used to stop the pilot from pushing the target location too far from the current location
-    int16_t     _lean_angle_max_cd;     // maximum lean angle in centi-degrees
 
 public:
     // for logging purposes
