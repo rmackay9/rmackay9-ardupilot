@@ -21,12 +21,14 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] PROGMEM = {
 // Note that the Vector/Matrix constructors already implicitly zero
 // their values.
 //
-AC_PosControl::AC_PosControl(const AP_InertialNav& inav, const AP_AHRS& ahrs, const AC_AttitudeControl& attitude_control,
-                            APM_PI& pi_alt_pos, AC_PID& pid_alt_rate, AC_PID& pid_alt_accel,
-                            APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon,
-                            int16_t& motor_throttle);
-    _inav(inav),
+AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
+                             const AP_Motors& motors, const AC_AttitudeControl& attitude_control,
+                             APM_PI& pi_alt_pos, AC_PID& pid_alt_rate, AC_PID& pid_alt_accel,
+                             APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon,
+                             int16_t& motor_throttle) :
     _ahrs(ahrs),
+    _inav(inav),
+    _motors(motors),
     _attitude_control(attitude_control),
     _pi_alt_hold(pi_alt_pos),
     _pid_alt_rate(pid_alt_rate),

@@ -9,11 +9,14 @@
 #include <AC_PID.h>             // PID library
 #include <APM_PI.h>             // PID library
 #include <AP_InertialNav.h>     // Inertial Navigation library
+#include <AC_AttitudeControl.h> // Attitude control library
+#include <AP_Motors.h>          // motors library
+
 
 // loiter maximum velocities and accelerations
 #define POSCONTROL_ACCELERATION                 100.0f  // defines the default velocity vs distant curve.  maximum acceleration in cm/s/s that position controller asks for from acceleration controller
 #define POSCONTROL_ACCELERATION_MIN             50.0f   // minimum acceleration in cm/s/s - used for sanity checking _wp_accel parameter
-#define POSCONTROL_ACCEL_MAX                    980.0f  // max acceleration in cm/s/s that the loiter velocity controller will ask from the lower accel controller.
+#define POSCONTROL_ACCEL_XY_MAX                 980.0f  // max horizontal acceleration in cm/s/s that the position velocity controller will ask from the lower accel controller
 #define POSCONTROL_STOPPING_DIST_Z_MAX          200.0f  // max stopping distance vertically   
                                                         // should be 1.5 times larger than POSCONTROL_ACCELERATION.
                                                         // max acceleration = max lean angle * 980 * pi / 180.  i.e. 23deg * 980 * 3.141 / 180 = 393 cm/s/s
@@ -21,8 +24,6 @@
 #define POSCONTROL_SPEED                        500.0f  // maximum default loiter speed in cm/s
 #define POSCONTROL_SPEED_UP                     250.0f  // default maximum climb velocity
 #define POSCONTROL_SPEED_DOWN                   150.0f  // default maximum descent velocity
-#define POSCONTROL_ACCEL_MAX                    250.0f  // maximum acceleration in loiter mode
-#define POSCONTROL_ACCEL_MIN                    25.0f   // minimum acceleration in loiter mode
 #define POSCONTROL_SPEED_MAX_TO_CORRECT_ERROR   200.0f  // maximum speed used to correct position error (i.e. not including feed forward)
 
 #define POSCONTROL_LEAN_ANGLE_MAX               4500    // default maximum lean angle
@@ -39,7 +40,8 @@ class AC_PosControl
 public:
 
     /// Constructor
-    AC_PosControl(const AP_InertialNav& inav, const AP_AHRS& ahrs, const AC_AttitudeControl& attitude_control,
+    AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
+                  const AP_Motors& motors, const AC_AttitudeControl& attitude_control,
                   APM_PI& pi_alt_pos, AC_PID& pid_alt_rate, AC_PID& pid_alt_accel,
                   APM_PI& pi_pos_lat, APM_PI& pi_pos_lon, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon,
                   int16_t& motor_throttle);
@@ -65,6 +67,7 @@ public:
     /// climb_at_rate - climb at rate provided in cm/s
     void climb_at_rate(const float rate_cms);
 
+/*
     ///
     /// xy position controller
     ///
@@ -97,7 +100,7 @@ public:
     /// get desired roll, pitch which should be fed into stabilize controllers
     int32_t get_desired_roll() const { return _desired_roll; };
     int32_t get_desired_pitch() const { return _desired_pitch; };
-
+*/
     /// get_desired_alt - get desired altitude (in cm above home) from loiter or wp controller which should be fed into throttle controller
     float get_desired_alt() const { return _target.z; }
 
@@ -111,9 +114,7 @@ public:
         _cos_pitch = cos_pitch;
     }
 
-    /// set_althold_kP - pass in alt hold controller's P gain
-    void set_althold_kP(float kP) { if(kP>0.0) _althold_kP = kP; }
-
+/*
     /// set_horizontal_velocity - allows main code to pass target horizontal velocity for wp navigation
     void set_horizontal_velocity(float velocity_cms) { _wp_speed_cms = velocity_cms; };
 
@@ -167,6 +168,7 @@ protected:
     // references to inertial nav and ahrs libraries
     const AP_InertialNav&       _inav;
     const AP_AHRS&              _ahrs;
+    const AP_Motors&            _motors;
     const AC_AttitudeControl&   _attitude_control;
 
     // references to pid controllers and motors
