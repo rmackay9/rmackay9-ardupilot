@@ -265,7 +265,7 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
     // To-Do: where to get hover throttle?
     // To-Do: we had a contraint here but it's now removed, is this ok?  with the motors library handle it ok?
     _attitude_control.set_throttle_out((int16_t)p+i+d+_throttle_hover, true);
-
+    
     // to-do add back in PID logging?
 }
 /*
