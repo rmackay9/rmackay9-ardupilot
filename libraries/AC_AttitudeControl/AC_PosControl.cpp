@@ -61,6 +61,12 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
 /// z-axis position controller
 ///
 
+// get_alt_error - returns altitude error in cm
+float AC_PosControl::get_alt_error() const
+{
+    return (_pos_target.z - _inav.get_position().z);
+}
+
 /// set_target_to_stopping_point_z - returns reasonable stopping altitude in cm above home
 void AC_PosControl::set_target_to_stopping_point_z()
 {
