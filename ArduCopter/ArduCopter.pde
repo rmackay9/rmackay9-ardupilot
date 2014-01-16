@@ -94,6 +94,7 @@
 #include <AP_HAL_Empty.h>
 
 // Application dependencies
+#include <GCS.h>
 #include <GCS_MAVLink.h>        // MAVLink GCS definitions
 #include <AP_GPS.h>             // ArduPilot GPS library
 #include <AP_GPS_Glitch.h>      // GPS glitch protection library
@@ -149,7 +150,6 @@ static AP_Vehicle::MultiCopter aparm;
 
 // Local modules
 #include "Parameters.h"
-#include "GCS.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // cliSerial
