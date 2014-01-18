@@ -11,6 +11,7 @@
 #include <AP_InertialNav.h>     // Inertial Navigation library
 #include <AC_AttitudeControl.h> // Attitude control library
 #include <AP_Motors.h>          // motors library
+#include <AP_Vehicle.h>         // common vehicle parameters
 
 
 // position controller default definitions
@@ -66,6 +67,10 @@ public:
     /// z position controller
     ///
 
+    // set_throttle_hover - update estimated throttle required to maintain hover
+    void set_throttle_hover(float throttle) { _throttle_hover = throttle; }
+
+    // set_alt_target - set altitude target in cm above home
     void set_alt_target(float alt_cm) { _pos_target.z = alt_cm; }
 
     /// get_alt_target, get_desired_alt - get desired altitude (in cm above home) from loiter or wp controller which should be fed into throttle controller
@@ -87,27 +92,29 @@ public:
     /// climb_at_rate - climb at rate provided in cm/s
     void climb_at_rate(const float rate_target_cms);
 
-/*
     ///
     /// xy position controller
     ///
 
+    /// set_accel_xy - set horizontal acceleration in cm/s/s
+    void set_accel_xy(float accel_cmss) { _accel_cms = accel_cmss; }
+
     /// get_pos_target - get target as position vector (from home in cm)
-    const Vector3f &get_pos_target() const { return _target; }
+    const Vector3f &get_pos_target() const { return _pos_target; }
 
     /// set_pos_target in cm from home
     void set_pos_target(const Vector3f& position);
 
+    /// move_target_at_rate - move loiter target at rate in cm/s in lat and lon directions
+    void move_target_at_rate(float lat_rate_cms, float lon_rate_cms);
+
     /// init_pos_target - set initial loiter target based on current position and velocity
     void init_pos_target(const Vector3f& position, const Vector3f& velocity);
 
-    /// get_distance_to_target - get horizontal distance to loiter target in cm
+    /// get_distance_to_target - get horizontal distance to position target in cm
     float get_distance_to_target() const;
 
-    /// get_bearing_to_target - get bearing to loiter target in centi-degrees
-    int32_t get_bearing_to_target() const;
-
-    /// update_loiter - run the loiter controller - should be called at 10hz
+    /// update_pos_controller - run the position controller - should be called at 100hz or higher
     void update_pos_controller();
 
     /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
@@ -118,9 +125,8 @@ public:
     ///
 
     /// get desired roll, pitch which should be fed into stabilize controllers
-    int32_t get_desired_roll() const { return _desired_roll; };
-    int32_t get_desired_pitch() const { return _desired_pitch; };
-*/
+    float get_desired_roll() const { return _desired_roll; }
+    float get_desired_pitch() const { return _desired_pitch; }
 
     /// set_cos_sin_yaw - short-cut to save on calculations to convert from roll-pitch frame to lat-lon frame
     void set_cos_sin_yaw(float cos_yaw, float sin_yaw, float cos_pitch) {
@@ -128,9 +134,6 @@ public:
         _sin_yaw = sin_yaw;
         _cos_pitch = cos_pitch;
     }
-
-    // set_throttle_hover - update estimated throttle required to maintain hover
-    void set_throttle_hover(float throttle) { _throttle_hover = throttle; }
 
 /*
     /// set_horizontal_velocity - allows main code to pass target horizontal velocity for wp navigation
@@ -176,25 +179,21 @@ private:
     // accel_to_throttle - alt hold's acceleration controller
     void accel_to_throttle(float accel_target_z);
 
-    /*
-    /// get_loiter_position_to_velocity - loiter position controller
-    ///     converts desired position held in _target vector to desired velocity
-    void get_position_to_velocity(float dt, float max_speed_cms);
+    /// pos_to_rate_xy - horizontal position error to desired velocity controller
+    ///     converts desired position held in _pos_target vector to desired velocity
+    void pos_to_rate_xy(float dt, float max_speed_cms);
 
-    /// get_loiter_velocity_to_acceleration - loiter velocity controller
+    /// rate_to_accel_xy - horizontal desired rate to desired acceleration
     ///    converts desired velocities in lat/lon directions to accelerations in lat/lon frame
-    void get_velocity_to_acceleration(float vel_lat_cms, float vel_lon_cms, float dt);
+    void rate_to_accel_xy(float vel_lat_cms, float vel_lon_cms, float dt);
 
-    /// get_loiter_acceleration_to_lean_angles - loiter acceleration controller
+    /// accel_to_lean_angles - horizontal desired acceleration to lean angles
     ///    converts desired accelerations provided in lat/lon frame to roll/pitch angles
-    void get_acceleration_to_lean_angles(float accel_lat_cmss, float accel_lon_cmss);
+    void accel_to_lean_angles(float accel_lat_cmss, float accel_lon_cmss);
 
-    /// get_bearing_cd - return bearing in centi-degrees between two positions
-    float get_bearing_cd(const Vector3f &origin, const Vector3f &destination) const;
-
-    /// reset_I - clears I terms from position PID controller
-    void reset_I();
-
+    /// reset_I_xy - clears I terms from horizontal position PID controller
+    void reset_I_xy();
+/*
     /// calculate_leash_length - calculates the maximum distance in cm that the target position may be from the current location
     void calculate_leash_length();
     */
@@ -246,6 +245,9 @@ private:
     Vector3f    _accel_error;           // desired acceleration in cm/s/s  // To-Do: are xy actually required?
     float       _leash;                 // horizontal leash length in cm.  used to stop the pilot from pushing the target location too far from the current location
     float       _alt_max;               // max altitude - should be updated from the main code with altitude limit from fence
+    float       _distance_to_target;    // distance to position target - for reporting only
+    uint8_t     _xy_step;               // used to decide which portion of horizontal position controller to run during this iteration
+    float       _xy_dt;                 // time difference in seconds between horizontal position updates
 
 public:
     // for logging purposes

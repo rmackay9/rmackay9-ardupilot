@@ -49,7 +49,10 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
     _cos_pitch(1.0),
     _desired_roll(0.0),
     _desired_pitch(0.0),
-    _leash(POSCONTROL_LEASH_LENGTH_MIN)
+    _leash(POSCONTROL_LEASH_LENGTH_MIN),
+    _distance_to_target(0),
+    _xy_step(0),
+    _xy_dt(0)
 {
     AP_Param::setup_object_defaults(this, var_info);
 
@@ -327,6 +330,33 @@ get_throttle_rate_stabilized(int16_t target_rate)
 ///
 /// position controller
 ///
+
+/// set_pos_target in cm from home
+void AC_PosControl::set_pos_target(const Vector3f& position)
+{
+    _pos_target = position;
+    _vel_target.x = 0;
+    _vel_target.y = 0;
+}
+
+/// init_pos_target - set initial loiter target based on current position and velocity
+void AC_PosControl::init_pos_target(const Vector3f& position, const Vector3f& velocity)
+{
+    // set target position and velocity based on current pos and velocity
+    _pos_target.x = position.x;
+    _pos_target.y = position.y;
+    _vel_target.x = velocity.x;
+    _vel_target.y = velocity.y;
+
+    // initialise desired roll and pitch to current roll and pitch.  This avoids a random twitch between now and when the loiter controller is first run
+    _desired_roll = constrain_int32(_ahrs.roll_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
+    _desired_pitch = constrain_int32(_ahrs.pitch_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
+
+    // set last velocity to current velocity
+    // To-Do: remove the line below by instead forcing reset_I to be called on the first loiter_update call
+    _vel_last = _inav.get_velocity();
+}
+
 /*
 /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
 void AC_PosControl::get_stopping_point(const Vector3f& position, const Vector3f& velocity, Vector3f &target) const
@@ -362,36 +392,7 @@ void AC_PosControl::get_stopping_point(const Vector3f& position, const Vector3f&
     target.y = position.y + (target_dist * velocity.y / vel_total);
     target.z = position.z;
 }
-
-/// set_pos_target in cm from home
-void AC_PosControl::set_pos_target(const Vector3f& position)
-{
-    _target = position;
-    _target_vel.x = 0;
-    _target_vel.y = 0;
-}
-
-/// init_pos_target - set initial loiter target based on current position and velocity
-void AC_PosControl::init_pos_target(const Vector3f& position, const Vector3f& velocity)
-{
-    // set target position and velocity based on current pos and velocity
-    _target.x = position.x;
-    _target.y = position.y;
-    _target_vel.x = velocity.x;
-    _target_vel.y = velocity.y;
-
-    // initialise desired roll and pitch to current roll and pitch.  This avoids a random twitch between now and when the loiter controller is first run
-    _desired_roll = constrain_int32(_ahrs->roll_sensor,-_lean_angle_max_cd,_lean_angle_max_cd);
-    _desired_pitch = constrain_int32(_ahrs->pitch_sensor,-_lean_angle_max_cd,_lean_angle_max_cd);
-
-    // initialise pilot input
-    _pilot_vel_forward_cms = 0;
-    _pilot_vel_right_cms = 0;
-
-    // set last velocity to current velocity
-    // To-Do: remove the line below by instead forcing reset_I to be called on the first loiter_update call
-    _vel_last = _inav->get_velocity();
-}
+*/
 
 /// get_distance_to_target - get horizontal distance to loiter target in cm
 float AC_PosControl::get_distance_to_target() const
@@ -399,56 +400,50 @@ float AC_PosControl::get_distance_to_target() const
     return _distance_to_target;
 }
 
-/// get_bearing_to_target - get bearing to loiter target in centi-degrees
-int32_t AC_PosControl::get_bearing_to_target() const
-{
-    return get_bearing_cd(_inav->get_position(), _target);
-}
-
-/// update_loiter - run the loiter controller - should be called at 10hz
-void AC_PosControl::update_loiter()
+/// update_pos_controller - run the horizontal position controller - should be called at 100hz or higher
+void AC_PosControl::update_pos_controller()
 {
     // calculate dt
     uint32_t now = hal.scheduler->millis();
-    float dt = (now - _loiter_last_update) / 1000.0f;
+    float dt = (now - _last_update_ms) / 1000.0f;
 
     // catch if we've just been started
     if( dt >= 1.0 ) {
         dt = 0.0;
-        reset_I();
-        _loiter_step = 0;
+        reset_I_xy();
+        _xy_step = 0;
     }
 
     // reset step back to 0 if 0.1 seconds has passed and we completed the last full cycle
-    if (dt > 0.095f && _loiter_step > 3) {
-        _loiter_step = 0;
+    if (dt > 0.095f && _xy_step > 3) {
+        _xy_step = 0;
     }
 
     // run loiter steps
-    switch (_loiter_step) {
+    switch (_xy_step) {
         case 0:
             // capture time since last iteration
-            _loiter_dt = dt;
-            _loiter_last_update = now;
+            _xy_dt = dt;
+            _last_update_ms = now;
 
             // translate any adjustments from pilot to loiter target
-            translate_loiter_target_movements(_loiter_dt);
-            _loiter_step++;
+            desired_vel_to_pos(_xy_dt);
+            _xy_step++;
             break;
         case 1:
-            // run loiter's position to velocity step
-            get_loiter_position_to_velocity(_loiter_dt, WPNAV_LOITER_SPEED_MAX_TO_CORRECT_ERROR);
-            _loiter_step++;
+            // run position controller's position error to desired velocity step
+            pos_to_rate_xy(_xy_dt, POSCONTROL_SPEED_MAX_TO_CORRECT_ERROR);
+            _xy_step++;
             break;
         case 2:
-            // run loiter's velocity to acceleration step
-            get_loiter_velocity_to_acceleration(desired_vel.x, desired_vel.y, _loiter_dt);
-            _loiter_step++;
+            // run position controller's velocity to acceleration step
+            rate_to_accel_xy(desired_vel.x, desired_vel.y, _xy_dt);
+            _xy_step++;
             break;
         case 3:
-            // run loiter's acceleration to lean angle step
-            get_loiter_acceleration_to_lean_angles(desired_accel.x, desired_accel.y);
-            _loiter_step++;
+            // run position controller's acceleration to lean angle step
+            accel_to_lean_angles(desired_accel.x, desired_accel.y);
+            _xy_step++;
             break;
     }
 }
@@ -457,53 +452,112 @@ void AC_PosControl::update_loiter()
 void AC_PosControl::calculate_leash_length()
 {
     // get loiter position P
-    float kP = _pid_pos_lat->kP();
+    float kP = _pi_pos_lat.kP();
 
     // check loiter speed
-    if( _loiter_speed_cms < 100.0f) {
-        _loiter_speed_cms = 100.0f;
+    if( _speed_cms < 100.0f) {
+        _speed_cms = 100.0f;
     }
 
     // set loiter acceleration to 1/2 loiter speed
-    _loiter_accel_cms = _loiter_speed_cms / 2.0f;
+    _accel_cms = _speed_cms / 2.0f;
 
     // avoid divide by zero
-    if (kP <= 0.0f || _wp_accel_cms <= 0.0f) {
-        _loiter_leash = WPNAV_MIN_LEASH_LENGTH;
+    if (kP <= 0.0f || _accel_cms <= 0.0f) {
+        _leash = POSCONTROL_LEASH_LENGTH_MIN;
         return;
     }
 
     // calculate horizontal leash length
-    if(WPNAV_LOITER_SPEED_MAX_TO_CORRECT_ERROR <= _wp_accel_cms / kP) {
+    if(POSCONTROL_SPEED_MAX_TO_CORRECT_ERROR <= _accel_cms / kP) {
         // linear leash length based on speed close in
-        _loiter_leash = WPNAV_LOITER_SPEED_MAX_TO_CORRECT_ERROR / kP;
+        _leash = POSCONTROL_SPEED_MAX_TO_CORRECT_ERROR / kP;
     }else{
         // leash length grows at sqrt of speed further out
-        _loiter_leash = (_wp_accel_cms / (2.0f*kP*kP)) + (WPNAV_LOITER_SPEED_MAX_TO_CORRECT_ERROR*WPNAV_LOITER_SPEED_MAX_TO_CORRECT_ERROR / (2.0f*_wp_accel_cms));
+        _leash = (_accel_cms / (2.0f*kP*kP)) + (POSCONTROL_SPEED_MAX_TO_CORRECT_ERROR*POSCONTROL_SPEED_MAX_TO_CORRECT_ERROR / (2.0f*_accel_cms));
     }
 
     // ensure leash is at least 1m long
-    if( _loiter_leash < WPNAV_MIN_LEASH_LENGTH ) {
-        _loiter_leash = WPNAV_MIN_LEASH_LENGTH;
+    if( _leash < POSCONTROL_LEASH_LENGTH_MIN ) {
+        _leash = POSCONTROL_LEASH_LENGTH_MIN;
     }
 }
 
 ///
-/// shared methods
+/// private methods
 ///
 
-/// get_loiter_position_to_velocity - loiter position controller
-///     converts desired position held in _target vector to desired velocity
-void AC_PosControl::get_loiter_position_to_velocity(float dt, float max_speed_cms)
+/// desired_vel_to_pos - move position target using desired velocities
+void AC_PosControl::desired_vel_to_pos(float nav_dt)
 {
-    Vector3f curr = _inav->get_position();
+    Vector2f target_vel_adj;
+    float vel_total;
+
+    // range check nav_dt
+    if( nav_dt < 0 ) {
+        return;
+    }
+/*
+    // check loiter speed and avoid divide by zero
+    if( _speed_cms < 100.0f) {
+        _speed_cms = 100.0f;
+    }
+
+    // rotate pilot input to lat/lon frame
+    target_vel_adj.x = (_pilot_vel_forward_cms*_cos_yaw - _pilot_vel_right_cms*_sin_yaw);
+    target_vel_adj.y = (_pilot_vel_forward_cms*_sin_yaw + _pilot_vel_right_cms*_cos_yaw);
+
+    // add desired change in velocity to current target velocit
+    _vel_target.x += target_vel_adj.x*nav_dt;
+    _vel_target.y += target_vel_adj.y*nav_dt;
+    if(_vel_target.x > 0 ) {
+        _vel_target.x -= (_accel_cms-WPNAV_LOITER_ACCEL_MIN)*nav_dt*_vel_target.x/_speed_cms;
+        _vel_target.x = max(_vel_target.x - WPNAV_LOITER_ACCEL_MIN*nav_dt, 0);
+    }else if(_vel_target.x < 0) {
+        _vel_target.x -= (_accel_cms-WPNAV_LOITER_ACCEL_MIN)*nav_dt*_vel_target.x/_speed_cms;
+        _vel_target.x = min(_vel_target.x + WPNAV_LOITER_ACCEL_MIN*nav_dt, 0);
+    }
+    if(_vel_target.y > 0 ) {
+        _vel_target.y -= (_accel_cms-WPNAV_LOITER_ACCEL_MIN)*nav_dt*_vel_target.y/_speed_cms;
+        _vel_target.y = max(_vel_target.y - WPNAV_LOITER_ACCEL_MIN*nav_dt, 0);
+    }else if(_vel_target.y < 0) {
+        _vel_target.y -= (_accel_cms-WPNAV_LOITER_ACCEL_MIN)*nav_dt*_vel_target.y/_speed_cms;
+        _vel_target.y = min(_vel_target.y + WPNAV_LOITER_ACCEL_MIN*nav_dt, 0);
+    }
+*/
+    // constrain the velocity vector and scale if necessary
+    vel_total = safe_sqrt(_vel_target.x*_vel_target.x + _vel_target.y*_vel_target.y);
+    if (vel_total > _speed_cms && vel_total > 0.0f) {
+        _vel_target.x = _speed_cms * _vel_target.x/vel_total;
+        _vel_target.y = _speed_cms * _vel_target.y/vel_total;
+    }
+
+    // update target position
+    _pos_target.x += _vel_target.x * nav_dt;
+    _pos_target.y += _vel_target.y * nav_dt;
+
+    // constrain target position to within reasonable distance of current location
+    Vector3f curr_pos = _inav.get_position();
+    Vector3f distance_err = _pos_target - curr_pos;
+    float distance = safe_sqrt(distance_err.x*distance_err.x + distance_err.y*distance_err.y);
+    if (distance > _leash && distance > 0.0f) {
+        _pos_target.x = curr_pos.x + _leash * distance_err.x/distance;
+        _pos_target.y = curr_pos.y + _leash * distance_err.y/distance;
+    }
+}
+
+/// pos_to_rate_xy - horizontal position error to desired velocity controller
+///     converts desired position held in _pos_target vector to desired velocity
+void AC_PosControl::pos_to_rate_xy(float dt, float max_speed_cms)
+{
+    Vector3f curr = _inav.get_position();
     float dist_error_total;
 
     float vel_sqrt;
     float vel_total;
 
     float linear_distance;      // the distace we swap between linear and sqrt.
-    float kP = _pid_pos_lat->kP();
+    float kP = _pi_pos_lat.kP();
 
     // avoid divide by zero
     if (kP <= 0.0f) {
@@ -511,21 +565,21 @@ void AC_PosControl::get_loiter_position_to_velocity(float dt, float max_speed_cm
         desired_vel.y = 0.0;
     }else{
         // calculate distance error
-        dist_error.x = _target.x - curr.x;
-        dist_error.y = _target.y - curr.y;
+        dist_error.x = _pos_target.x - curr.x;
+        dist_error.y = _pos_target.y - curr.y;
 
-        linear_distance = _wp_accel_cms/(2.0f*kP*kP);
+        linear_distance = _accel_cms/(2.0f*kP*kP);
 
         dist_error_total = safe_sqrt(dist_error.x*dist_error.x + dist_error.y*dist_error.y);
         _distance_to_target = dist_error_total;      // for reporting purposes
 
         if( dist_error_total > 2.0f*linear_distance ) {
-            vel_sqrt = safe_sqrt(2.0f*_wp_accel_cms*(dist_error_total-linear_distance));
+            vel_sqrt = safe_sqrt(2.0f*_accel_cms*(dist_error_total-linear_distance));
             desired_vel.x = vel_sqrt * dist_error.x/dist_error_total;
             desired_vel.y = vel_sqrt * dist_error.y/dist_error_total;
         }else{
-            desired_vel.x = _pid_pos_lat->kP() * dist_error.x;
-            desired_vel.y = _pid_pos_lon->kP() * dist_error.y;
+            desired_vel.x = _pi_pos_lat.kP() * dist_error.x;
+            desired_vel.y = _pi_pos_lon.kP() * dist_error.y;
         }
 
         // ensure velocity stays within limits
@@ -536,16 +590,16 @@ void AC_PosControl::get_loiter_position_to_velocity(float dt, float max_speed_cm
         }
 
         // feed forward velocity request
-        desired_vel.x += _target_vel.x;
-        desired_vel.y += _target_vel.y;
+        desired_vel.x += _vel_target.x;
+        desired_vel.y += _vel_target.y;
     }
 }
 
-/// get_loiter_velocity_to_acceleration - loiter velocity controller
+/// rate_to_accel_xy - horizontal desired rate to desired acceleration
 ///    converts desired velocities in lat/lon directions to accelerations in lat/lon frame
-void AC_PosControl::get_loiter_velocity_to_acceleration(float vel_lat, float vel_lon, float dt)
+void AC_PosControl::rate_to_accel_xy(float vel_lat_cms, float vel_lon_cms, float dt)
 {
-    const Vector3f &vel_curr = _inav->get_velocity();  // current velocity in cm/s
+    const Vector3f &vel_curr = _inav.get_velocity();  // current velocity in cm/s
     Vector3f vel_error;                         // The velocity error in cm/s.
     float accel_total;                          // total acceleration in cm/s/s
 
@@ -555,69 +609,60 @@ void AC_PosControl::get_loiter_velocity_to_acceleration(float vel_lat, float vel
         desired_accel.y = 0;
     } else {
         // feed forward desired acceleration calculation
-        desired_accel.x = (vel_lat - _vel_last.x)/dt;
-        desired_accel.y = (vel_lon - _vel_last.y)/dt;
+        desired_accel.x = (vel_lat_cms - _vel_last.x)/dt;
+        desired_accel.y = (vel_lon_cms - _vel_last.y)/dt;
     }
 
     // store this iteration's velocities for the next iteration
-    _vel_last.x = vel_lat;
-    _vel_last.y = vel_lon;
+    _vel_last.x = vel_lat_cms;
+    _vel_last.y = vel_lon_cms;
 
     // calculate velocity error
-    vel_error.x = vel_lat - vel_curr.x;
-    vel_error.y = vel_lon - vel_curr.y;
+    vel_error.x = vel_lat_cms - vel_curr.x;
+    vel_error.y = vel_lon_cms - vel_curr.y;
 
     // combine feed foward accel with PID outpu from velocity error
-    desired_accel.x += _pid_rate_lat->get_pid(vel_error.x, dt);
-    desired_accel.y += _pid_rate_lon->get_pid(vel_error.y, dt);
+    desired_accel.x += _pid_rate_lat.get_pid(vel_error.x, dt);
+    desired_accel.y += _pid_rate_lon.get_pid(vel_error.y, dt);
 
     // scale desired acceleration if it's beyond acceptable limit
     accel_total = safe_sqrt(desired_accel.x*desired_accel.x + desired_accel.y*desired_accel.y);
-    if( accel_total > WPNAV_ACCEL_MAX ) {
-        desired_accel.x = WPNAV_ACCEL_MAX * desired_accel.x/accel_total;
-        desired_accel.y = WPNAV_ACCEL_MAX * desired_accel.y/accel_total;
+    if( accel_total > POSCONTROL_ACCEL_XY_MAX ) {
+        desired_accel.x = POSCONTROL_ACCEL_XY_MAX * desired_accel.x/accel_total;
+        desired_accel.y = POSCONTROL_ACCEL_XY_MAX * desired_accel.y/accel_total;
     }
 }
 
-/// get_loiter_acceleration_to_lean_angles - loiter acceleration controller
+/// accel_to_lean_angles - horizontal desired acceleration to lean angles
 ///    converts desired accelerations provided in lat/lon frame to roll/pitch angles
-void AC_PosControl::get_loiter_acceleration_to_lean_angles(float accel_lat, float accel_lon)
+void AC_PosControl::accel_to_lean_angles(float accel_lat_cmss, float accel_lon_cmss)
+
 {
     float z_accel_meas = -GRAVITY_MSS * 100;    // gravity in cm/s/s
     float accel_forward;
     float accel_right;
+    float lean_angle_max = _attitude_control.lean_angle_max();
 
     // To-Do: add 1hz filter to accel_lat, accel_lon
 
     // rotate accelerations into body forward-right frame
-    accel_forward = accel_lat*_cos_yaw + accel_lon*_sin_yaw;
-    accel_right = -accel_lat*_sin_yaw + accel_lon*_cos_yaw;
+    accel_forward = accel_lat_cmss*_cos_yaw + accel_lon_cmss*_sin_yaw;
+    accel_right = -accel_lat_cmss*_sin_yaw + accel_lon_cmss*_cos_yaw;
 
     // update angle targets that will be passed to stabilize controller
-    _desired_roll = constrain_float(fast_atan(accel_right*_cos_pitch/(-z_accel_meas))*(18000/M_PI), -_lean_angle_max_cd, _lean_angle_max_cd);
-    _desired_pitch = constrain_float(fast_atan(-accel_forward/(-z_accel_meas))*(18000/M_PI), -_lean_angle_max_cd, _lean_angle_max_cd);
+    _desired_roll = constrain_float(fast_atan(accel_right*_cos_pitch/(-z_accel_meas))*(18000/M_PI), -lean_angle_max, lean_angle_max);
+    _desired_pitch = constrain_float(fast_atan(-accel_forward/(-z_accel_meas))*(18000/M_PI), -lean_angle_max, lean_angle_max);
 }
 
-// get_bearing_cd - return bearing in centi-degrees between two positions
-// To-Do: move this to math library
-float AC_PosControl::get_bearing_cd(const Vector3f &origin, const Vector3f &destination) const
-{
-    float bearing = 9000 + atan2f(-(destination.x-origin.x), destination.y-origin.y) * 5729.57795f;
-    if (bearing < 0) {
-        bearing += 36000;
-    }
-    return bearing;
-}
 
-/// reset_I - clears I terms from loiter PID controller
-void AC_PosControl::reset_I()
+/// reset_I_xy - clears I terms from loiter PID controller
+void AC_PosControl::reset_I_xy()
 {
-    _pid_pos_lon->reset_I();
-    _pid_pos_lat->reset_I();
-    _pid_rate_lon->reset_I();
-    _pid_rate_lat->reset_I();
+    _pi_pos_lon.reset_I();
+    _pi_pos_lat.reset_I();
+    _pid_rate_lon.reset_I();
+    _pid_rate_lat.reset_I();
 
     // set last velocity to current velocity
-    _vel_last = _inav->get_velocity();
+    _vel_last = _inav.get_velocity();
 }
-*/
