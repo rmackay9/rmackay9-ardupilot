@@ -54,7 +54,7 @@ public:
     void set_loiter_target(const Vector3f& position);
 
     /// init_loiter_target - sets initial loiter target based on current position and velocity
-    void init_loiter_target() { _pos_control.init_pos_target(_inav->get_position(),_inav->get_velocity()); }
+    void init_loiter_target();
 
     /// move_loiter_target - move destination using pilot input
     void move_loiter_target(float control_roll, float control_pitch, float dt);
@@ -161,18 +161,6 @@ protected:
 
     /// translate_loiter_target_movements - consumes adjustments created by move_loiter_target
     void translate_loiter_target_movements(float nav_dt);
-
-    /// get_loiter_position_to_velocity - loiter position controller
-    ///     converts desired position held in _target vector to desired velocity
-    void get_loiter_position_to_velocity(float dt, float max_speed_cms);
-
-    /// get_loiter_velocity_to_acceleration - loiter velocity controller
-    ///    converts desired velocities in lat/lon directions to accelerations in lat/lon frame
-    void get_loiter_velocity_to_acceleration(float vel_lat_cms, float vel_lon_cms, float dt);
-
-    /// get_loiter_acceleration_to_lean_angles - loiter acceleration controller
-    ///    converts desired accelerations provided in lat/lon frame to roll/pitch angles
-    void get_loiter_acceleration_to_lean_angles(float accel_lat_cmss, float accel_lon_cmss);
 
     /// get_bearing_cd - return bearing in centi-degrees between two positions
     float get_bearing_cd(const Vector3f &origin, const Vector3f &destination) const;
