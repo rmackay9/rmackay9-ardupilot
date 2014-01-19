@@ -28,7 +28,7 @@
 #define POSCONTROL_SPEED                        500.0f  // maximum default loiter speed in cm/s
 #define POSCONTROL_VEL_Z_MIN                   -150.0f  // default minimum climb velocity (i.e. max descent rate).  To-Do: subtract 250 from this?
 #define POSCONTROL_VEL_Z_MAX                    250.0f  // default maximum climb velocity.  To-Do: add 250 to this?
-#define POSCONTROL_SPEED_MAX_TO_CORRECT_ERROR   200.0f  // maximum speed used to correct position error (i.e. not including feed forward)
+#define POSCONTROL_VEL_XY_MAX_FROM_POS_ERR      200.0f  // max speed output from pos_to_vel controller when feed forward is used
 
 #define POSCONTROL_ALT_HOLD_ACCEL_MAX           250.0f  // hard coded copy of throttle controller's maximum acceleration in cm/s.  To-Do: remove duplication with throttle controller definition
 
@@ -105,28 +105,31 @@ public:
     /// set_pos_target in cm from home
     void set_pos_target(const Vector3f& position);
 
-    /// move_target_at_rate - move loiter target at rate in cm/s in lat and lon directions
-    void move_target_at_rate(float lat_rate_cms, float lon_rate_cms);
-
     /// init_pos_target - set initial loiter target based on current position and velocity
     void init_pos_target(const Vector3f& position, const Vector3f& velocity);
 
-    /// get_distance_to_target - get horizontal distance to position target in cm
-    float get_distance_to_target() const;
+    /// set_desired_velocity - sets desired velocity in cm/s in lat and lon directions
+    ///     when update_pos_controller is next called the position target is moved based on the desired velocity and
+    ///     the desired velocities are fed forward into the rate_to_accel step
+    void set_desired_velocity(float vel_lat_cms, float vel_lon_cms) {_vel_desired.x = vel_lat_cms; _vel_desired.y = vel_lon_cms; }
 
     /// update_pos_controller - run the position controller - should be called at 100hz or higher
-    void update_pos_controller();
+    ///     when use_desired_velocity is true the desired velocity (i.e. feed forward) is incorporated at the pos_to_rate step
+    void update_pos_controller(bool use_desired_velocity);
 
     /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
     void get_stopping_point(const Vector3f& position, const Vector3f& velocity, Vector3f &target) const;
+
+    /// get_distance_to_target - get horizontal distance to position target in cm (used for reporting)
+    float get_distance_to_target() const;
 
     ///
     /// shared methods
     ///
 
     /// get desired roll, pitch which should be fed into stabilize controllers
-    float get_desired_roll() const { return _desired_roll; }
-    float get_desired_pitch() const { return _desired_pitch; }
+    float get_roll() const { return _roll_target; }
+    float get_pitch() const { return _pitch_target; }
 
     /// set_cos_sin_yaw - short-cut to save on calculations to convert from roll-pitch frame to lat-lon frame
     void set_cos_sin_yaw(float cos_yaw, float sin_yaw, float cos_pitch) {
@@ -179,9 +182,15 @@ private:
     // accel_to_throttle - alt hold's acceleration controller
     void accel_to_throttle(float accel_target_z);
 
-    /// pos_to_rate_xy - horizontal position error to desired velocity controller
-    ///     converts desired position held in _pos_target vector to desired velocity
-    void pos_to_rate_xy(float dt, float max_speed_cms);
+    /// desired_vel_to_pos - move position target using desired velocities
+    void desired_vel_to_pos(float nav_dt);
+
+    /// pos_to_rate_xy - horizontal position error to velocity controller
+    ///     converts position (_pos_target) to target velocity (_vel_target)
+    ///     when use_desired_rate is set to true:
+    ///         desired velocity (_vel_desired) is combined into final target velocity and
+    ///         velocity due to position error is reduce to a maximum of 1m/s
+    void pos_to_rate_xy(bool use_desired_rate, float dt);
 
     /// rate_to_accel_xy - horizontal desired rate to desired acceleration
     ///    converts desired velocities in lat/lon directions to accelerations in lat/lon frame
@@ -193,10 +202,9 @@ private:
 
     /// reset_I_xy - clears I terms from horizontal position PID controller
     void reset_I_xy();
-/*
+
     /// calculate_leash_length - calculates the maximum distance in cm that the target position may be from the current location
     void calculate_leash_length();
-    */
 
     // references to inertial nav and ahrs libraries
     const AP_AHRS&              _ahrs;
@@ -231,13 +239,14 @@ private:
     float       _cos_pitch;
 
     // output from controller
-    float       _desired_roll;          // desired roll angle in centi-degrees calculated by position controller
-    float       _desired_pitch;         // desired roll pitch in centi-degrees calculated by position controller
+    float       _roll_target;           // desired roll angle in centi-degrees calculated by position controller
+    float       _pitch_target;          // desired roll pitch in centi-degrees calculated by position controller
 
     // position controller internal variables
     Vector3f    _pos_target;            // target location in cm from home
     Vector3f    _pos_error;             // error between desired and actual position in cm
-    Vector3f    _vel_target;            // desired velocity in cm/s
+    Vector2f    _vel_desired;           // desired velocity in cm/s in lat and lon directions (provided by external callers of move_target_at_rate() method)
+    Vector3f    _vel_target;            // velocity target in cm/s calculated by pos_to_rate step
     Vector3f    _vel_error;             // error between desired and actual acceleration in cm/s.  To-Do: x & y actually used?
     Vector3f    _vel_last;              // previous iterations velocity in cm/s
     float       _vel_target_filt_z;     // filtered target vertical velocity
