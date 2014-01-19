@@ -337,12 +337,14 @@ get_throttle_rate_stabilized(int16_t target_rate)
 void AC_PosControl::set_pos_target(const Vector3f& position)
 {
     _pos_target = position;
-    _vel_target.x = 0;
-    _vel_target.y = 0;
+
+    // initialise roll and pitch to current roll and pitch.  This avoids a twitch between when the target is set and the pos controller is first run
+    _roll_target = constrain_int32(_ahrs.roll_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
+    _pitch_target = constrain_int32(_ahrs.pitch_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
 }
 
-/// init_pos_target - set initial loiter target based on current position and velocity
-void AC_PosControl::init_pos_target(const Vector3f& position, const Vector3f& velocity)
+/// set_pos_target_to_stopping_point - set initial loiter target based on current position and velocity
+void AC_PosControl::set_pos_target_to_stopping_point()
 {
     // set target position and velocity based on current pos and velocity
     _pos_target.x = position.x;
@@ -350,51 +352,49 @@ void AC_PosControl::init_pos_target(const Vector3f& position, const Vector3f& ve
     _vel_target.x = velocity.x;
     _vel_target.y = velocity.y;
 
-    // initialise desired roll and pitch to current roll and pitch.  This avoids a random twitch between now and when the loiter controller is first run
-    _desired_roll = constrain_int32(_ahrs.roll_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
-    _desired_pitch = constrain_int32(_ahrs.pitch_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
-
     // set last velocity to current velocity
     // To-Do: remove the line below by instead forcing reset_I to be called on the first loiter_update call
     _vel_last = _inav.get_velocity();
 }
 
-/*
 /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
-void AC_PosControl::get_stopping_point(const Vector3f& position, const Vector3f& velocity, Vector3f &target) const
+void AC_PosControl::get_stopping_point(float distance_max, float accel_cms, Vector3f &stopping_point) const
 {
-    float linear_distance;      // half the distace we swap between linear and sqrt and the distace we offset sqrt.
-    float linear_velocity;      // the velocity we swap between linear and sqrt.
-    float vel_total;
-    float target_dist;
-    float kP = _pid_pos_lat->kP();
+	Vector3f curr_pos = _inav.get_position();
+	Vector3f curr_vel = _inav.get_velocity();
+    float linear_distance;      // the distance at which we swap from a linear to sqrt response
+    float linear_velocity;      // the velocity above which we swap from a linear to sqrt response
+    float stopping_dist;		// the distance within the vehicle can stop
+    float kP = _pi_pos_lat.kP();
 
     // calculate current velocity
-    vel_total = safe_sqrt(velocity.x*velocity.x + velocity.y*velocity.y);
+    float vel_total = safe_sqrt(curr_vel.x*curr_vel.x + curr_vel.y*curr_vel.y);
 
     // avoid divide by zero by using current position if the velocity is below 10cm/s, kP is very low or acceleration is zero
-    if (vel_total < 10.0f || kP <= 0.0f || _wp_accel_cms <= 0.0f) {
-        target = position;
+    if (vel_total < 10.0f || kP <= 0.0f || accel_cms <= 0.0f) {
+        stopping_point = curr_pos;
         return;
     }
 
     // calculate point at which velocity switches from linear to sqrt
-    linear_velocity = _wp_accel_cms/kP;
+    linear_velocity = accel_cms/kP;
 
     // calculate distance within which we can stop
     if (vel_total < linear_velocity) {
-        target_dist = vel_total/kP;
+    	stopping_dist = vel_total/kP;
     } else {
-        linear_distance = _wp_accel_cms/(2.0f*kP*kP);
-        target_dist = linear_distance + (vel_total*vel_total)/(2.0f*_wp_accel_cms);
+        linear_distance = accel_cms/(2.0f*kP*kP);
+        stopping_dist = linear_distance + (vel_total*vel_total)/(2.0f*accel_cms);
     }
-    target_dist = constrain_float(target_dist, 0, _wp_leash_xy*2.0f);
 
-    target.x = position.x + (target_dist * velocity.x / vel_total);
-    target.y = position.y + (target_dist * velocity.y / vel_total);
-    target.z = position.z;
+    // constrain stopping distance
+    stopping_dist = constrain_float(stopping_dist, 0, distance_max);
+
+    // convert the stopping distance into a stopping point using velocity vector
+    stopping_point.x = curr_pos.x + (stopping_dist * curr_vel.x / vel_total);
+    stopping_point.y = curr_pos.y + (stopping_dist * curr_vel.y / vel_total);
+    stopping_point.z = curr_pos.z;
 }
-*/
 
 /// get_distance_to_target - get horizontal distance to loiter target in cm
 float AC_PosControl::get_distance_to_target() const

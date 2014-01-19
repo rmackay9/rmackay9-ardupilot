@@ -92,6 +92,9 @@ public:
     /// climb_at_rate - climb at rate provided in cm/s
     void climb_at_rate(const float rate_target_cms);
 
+    /// althold_kP - returns altitude hold position control PID's kP gain
+    float althold_kP() { return _pi_alt_pos.kP(); }
+
     ///
     /// xy position controller
     ///
@@ -100,13 +103,16 @@ public:
     void set_accel_xy(float accel_cmss) { _accel_cms = accel_cmss; }
 
     /// get_pos_target - get target as position vector (from home in cm)
-    const Vector3f &get_pos_target() const { return _pos_target; }
+    const Vector3f& get_pos_target() const { return _pos_target; }
 
     /// set_pos_target in cm from home
     void set_pos_target(const Vector3f& position);
 
-    /// init_pos_target - set initial loiter target based on current position and velocity
-    void init_pos_target(const Vector3f& position, const Vector3f& velocity);
+    /// set_pos_target_to_stopping_point - set position target based on current position and velocity
+    void set_pos_target_to_stopping_point();
+
+    /// get_desired_velocity - returns xy desired velocity (i.e. feed forward) in cm/s in lat and lon direction
+    const Vector2f& get_desired_velocity() { return _vel_desired; }
 
     /// set_desired_velocity - sets desired velocity in cm/s in lat and lon directions
     ///     when update_pos_controller is next called the position target is moved based on the desired velocity and
@@ -117,15 +123,13 @@ public:
     ///     when use_desired_velocity is true the desired velocity (i.e. feed forward) is incorporated at the pos_to_rate step
     void update_pos_controller(bool use_desired_velocity);
 
-    /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
-    void get_stopping_point(const Vector3f& position, const Vector3f& velocity, Vector3f &target) const;
+    /// get_stopping_point - calculates stopping point based on current position, velocity, vehicle acceleration
+    ///     distance_max allows limiting distance to stopping point
+    ///		results placed in stopping_position vector
+    void get_stopping_point(float distance_max, float accel_cms, Vector3f &stopping_point) const;
 
     /// get_distance_to_target - get horizontal distance to position target in cm (used for reporting)
     float get_distance_to_target() const;
-
-    ///
-    /// shared methods
-    ///
 
     /// get desired roll, pitch which should be fed into stabilize controllers
     float get_roll() const { return _roll_target; }
