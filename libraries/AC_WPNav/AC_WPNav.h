@@ -53,23 +53,26 @@ public:
     /// init_loiter_target - initialize's loiter position and feed-forward velocity from current pos and velocity
     void init_loiter_target();
 
+    /// set_loiter_velocity - allows main code to pass the maximum velocity for loiter
+    void set_loiter_velocity(float velocity_cms) { _loiter_speed_cms = velocity_cms; };
+
+    /// calculate_loiter_leash_length - calculates the maximum distance in cm that the target position may be from the current location
+    void calculate_loiter_leash_length();
+
     /// set_pilot_desired_acceleration - sets pilot desired acceleration from roll and pitch stick input
     void set_pilot_desired_acceleration(float control_roll, float control_pitch);
 
     /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
-    void get_loiter_stopping_point(Vector3f& stopping_point) const;
+    void get_loiter_stopping_point_xy(Vector3f& stopping_point) const;
 
     /// get_loiter_distance_to_target - get horizontal distance to loiter target in cm
-    float get_loiter_distance_to_target() const;
+    float get_loiter_distance_to_target() const { return _pos_control.get_distance_to_target(); }
 
     /// get_loiter_bearing_to_target - get bearing to loiter target in centi-degrees
     int32_t get_loiter_bearing_to_target() const;
 
     /// update_loiter - run the loiter controller - should be called at 10hz
     void update_loiter();
-
-    /// set_loiter_velocity - allows main code to pass the maximum velocity for loiter
-    void set_loiter_velocity(float velocity_cms) { _loiter_speed_cms = velocity_cms; };
 
     ///
     /// waypoint controller
@@ -84,9 +87,9 @@ public:
     /// set_wp_origin_and_destination - set origin and destination waypoints using position vectors (distance from home in cm)
     void set_wp_origin_and_destination(const Vector3f& origin, const Vector3f& destination);
 
-    /// get_wp_stopping_point - calculates stopping point based on current position, velocity, waypoint acceleration
+    /// get_wp_stopping_point_xy - calculates stopping point based on current position, velocity, waypoint acceleration
     ///		results placed in stopping_position vector
-    void get_wp_stopping_point(Vector3f& stopping_point) const;
+    void get_wp_stopping_point_xy(Vector3f& stopping_point) const;
 
     /// advance_wp_target_along_track - move target location along track from origin to destination
     void advance_wp_target_along_track(float dt);
@@ -139,10 +142,10 @@ public:
     /// get_descent_velocity - returns target descent speed in cm/s during missions.  Note: always positive
     float get_descent_velocity() const { return _wp_speed_down_cms; };
 
-    /// get_waypoint_radius - access for waypoint radius in cm
-    float get_waypoint_radius() const { return _wp_radius_cm; }
+    /// get_wp_radius - access for waypoint radius in cm
+    float get_wp_radius() const { return _wp_radius_cm; }
 
-    /// get_waypoint_acceleration - returns acceleration in cm/s/s during missions
+    /// get_wp_acceleration - returns acceleration in cm/s/s during missions
     float get_wp_acceleration() const { return _wp_accel_cms.get(); }
 
     static const struct AP_Param::GroupInfo var_info[];
@@ -154,18 +157,12 @@ protected:
         uint8_t fast_waypoint           : 1;    // true if we should ignore the waypoint radius and consider the waypoint complete once the intermediate target has reached the waypoint
     } _flags;
 
-    /// calc_loiter_desired_velocity - updates desired velocity (i.e. feed foward) with pilot requested acceleration and fake wind resistance
+    /// calc_loiter_desired_velocity - updates desired velocity (i.e. feed forward) with pilot requested acceleration and fake wind resistance
     ///		updated velocity sent directly to position controller
     void calc_loiter_desired_velocity(float nav_dt);
 
     /// get_bearing_cd - return bearing in centi-degrees between two positions
     float get_bearing_cd(const Vector3f &origin, const Vector3f &destination) const;
-
-    /// reset_I - clears I terms from loiter PID controller
-    void reset_I();
-
-    /// calculate_loiter_leash_length - calculates the maximum distance in cm that the target position may be from the current location
-    void calculate_loiter_leash_length();
 
     /// calculate_wp_leash_length - calculates horizontal and vertical leash lengths for waypoint controller
     ///    set climb param to true if track climbs vertically, false if descending
@@ -189,23 +186,24 @@ protected:
     AP_Float    _wp_speed_down_cms;     // descent speed target in cm/s
     AP_Float    _wp_radius_cm;          // distance from a waypoint in cm that, when crossed, indicates the wp has been reached
     AP_Float    _wp_accel_cms;          // acceleration in cm/s/s during missions
-    uint8_t     _loiter_step;           // used to decide which portion of loiter controller to run during this iteration
-    uint8_t     _wpnav_step;            // used to decide which portion of wpnav controller to run during this iteration
-    uint32_t	_loiter_last_update;    // time of last update_loiter call
-    uint32_t	_wpnav_last_update;     // time of last update_wpnav call
-    float       _loiter_dt;             // time difference since last loiter call
-    float       _wpnav_dt;              // time difference since last loiter call
+
     float       _cos_yaw;               // short-cut to save on calcs required to convert roll-pitch frame to lat-lon frame
     float       _sin_yaw;
     float       _cos_pitch;
 
     // loiter controller internal variables
+    uint32_t    _loiter_last_update;    // time of last update_loiter call
+    float       _loiter_dt;             // time difference since last loiter call
+    uint8_t     _loiter_step;           // used to decide which portion of loiter controller to run during this iteration
     int16_t     _pilot_accel_fwd_cms; 	// pilot's desired acceleration forward (body-frame)
     int16_t     _pilot_accel_rgt_cms;   // pilot's desired acceleration right (body-frame)
     float       _loiter_leash;          // loiter's horizontal leash length in cm.  used to stop the pilot from pushing the target location too far from the current location
     float       _loiter_accel_cms;      // loiter's acceleration in cm/s/s
 
     // waypoint controller internal variables
+    uint32_t    _wp_last_update;        // time of last update_wpnav call
+    float       _wp_dt;                 // time difference since last loiter call
+    uint8_t     _wp_step;               // used to decide which portion of wpnav controller to run during this iteration
     Vector3f    _origin;                // starting point of trip to next waypoint in cm from home (equivalent to next_WP)
     Vector3f    _destination;           // target destination in cm from home (equivalent to next_WP)
     Vector3f    _pos_delta_unit;        // each axis's percentage of the total track from origin to destination
