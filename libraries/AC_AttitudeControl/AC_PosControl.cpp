@@ -599,7 +599,6 @@ void AC_PosControl::accel_to_lean_angles()
     // update angle targets that will be passed to stabilize controller
     _roll_target = constrain_float(fast_atan(accel_right*_cos_pitch/(GRAVITY_MSS * 100))*(18000/M_PI), -lean_angle_max, lean_angle_max);
     _pitch_target = constrain_float(fast_atan(-accel_forward/(GRAVITY_MSS * 100))*(18000/M_PI),-lean_angle_max, lean_angle_max);
-    // To-Do: uncomment above after weird compiler errors disappears
 }
 
 /// reset_I_xy - clears I terms from loiter PID controller
