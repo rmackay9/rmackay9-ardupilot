@@ -40,26 +40,32 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
     _last_update_rate_ms(0),
     _last_update_accel_ms(0),
     _step(0),
+    _speed_down_cms(POSCONTROL_SPEED_DOWN),
+    _speed_up_cms(POSCONTROL_SPEED_UP),
     _speed_cms(POSCONTROL_SPEED),
-    _vel_z_min(POSCONTROL_VEL_Z_MIN),
-    _vel_z_max(POSCONTROL_VEL_Z_MAX),
+    _accel_z_cms(POSCONTROL_ACCEL_XY_MAX),   // To-Do: check this default
     _accel_cms(POSCONTROL_ACCEL_XY_MAX),   // To-Do: check this default
+    _leash(POSCONTROL_LEASH_LENGTH_MIN),
     _cos_yaw(1.0),
     _sin_yaw(0.0),
     _cos_pitch(1.0),
-    _desired_roll(0.0),
-    _desired_pitch(0.0),
+    _roll_target(0.0),
+    _pitch_target(0.0),
     _vel_target_filt_z(0),
-    _leash(POSCONTROL_LEASH_LENGTH_MIN),
     _alt_max(0),
     _distance_to_target(0),
     _xy_step(0),
-    _xy_dt(0)
+    _dt_xy(0)
 {
     AP_Param::setup_object_defaults(this, var_info);
 
-    // calculate leash length
-    //calculate_leash_length();
+    // initialise flags
+    _flags.force_recalc_xy = false;
+#if HAL_CPU_CLASS >= HAL_CPU_CLASS_150
+    _flags.slow_cpu = false;
+#else
+    _flags.slow_cpu = true;
+#endif
 }
 
 ///
@@ -110,8 +116,8 @@ void AC_PosControl::init_takeoff()
     }
 }
 
-/// fly_to_target_z - fly to altitude in cm above home
-void AC_PosControl::fly_to_target_z()
+/// update_z_controller - fly to altitude in cm above home
+void AC_PosControl::update_z_controller()
 {
     // call position controller
     pos_to_rate_z();
@@ -158,7 +164,7 @@ void AC_PosControl::climb_at_rate(const float rate_target_cms)
 void AC_PosControl::pos_to_rate_z()
 {
     const Vector3f& curr_pos = _inav.get_position();
-    float linear_distance;  // half the distace we swap between linear and sqrt and the distace we offset sqrt.
+    float linear_distance;  // half the distance we swap between linear and sqrt and the distance we offset sqrt.
 
     // calculate altitude error
     _pos_error.z = _pos_target.z - curr_pos.z;
@@ -195,12 +201,12 @@ void AC_PosControl::rate_to_accel_z(float vel_target_z)
     // To-Do: check these speed limits here or in the pos->rate controller
     _limit.vel_up = false;
     _limit.vel_down = false;
-    if (_vel_target.z < _vel_z_min) {
-        _vel_target.z = _vel_z_min;
+    if (_vel_target.z < _speed_down_cms) {
+        _vel_target.z = _speed_down_cms;
         _limit.vel_down = true;
     }
-    if (_vel_target.z > _vel_z_max) {
-        _vel_target.z = _vel_z_max;
+    if (_vel_target.z > _speed_up_cms) {
+        _vel_target.z = _speed_up_cms;
         _limit.vel_up = true;
     }
 
@@ -343,22 +349,12 @@ void AC_PosControl::set_pos_target(const Vector3f& position)
     _pitch_target = constrain_int32(_ahrs.pitch_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
 }
 
-/// set_pos_target_to_stopping_point - set initial loiter target based on current position and velocity
-void AC_PosControl::set_pos_target_to_stopping_point()
-{
-    // set target position and velocity based on current pos and velocity
-    _pos_target.x = position.x;
-    _pos_target.y = position.y;
-    _vel_target.x = velocity.x;
-    _vel_target.y = velocity.y;
-
-    // set last velocity to current velocity
-    // To-Do: remove the line below by instead forcing reset_I to be called on the first loiter_update call
-    _vel_last = _inav.get_velocity();
-}
-
-/// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
-void AC_PosControl::get_stopping_point(float distance_max, float accel_cms, Vector3f &stopping_point) const
+/// get_stopping_point_xy - calculates stopping point based on current position, velocity, vehicle acceleration
+///     distance_max allows limiting distance to stopping point
+///     results placed in stopping_position vector
+///     set_accel_xy() should be called before this method to set vehicle acceleration
+///     set_leash_length() should have been called before this method
+void AC_PosControl::get_stopping_point_xy(Vector3f &stopping_point) const
 {
 	Vector3f curr_pos = _inav.get_position();
 	Vector3f curr_vel = _inav.get_velocity();
@@ -371,29 +367,28 @@ void AC_PosControl::get_stopping_point(float distance_max, float accel_cms, Vect
     float vel_total = safe_sqrt(curr_vel.x*curr_vel.x + curr_vel.y*curr_vel.y);
 
     // avoid divide by zero by using current position if the velocity is below 10cm/s, kP is very low or acceleration is zero
-    if (vel_total < 10.0f || kP <= 0.0f || accel_cms <= 0.0f) {
+    if (vel_total < 10.0f || kP <= 0.0f || _accel_cms <= 0.0f) {
         stopping_point = curr_pos;
         return;
     }
 
     // calculate point at which velocity switches from linear to sqrt
-    linear_velocity = accel_cms/kP;
+    linear_velocity = _accel_cms/kP;
 
     // calculate distance within which we can stop
     if (vel_total < linear_velocity) {
     	stopping_dist = vel_total/kP;
     } else {
-        linear_distance = accel_cms/(2.0f*kP*kP);
-        stopping_dist = linear_distance + (vel_total*vel_total)/(2.0f*accel_cms);
+        linear_distance = _accel_cms/(2.0f*kP*kP);
+        stopping_dist = linear_distance + (vel_total*vel_total)/(2.0f*_accel_cms);
     }
 
     // constrain stopping distance
-    stopping_dist = constrain_float(stopping_dist, 0, distance_max);
+    stopping_dist = constrain_float(stopping_dist, 0, _leash);
 
     // convert the stopping distance into a stopping point using velocity vector
     stopping_point.x = curr_pos.x + (stopping_dist * curr_vel.x / vel_total);
     stopping_point.y = curr_pos.y + (stopping_dist * curr_vel.y / vel_total);
-    stopping_point.z = curr_pos.z;
 }
 
 /// get_distance_to_target - get horizontal distance to loiter target in cm
@@ -405,19 +400,17 @@ float AC_PosControl::get_distance_to_target() const
 /// update_pos_controller - run the horizontal position controller - should be called at 100hz or higher
 void AC_PosControl::update_pos_controller(bool use_desired_velocity)
 {
-    // calculate dt
-    uint32_t now = hal.scheduler->millis();
-    float dt = (now - _last_update_ms) / 1000.0f;
-
     // catch if we've just been started
-    if( dt >= 1.0 ) {
-        dt = 0.0;
+    uint32_t now = hal.scheduler->millis();
+    if ((now - _last_update_ms) >= 1000) {
+        _last_update_ms = now;
         reset_I_xy();
         _xy_step = 0;
     }
 
-    // reset step back to 0 if 0.1 seconds has passed and we completed the last full cycle
-    if (dt > 0.095f && _xy_step > 3) {
+    // reset step back to 0 if loiter or waypoint parents have triggered an update and we completed the last full cycle
+    if (_flags.force_recalc_xy && _xy_step > 3) {
+        _flags.force_recalc_xy = false;
         _xy_step = 0;
     }
 
@@ -425,63 +418,32 @@ void AC_PosControl::update_pos_controller(bool use_desired_velocity)
     switch (_xy_step) {
         case 0:
             // capture time since last iteration
-            _xy_dt = dt;
+            _dt_xy = (now - _last_update_ms) / 1000.0f;
             _last_update_ms = now;
 
             // translate any adjustments from pilot to loiter target
-            desired_vel_to_pos(_xy_dt);
+            desired_vel_to_pos(_dt_xy);
             _xy_step++;
+            hal.console->printf_P(PSTR("0"));
             break;
         case 1:
             // run position controller's position error to desired velocity step
-            pos_to_rate_xy(use_desired_velocity,_xy_dt);
+            pos_to_rate_xy(use_desired_velocity,_dt_xy);
             _xy_step++;
+            hal.console->printf_P(PSTR("1"));
             break;
         case 2:
             // run position controller's velocity to acceleration step
-            rate_to_accel_xy(desired_vel.x, desired_vel.y, _xy_dt);
+            rate_to_accel_xy(_dt_xy);
             _xy_step++;
+            hal.console->printf_P(PSTR("2"));
             break;
         case 3:
             // run position controller's acceleration to lean angle step
-            accel_to_lean_angles(desired_accel.x, desired_accel.y);
+            accel_to_lean_angles();
             _xy_step++;
+            hal.console->printf_P(PSTR("3"));
             break;
-    }
-}
-
-/// calculate_leash_length - calculates the maximum distance in cm that the target position may be from the current location
-void AC_PosControl::calculate_leash_length()
-{
-    // get loiter position P
-    float kP = _pi_pos_lat.kP();
-
-    // check loiter speed
-    if( _speed_cms < 100.0f) {
-        _speed_cms = 100.0f;
-    }
-
-    // set loiter acceleration to 1/2 loiter speed
-    _accel_cms = _speed_cms / 2.0f;
-
-    // avoid divide by zero
-    if (kP <= 0.0f || _accel_cms <= 0.0f) {
-        _leash = POSCONTROL_LEASH_LENGTH_MIN;
-        return;
-    }
-
-    // calculate horizontal leash length
-    if(POSCONTROL_VEL_XY_MAX_FROM_POS_ERR <= _accel_cms / kP) {
-        // linear leash length based on speed close in
-        _leash = POSCONTROL_VEL_XY_MAX_FROM_POS_ERR / kP;
-    }else{
-        // leash length grows at sqrt of speed further out
-        _leash = (_accel_cms / (2.0f*kP*kP)) + (POSCONTROL_VEL_XY_MAX_FROM_POS_ERR*POSCONTROL_VEL_XY_MAX_FROM_POS_ERR / (2.0f*_accel_cms));
-    }
-
-    // ensure leash is at least 1m long
-    if (_leash < POSCONTROL_LEASH_LENGTH_MIN) {
-        _leash = POSCONTROL_LEASH_LENGTH_MIN;
     }
 }
 
@@ -529,17 +491,17 @@ void AC_PosControl::pos_to_rate_xy(bool use_desired_rate, float dt)
         _vel_target.y = 0.0;
     }else{
         // calculate distance error
-        dist_error.x = _pos_target.x - curr_pos.x;
-        dist_error.y = _pos_target.y - curr_pos.y;
+        _pos_error.x = _pos_target.x - curr_pos.x;
+        _pos_error.y = _pos_target.y - curr_pos.y;
 
         // constrain target position to within reasonable distance of current location
-        _distance_to_target = safe_sqrt(dist_error.x*dist_error.x + dist_error.y*dist_error.y);
+        _distance_to_target = safe_sqrt(_pos_error.x*_pos_error.x + _pos_error.y*_pos_error.y);
         if (_distance_to_target > _leash && _distance_to_target > 0.0f) {
-            _pos_target.x = curr_pos.x + _leash * dist_error.x/_distance_to_target;
-            _pos_target.y = curr_pos.y + _leash * dist_error.y/_distance_to_target;
+            _pos_target.x = curr_pos.x + _leash * _pos_error.x/_distance_to_target;
+            _pos_target.y = curr_pos.y + _leash * _pos_error.y/_distance_to_target;
             // re-calculate distance error
-            dist_error.x = _pos_target.x - curr_pos.x;
-            dist_error.y = _pos_target.y - curr_pos.y;
+            _pos_error.x = _pos_target.x - curr_pos.x;
+            _pos_error.y = _pos_target.y - curr_pos.y;
             _distance_to_target = _leash;
         }
 
@@ -549,12 +511,12 @@ void AC_PosControl::pos_to_rate_xy(bool use_desired_rate, float dt)
         if (_distance_to_target > 2.0f*linear_distance) {
             // velocity response grows with the square root of the distance
             float vel_sqrt = safe_sqrt(2.0f*_accel_cms*(_distance_to_target-linear_distance));
-            _vel_target.x = vel_sqrt * dist_error.x/_distance_to_target;
-            _vel_target.y = vel_sqrt * dist_error.y/_distance_to_target;
+            _vel_target.x = vel_sqrt * _pos_error.x/_distance_to_target;
+            _vel_target.y = vel_sqrt * _pos_error.y/_distance_to_target;
         }else{
             // velocity response grows linearly with the distance
-            _vel_target.x = _pi_pos_lat.kP() * dist_error.x;
-            _vel_target.y = _pi_pos_lon.kP() * dist_error.y;
+            _vel_target.x = _pi_pos_lat.kP() * _pos_error.x;
+            _vel_target.y = _pi_pos_lon.kP() * _pos_error.y;
         }
 
         // decide velocity limit due to position error
@@ -584,61 +546,64 @@ void AC_PosControl::pos_to_rate_xy(bool use_desired_rate, float dt)
 
 /// rate_to_accel_xy - horizontal desired rate to desired acceleration
 ///    converts desired velocities in lat/lon directions to accelerations in lat/lon frame
-void AC_PosControl::rate_to_accel_xy(float vel_lat_cms, float vel_lon_cms, float dt)
+void AC_PosControl::rate_to_accel_xy(float dt)
 {
     const Vector3f &vel_curr = _inav.get_velocity();  // current velocity in cm/s
-    Vector3f vel_error;                         // The velocity error in cm/s.
     float accel_total;                          // total acceleration in cm/s/s
 
+    // reset accel limit flag
+    _limit.accel_xy = false;
+
     // reset last velocity if this controller has just been engaged or dt is zero
-    if( dt == 0.0 ) {
-        desired_accel.x = 0;
-        desired_accel.y = 0;
+    if (dt == 0.0) {
+        _accel_target.x = 0;
+        _accel_target.y = 0;
     } else {
         // feed forward desired acceleration calculation
-        desired_accel.x = (vel_lat_cms - _vel_last.x)/dt;
-        desired_accel.y = (vel_lon_cms - _vel_last.y)/dt;
+        _accel_target.x = (_vel_target.x - _vel_last.x)/dt;
+        _accel_target.y = (_vel_target.y - _vel_last.y)/dt;
     }
 
     // store this iteration's velocities for the next iteration
-    _vel_last.x = vel_lat_cms;
-    _vel_last.y = vel_lon_cms;
+    _vel_last.x = _vel_target.x;
+    _vel_last.y = _vel_target.y;
 
     // calculate velocity error
-    vel_error.x = vel_lat_cms - vel_curr.x;
-    vel_error.y = vel_lon_cms - vel_curr.y;
+    _vel_error.x = _vel_target.x - vel_curr.x;
+    _vel_error.y = _vel_target.y - vel_curr.y;
 
-    // combine feed foward accel with PID outpu from velocity error
-    desired_accel.x += _pid_rate_lat.get_pid(vel_error.x, dt);
-    desired_accel.y += _pid_rate_lon.get_pid(vel_error.y, dt);
+    // combine feed foward accel with PID output from velocity error
+    // To-Do: check accel limit flag before adding I term
+    _accel_target.x += _pid_rate_lat.get_pid(_vel_error.x, dt);
+    _accel_target.y += _pid_rate_lon.get_pid(_vel_error.y, dt);
 
     // scale desired acceleration if it's beyond acceptable limit
-    accel_total = safe_sqrt(desired_accel.x*desired_accel.x + desired_accel.y*desired_accel.y);
+    // To-Do: move this check down to the accel_to_lean_angle method?
+    accel_total = safe_sqrt(_accel_target.x*_accel_target.x + _accel_target.y*_accel_target.y);
     if (accel_total > POSCONTROL_ACCEL_XY_MAX) {
-        desired_accel.x = POSCONTROL_ACCEL_XY_MAX * desired_accel.x/accel_total;
-        desired_accel.y = POSCONTROL_ACCEL_XY_MAX * desired_accel.y/accel_total;
+        _accel_target.x = POSCONTROL_ACCEL_XY_MAX * _accel_target.x/accel_total;
+        _accel_target.y = POSCONTROL_ACCEL_XY_MAX * _accel_target.y/accel_total;
+        _limit.accel_xy = true;     // unused
     }
 }
 
-
 /// accel_to_lean_angles - horizontal desired acceleration to lean angles
 ///    converts desired accelerations provided in lat/lon frame to roll/pitch angles
-void AC_PosControl::accel_to_lean_angles(float accel_lat_cmss, float accel_lon_cmss)
+void AC_PosControl::accel_to_lean_angles()
 {
-    float z_accel_meas = -GRAVITY_MSS * 100;    // gravity in cm/s/s
-    float accel_forward;
-    float accel_right;
+    float accel_right, accel_forward;
     float lean_angle_max = _attitude_control.lean_angle_max();
 
     // To-Do: add 1hz filter to accel_lat, accel_lon
 
     // rotate accelerations into body forward-right frame
-    accel_forward = accel_lat_cmss*_cos_yaw + accel_lon_cmss*_sin_yaw;
-    accel_right = -accel_lat_cmss*_sin_yaw + accel_lon_cmss*_cos_yaw;
+    accel_forward = _accel_target.x*_cos_yaw + _accel_target.y*_sin_yaw;
+    accel_right = -_accel_target.x*_sin_yaw + _accel_target.y*_cos_yaw;
 
     // update angle targets that will be passed to stabilize controller
-    _desired_roll = constrain_float(fast_atan(accel_right*_cos_pitch/(-z_accel_meas))*(18000/M_PI), -lean_angle_max, lean_angle_max);
-    _desired_pitch = constrain_float(fast_atan(-accel_forward/(-z_accel_meas))*(18000/M_PI), -lean_angle_max, lean_angle_max);
+    _roll_target = constrain_float(fast_atan(accel_right*_cos_pitch/(GRAVITY_MSS * 100))*(18000/M_PI), -lean_angle_max, lean_angle_max);
+    //_pitch_target = constrain_float(fast_atan(-accel_forward/(GRAVITY_MSS * 100))*(18000/M_PI),-lean_angle_max, lean_angle_max);
+    // To-Do: uncomment above after weird compiler errors disappears
 }
 
 /// reset_I_xy - clears I terms from loiter PID controller
@@ -651,4 +616,36 @@ void AC_PosControl::reset_I_xy()
 
     // set last velocity to current velocity
     _vel_last = _inav.get_velocity();
+}
+
+/// calc_leash_length - calculates the horizontal leash length given a maximum speed, acceleration and position kP gain
+float AC_PosControl::calc_leash_length(float speed_cms, float accel_cms, float kP) const
+{
+    float leash_length;
+
+    // sanity check acceleration and avoid divide by zero
+    if (accel_cms <= 0.0f) {
+        accel_cms = POSCONTROL_ACCELERATION_MIN;
+    }
+
+    // avoid divide by zero
+    if (kP <= 0.0f) {
+        return POSCONTROL_LEASH_LENGTH_MIN;
+    }
+
+    // calculate leash length
+    if(speed_cms <= accel_cms / kP) {
+        // linear leash length based on speed close in
+        leash_length = speed_cms / kP;
+    }else{
+        // leash length grows at sqrt of speed further out
+        leash_length = (accel_cms / (2.0f*kP*kP)) + (speed_cms*speed_cms / (2.0f*accel_cms));
+    }
+
+    // ensure leash is at least 1m long
+    if( leash_length < POSCONTROL_LEASH_LENGTH_MIN ) {
+        leash_length = POSCONTROL_LEASH_LENGTH_MIN;
+    }
+
+    return leash_length;
 }
