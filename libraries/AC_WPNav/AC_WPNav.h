@@ -2,7 +2,6 @@
 #ifndef AC_WPNAV_H
 #define AC_WPNAV_H
 
-#include <inttypes.h>
 #include <AP_Common.h>
 #include <AP_Param.h>
 #include <AP_Math.h>
@@ -193,7 +192,6 @@ protected:
 
     // loiter controller internal variables
     uint32_t    _loiter_last_update;    // time of last update_loiter call
-    float       _loiter_dt;             // time difference since last loiter call
     uint8_t     _loiter_step;           // used to decide which portion of loiter controller to run during this iteration
     int16_t     _pilot_accel_fwd_cms; 	// pilot's desired acceleration forward (body-frame)
     int16_t     _pilot_accel_rgt_cms;   // pilot's desired acceleration right (body-frame)
@@ -202,7 +200,6 @@ protected:
 
     // waypoint controller internal variables
     uint32_t    _wp_last_update;        // time of last update_wpnav call
-    float       _wp_dt;                 // time difference since last loiter call
     uint8_t     _wp_step;               // used to decide which portion of wpnav controller to run during this iteration
     Vector3f    _origin;                // starting point of trip to next waypoint in cm from home (equivalent to next_WP)
     Vector3f    _destination;           // target destination in cm from home (equivalent to next_WP)

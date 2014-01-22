@@ -81,14 +81,12 @@ AC_WPNav::AC_WPNav(const AP_InertialNav* inav, const AP_AHRS* ahrs, AC_PosContro
     _sin_yaw(0.0),
     _cos_pitch(1.0),
     _loiter_last_update(0),
-    _loiter_dt(0.0),
     _loiter_step(0),
     _pilot_accel_fwd_cms(0),
     _pilot_accel_rgt_cms(0),
     _loiter_leash(WPNAV_MIN_LEASH_LENGTH),
     _loiter_accel_cms(WPNAV_LOITER_ACCEL_MAX),
     _wp_last_update(0),
-    _wp_dt(0.0),
     _wp_step(0),
     _track_length(0.0),
     _track_desired(0.0),
@@ -235,18 +233,16 @@ void AC_WPNav::update_loiter()
     uint32_t now = hal.scheduler->millis();
     float dt = (now - _loiter_last_update) / 1000.0f;
 
-    // catch if we've just been started
-    if (dt >= 1.0f) {
-        dt = 0.0f;
-    }
-
     // reset step back to 0 if 0.1 seconds has passed and we completed the last full cycle
     if (dt > 0.095f) {
+        // double check dt is reasonable
+        if (dt >= 1.0f) {
+            dt = 0.0;
+        }
         // capture time since last iteration
-        _loiter_dt = dt;
         _loiter_last_update = now;
         // translate any adjustments from pilot to loiter target
-        calc_loiter_desired_velocity(_loiter_dt);
+        calc_loiter_desired_velocity(dt);
         // trigger position controller on next update
         _pos_control.trigger_xy();
     }else{
@@ -434,15 +430,13 @@ void AC_WPNav::update_wpnav()
     uint32_t now = hal.scheduler->millis();
     float dt = (now - _wp_last_update) / 1000.0f;
 
-    // catch if we've just been started
-    if( dt >= 1.0f ) {
-        dt = 0.0;
-    }
-
     // reset step back to 0 if 0.1 seconds has passed and we completed the last full cycle
     if (dt > 0.095f) {
+        // double check dt is reasonable
+        if (dt >= 1.0f) {
+            dt = 0.0;
+        }
         // capture time since last iteration
-        _wp_dt = dt;
         _wp_last_update = now;
 
         // advance the target if necessary
