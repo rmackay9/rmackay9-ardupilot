@@ -68,15 +68,11 @@ const AP_Param::GroupInfo AC_WPNav::var_info[] PROGMEM = {
 // Note that the Vector/Matrix constructors already implicitly zero
 // their values.
 //
-AC_WPNav::AC_WPNav(const AP_InertialNav* inav, const AP_AHRS* ahrs, AC_PosControl& pos_control,
-                   APM_PI* pid_pos_lat, APM_PI* pid_pos_lon, AC_PID* pid_rate_lat, AC_PID* pid_rate_lon) :
+AC_WPNav::AC_WPNav(const AP_InertialNav* inav, const AP_AHRS* ahrs, AC_PosControl& pos_control, APM_PI* pid_pos_lat) :
     _inav(inav),
     _ahrs(ahrs),
     _pos_control(pos_control),
     _pid_pos_lat(pid_pos_lat),
-    _pid_pos_lon(pid_pos_lon),
-    _pid_rate_lat(pid_rate_lat),
-    _pid_rate_lon(pid_rate_lon),
     _cos_yaw(1.0),
     _sin_yaw(0.0),
     _cos_pitch(1.0),
