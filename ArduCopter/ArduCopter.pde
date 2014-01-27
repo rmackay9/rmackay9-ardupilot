@@ -1947,6 +1947,7 @@ static void update_trig(void){
 
     // update wp_nav controller with trig values
     wp_nav.set_cos_sin_yaw(cos_yaw, sin_yaw, cos_pitch_x);
+    circle_nav.set_cos_sin_yaw(cos_yaw, sin_yaw);
 
     //flat:
     // 0   = cos_yaw:  1.00, sin_yaw:  0.00,
