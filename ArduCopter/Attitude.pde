@@ -1,13 +1,21 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-// local variables
-float roll_in_filtered;     // roll-in in filtered with RC_FEEL_RP parameter
-float pitch_in_filtered;    // pitch-in filtered with RC_FEEL_RP parameter
-
-static void reset_roll_pitch_in_filters(int16_t roll_in, int16_t pitch_in)
+// get_smoothing_gain - returns smoothing gain to be passed into attitude_control.angle_ef_roll_pitch_rate_ef_yaw_smooth
+//      result is a number from 1 to 50 with 1 being very sluggish and 50 being very crisp
+float get_smoothing_gain()
 {
-    roll_in_filtered = constrain_int16(roll_in, -ROLL_PITCH_INPUT_MAX, ROLL_PITCH_INPUT_MAX);
-    pitch_in_filtered = constrain_int16(pitch_in, -ROLL_PITCH_INPUT_MAX, ROLL_PITCH_INPUT_MAX);
+    if (g.rc_feel_rp >= RC_FEEL_RP_VERY_CRISP) {
+        return 32.0f;
+    }else if (g.rc_feel_rp >= RC_FEEL_RP_CRISP) {
+        return 16.0f;
+    }else if(g.rc_feel_rp >= RC_FEEL_RP_MEDIUM) {
+        return 8.0f;
+    }else if(g.rc_feel_rp >= RC_FEEL_RP_SOFT) {
+        return 4.0f;
+    }else {
+        // must be RC_FEEL_RP_VERY_SOFT
+        return 2.0f;
+    }
 }
 
 // get_pilot_desired_angle - transform pilot's roll or pitch input into a desired lean angle
@@ -21,31 +29,10 @@ static void get_pilot_desired_lean_angles(int16_t roll_in, int16_t pitch_in, int
     roll_in = constrain_int16(roll_in, -ROLL_PITCH_INPUT_MAX, ROLL_PITCH_INPUT_MAX);
     pitch_in = constrain_int16(pitch_in, -ROLL_PITCH_INPUT_MAX, ROLL_PITCH_INPUT_MAX);
 
-    // filter input for feel
-    if (g.rc_feel_rp >= RC_FEEL_RP_VERY_CRISP) {
-        // no filtering required
-        roll_in_filtered = roll_in;
-        pitch_in_filtered = pitch_in;
-    }else{
-        float filter_gain;
-        if (g.rc_feel_rp >= RC_FEEL_RP_CRISP) {
-            filter_gain = 0.5;
-        } else if(g.rc_feel_rp >= RC_FEEL_RP_MEDIUM) {
-            filter_gain = 0.3;
-        } else if(g.rc_feel_rp >= RC_FEEL_RP_SOFT) {
-            filter_gain = 0.05;
-        } else {
-            // must be RC_FEEL_RP_VERY_SOFT
-            filter_gain = 0.02;
-        }
-        roll_in_filtered = roll_in_filtered * (1.0 - filter_gain) + (float)roll_in * filter_gain;
-        pitch_in_filtered = pitch_in_filtered * (1.0 - filter_gain) + (float)pitch_in * filter_gain;
-    }
-
     // return filtered roll if no scaling required
     if (aparm.angle_max == ROLL_PITCH_INPUT_MAX) {
-        roll_out = (int16_t)roll_in_filtered;
-        pitch_out = (int16_t)pitch_in_filtered;
+        roll_out = roll_in;
+        pitch_out = pitch_in;
         return;
     }
 
@@ -56,8 +43,8 @@ static void get_pilot_desired_lean_angles(int16_t roll_in, int16_t pitch_in, int
     }
 
     // convert pilot input to lean angle
-    roll_out = (int16_t)(roll_in_filtered * _scaler);
-    pitch_out = (int16_t)(pitch_in_filtered * _scaler);
+    roll_out = (int16_t)((float)roll_in * _scaler);
+    pitch_out = (int16_t)((float)pitch_in * _scaler);
 }
 
 // get_pilot_desired_heading - transform pilot's yaw input into a desired heading
