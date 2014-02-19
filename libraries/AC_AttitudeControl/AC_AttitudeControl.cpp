@@ -81,44 +81,55 @@ void AC_AttitudeControl::init_targets()
 // methods to be called by upper controllers to request and implement a desired attitude
 //
 
-// angle_ef_roll_pitch_rate_ef_yaw - attempts to maintain a roll and pitch angle and yaw rate (all earth frame)
-void AC_AttitudeControl::angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle_ef, float pitch_angle_ef, float yaw_rate_ef)
+// angle_ef_roll_pitch_rate_ef_yaw_smooth - attempts to maintain a roll and pitch angle and yaw rate (all earth frame) while smoothing the attitude based on the feel parameter
+//      feel : a number from 0 to 100 with 0 being sluggish and 100 being very sharp
+void AC_AttitudeControl::angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle_ef, float pitch_angle_ef, float yaw_rate_ef, int8_t feel)
 {
-    Vector3f    angle_ef_error;         // earth frame angle errors
+    Vector3f angle_ef_error;    // earth frame angle errors
     float rate_change_limit;
-    
-    // set earth-frame angle targets for roll and pitch and calculate angle error
-    float rc_feel_rp = 0.1;
-    float pid_P = rc_feel_rp/_dt;
-    float linear_angle = _accel_rp_max/(2.0*pid_P*pid_P);
+
+    // interpret feel
+    feel = constrain_int8(feel,1,100);
+    float pid_P = (float)feel/_dt;
+    float linear_angle = _accel_rp_max/(pid_P*pid_P);
     rate_change_limit = _accel_rp_max * _dt;
     float rate_ef_desired;
     float angle_to_target;
 
+    // calculate earth-frame feed forward roll rate using linear response when close to the target, sqrt response when we're further away
     angle_to_target = roll_angle_ef - _angle_ef_target.x;
-    if (angle_to_target > 2.0*linear_angle){
-        rate_ef_desired = safe_sqrt(2.0*_accel_rp_max*(fabs(angle_to_target)-linear_angle));
-    } else if (angle_to_target < -2.0*linear_angle){
-        rate_ef_desired = -safe_sqrt(2.0*_accel_rp_max*(fabs(angle_to_target)-linear_angle));
+    if (angle_to_target > linear_angle){
+        rate_ef_desired = safe_sqrt(2.0f*_accel_rp_max*(fabs(angle_to_target)-(linear_angle/2.0f)));
+    } else if (angle_to_target < -linear_angle){
+        rate_ef_desired = -safe_sqrt(2.0f*_accel_rp_max*(fabs(angle_to_target)-(linear_angle/2.0f)));
     } else {
         rate_ef_desired = pid_P*angle_to_target;
     }
     _rate_ef_desired.x = constrain_float(rate_ef_desired, _rate_ef_desired.x-rate_change_limit, _rate_ef_desired.x+rate_change_limit);
     _rate_ef_desired.x = constrain_float(_rate_ef_desired.x, -_angle_rate_rp_max, _angle_rate_rp_max);
+
+    // update earth-frame roll angle target using desired roll rate
     _angle_ef_target.x += _rate_ef_desired.x*_dt;
+
+    // calculate earth-frame roll angle error
     angle_ef_error.x = wrap_180_cd_float(_angle_ef_target.x - _ahrs.roll_sensor);
 
+    // calculate earth-frame feed forward pitch rate using linear response when close to the target, sqrt response when we're further away
     angle_to_target = pitch_angle_ef - _angle_ef_target.y;
-    if (angle_to_target > 2.0*linear_angle){
-        rate_ef_desired = safe_sqrt(2.0*_accel_rp_max*(fabs(angle_to_target)-linear_angle));
-    } else if (angle_to_target < -2.0*linear_angle){
-        rate_ef_desired = -safe_sqrt(2.0*_accel_rp_max*(fabs(angle_to_target)-linear_angle));
+    if (angle_to_target > linear_angle){
+        rate_ef_desired = safe_sqrt(2.0f*_accel_rp_max*(fabs(angle_to_target)-(linear_angle/2.0f)));
+    } else if (angle_to_target < -linear_angle){
+        rate_ef_desired = -safe_sqrt(2.0f*_accel_rp_max*(fabs(angle_to_target)-(linear_angle/2.0f)));
     } else {
         rate_ef_desired = pid_P*angle_to_target;
     }
     _rate_ef_desired.y = constrain_float(rate_ef_desired, _rate_ef_desired.y-rate_change_limit, _rate_ef_desired.y+rate_change_limit);
     _rate_ef_desired.y = constrain_float(_rate_ef_desired.y, -_angle_rate_rp_max, _angle_rate_rp_max);
+
+    // update earth-frame pitch angle target using desired pitch rate
     _angle_ef_target.y += _rate_ef_desired.y*_dt;
+
+    // calculate earth-frame pitch angle error
     angle_ef_error.y = wrap_180_cd_float(_angle_ef_target.y - _ahrs.pitch_sensor);
 
     // set earth-frame feed forward rate for yaw
@@ -127,6 +138,7 @@ void AC_AttitudeControl::angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle
     rate_change = constrain_float(rate_change, -rate_change_limit, rate_change_limit);
     _rate_ef_desired.z += rate_change;
 
+    // calculate yaw target angle and angle error
     update_ef_yaw_angle_and_error(_rate_ef_desired.z, angle_ef_error);
 
     // convert earth-frame angle errors to body-frame angle errors
