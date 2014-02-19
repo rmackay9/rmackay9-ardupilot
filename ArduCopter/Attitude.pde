@@ -1,21 +1,10 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 // get_smoothing_gain - returns smoothing gain to be passed into attitude_control.angle_ef_roll_pitch_rate_ef_yaw_smooth
-//      result is a number from 1 to 50 with 1 being very sluggish and 50 being very crisp
+//      result is a number from 2 to 12 with 2 being very sluggish and 12 being very crisp
 float get_smoothing_gain()
 {
-    if (g.rc_feel_rp >= RC_FEEL_RP_VERY_CRISP) {
-        return 32.0f;
-    }else if (g.rc_feel_rp >= RC_FEEL_RP_CRISP) {
-        return 16.0f;
-    }else if(g.rc_feel_rp >= RC_FEEL_RP_MEDIUM) {
-        return 8.0f;
-    }else if(g.rc_feel_rp >= RC_FEEL_RP_SOFT) {
-        return 4.0f;
-    }else {
-        // must be RC_FEEL_RP_VERY_SOFT
-        return 2.0f;
-    }
+    return (2.0f + (float)g.rc_feel_rp/10.0f);
 }
 
 // get_pilot_desired_angle - transform pilot's roll or pitch input into a desired lean angle
