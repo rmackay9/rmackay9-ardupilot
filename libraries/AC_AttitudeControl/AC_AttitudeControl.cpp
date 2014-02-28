@@ -135,6 +135,7 @@ void AC_AttitudeControl::angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle
     float rate_change = yaw_rate_ef - _rate_ef_desired.z;
     rate_change = constrain_float(rate_change, -rate_change_limit, rate_change_limit);
     _rate_ef_desired.z += rate_change;
+    _rate_ef_desired.z = constrain_float(_rate_ef_desired.z, -_angle_rate_y_max, _angle_rate_y_max);
 
     // calculate yaw target angle and angle error
     update_ef_yaw_angle_and_error(_rate_ef_desired.z, angle_ef_error);
