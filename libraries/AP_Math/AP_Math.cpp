@@ -89,6 +89,11 @@ float constrain_float(float amt, float low, float high)
 	return ((amt)<(low)?(low):((amt)>(high)?(high):(amt)));
 }
 
+// constrain a int8_t value
+int8_t constrain_int8(int8_t amt, int8_t low, int8_t high) {
+    return ((amt)<(low)?(low):((amt)>(high)?(high):(amt)));
+}
+
 // constrain a int16_t value
 int16_t constrain_int16(int16_t amt, int16_t low, int16_t high) {
 	return ((amt)<(low)?(low):((amt)>(high)?(high):(amt)));
