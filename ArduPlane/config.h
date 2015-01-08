@@ -68,9 +68,6 @@
  #ifndef CLI_ENABLED
  # define CLI_ENABLED DISABLED
  #endif
- #ifndef MOUNT2
- # define MOUNT2 DISABLED
- #endif
  #ifndef MOUNT
  # define MOUNT DISABLED
  #endif
@@ -309,11 +306,6 @@
 // uses 7726 bytes of memory on 2560 chips (all options are enabled)
 #ifndef MOUNT
  # define MOUNT          ENABLED
-#endif
-
-// second mount, can for example be used to keep an antenna pointed at the home position
-#ifndef MOUNT2
- # define MOUNT2         DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
