@@ -316,7 +316,8 @@ typedef enum MAV_MOUNT_MODE
 	MAV_MOUNT_MODE_MAVLINK_TARGETING=2, /* Load neutral position and start MAVLink Roll,Pitch,Yaw control with stabilization | */
 	MAV_MOUNT_MODE_RC_TARGETING=3, /* Load neutral position and start RC Roll,Pitch,Yaw control with stabilization | */
 	MAV_MOUNT_MODE_GPS_POINT=4, /* Load neutral position and start to point to Lat,Lon,Alt | */
-	MAV_MOUNT_MODE_ENUM_END=5, /*  | */
+	MAV_MOUNT_MODE_RELAXED=5, /* Relax gimbal motor control | */
+	MAV_MOUNT_MODE_ENUM_END=6, /*  | */
 } MAV_MOUNT_MODE;
 #endif
 
