@@ -509,6 +509,7 @@
               <entry name="MAV_MOUNT_MODE_MAVLINK_TARGETING" value="2"><description>Load neutral position and start MAVLink Roll,Pitch,Yaw control with stabilization</description></entry>
               <entry name="MAV_MOUNT_MODE_RC_TARGETING" value="3"><description>Load neutral position and start RC Roll,Pitch,Yaw control with stabilization</description></entry>
               <entry name="MAV_MOUNT_MODE_GPS_POINT" value="4"><description>Load neutral position and start to point to Lat,Lon,Alt</description></entry>
+              <entry name="MAV_MOUNT_MODE_RELAXED" value="5"><description>Relax gimbal motor control</description></entry>
           </enum>
           <enum name="MAV_CMD">
                <description>Commands to be executed by the MAV. They can be executed on user request, or as part of a mission script. If the action is used in a mission, the parameter mapping to the waypoint/mission message is as follows: Param 1, Param 2, Param 3, Param 4, X: Param 5, Y:Param 6, Z:Param 7. This command list is similar what ARINC 424 is for commercial aircraft: A data format how to interpret waypoint/mission data.</description>
