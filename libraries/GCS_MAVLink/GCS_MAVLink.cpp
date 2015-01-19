@@ -211,3 +211,35 @@ bool comm_is_idle(mavlink_channel_t chan)
 	mavlink_status_t *status = mavlink_get_channel_status(chan);
 	return status == NULL || status->parse_state <= MAVLINK_PARSE_STATE_IDLE;
 }
+
+/*
+  get_comm_from_uart - the comm channel for a given UART
+ */
+bool get_comm_from_uart(const AP_HAL::UARTDriver* uart, mavlink_channel_t& chan)
+{
+    // return immediately if uart NULL
+    if (uart == NULL) {
+        return false;
+    }
+
+    // compare pointers
+    if (uart == mavlink_comm_0_port) {
+        chan = MAVLINK_COMM_0;
+        return true;
+    }
+
+    if (uart == mavlink_comm_1_port) {
+        chan = MAVLINK_COMM_1;
+        return true;
+    }
+
+#if MAVLINK_COMM_NUM_BUFFERS > 2
+    if (uart == mavlink_comm_2_port) {
+        chan = MAVLINK_COMM_2;
+        return true;
+    }
+#endif
+
+    // if we got this far we've failed to find the comm
+    return false;
+}

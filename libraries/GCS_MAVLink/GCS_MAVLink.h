@@ -125,6 +125,12 @@ static inline void crc_accumulate(uint8_t data, uint16_t *crcAccum)
  */
 bool comm_is_idle(mavlink_channel_t chan);
 
+/*
+  get_comm_from_uart - retrieve the comm channel for a given UART
+  returns true if a comm channel is found, false if no comm channel is associated with the UART
+ */
+bool get_comm_from_uart(const AP_HAL::UARTDriver* uart, mavlink_channel_t& chan);
+
 #define MAVLINK_USE_CONVENIENCE_FUNCTIONS
 #include "include/mavlink/v1.0/ardupilotmega/mavlink.h"
 
