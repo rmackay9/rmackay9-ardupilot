@@ -26,14 +26,27 @@
 
 extern const AP_HAL::HAL& hal;
 
-void AP_Frsky_Telem::init(AP_HAL::UARTDriver *port, uint8_t frsky_type)
+void AP_Frsky_Telem::init(const AP_SerialManager& serial_manager)
 {
-    if (port == NULL) {
-	return;
+    // initialise port to null
+    _port = NULL;
+
+    // check for FRSky_DPort
+    AP_SerialManager::serial_state frsky_serial;
+    if (serial_manager.find_serial(AP_SerialManager::SerialProtocol_FRSky_DPort, frsky_serial)) {
+        _port = frsky_serial.uart;
+        _protocol = FrSkyDPORT;
     }
-    _port = port;    
-    _port->begin(9600);
-    _initialised = true;    
+    // check for FRSky_SPort
+    if (serial_manager.find_serial(AP_SerialManager::SerialProtocol_FRSky_SPort, frsky_serial)) {
+        _port = frsky_serial.uart;
+        _protocol = FrSkySPORT;
+
+    }
+    // initialise port ignoring serial ports baud rate parameter
+    if (_port != NULL) {
+        _initialised = true;
+    }
 }
 
 void AP_Frsky_Telem::frsky_send_byte(uint8_t value)
@@ -201,13 +214,14 @@ void AP_Frsky_Telem::check_sport_input(void)
   allow this code to poll for serial bytes coming from the receiver
   for the SPort protocol
  */
-void AP_Frsky_Telem::send_frames(uint8_t control_mode, enum FrSkyProtocol protocol)
+void AP_Frsky_Telem::send_frames(uint8_t control_mode)
 {
+    // return immediately if not initialised
     if (!_initialised) {
         return;
     }
     
-    if (protocol == FrSkySPORT) {
+    if (_protocol == FrSkySPORT) {
         // check for sport bytes
         check_sport_input();
     }
