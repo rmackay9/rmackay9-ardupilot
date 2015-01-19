@@ -40,11 +40,6 @@ class AP_Mount_Alexmos;
 
 class AP_Mount
 {
-    // declare backends as friends
-    friend class AP_Mount_Backend;
-    friend class AP_Mount_Servo;
-    friend class AP_Mount_MAVLink;
-    friend class AP_Mount_Alexmos;
 
 public:
 
@@ -108,7 +103,7 @@ public:
     // parameter var table
     static const struct AP_Param::GroupInfo        var_info[];
 
-private:
+protected:
 
     // private members
     const AP_AHRS           &_ahrs;
