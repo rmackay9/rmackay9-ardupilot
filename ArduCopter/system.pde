@@ -82,32 +82,8 @@ static void init_ardupilot()
         delay(1000);
     }
 
-    // Console serial port
-    //
-    // The console port buffers are defined to be sufficiently large to support
-    // the MAVLink protocol efficiently
-    //
-#if HIL_MODE != HIL_MODE_DISABLED
-    // we need more memory for HIL, as we get a much higher packet rate
-    hal.uartA->begin(map_baudrate(g.serial0_baud), 256, 256);
-#else
-    // use a bit less for non-HIL operation
-    hal.uartA->begin(map_baudrate(g.serial0_baud), 512, 128);
-#endif
-
-    // GPS serial port.
-    //
-#if GPS_PROTOCOL != GPS_PROTOCOL_IMU
-    // standard gps running. Note that we need a 256 byte buffer for some
-    // GPS types (eg. UBLOX)
-    hal.uartB->begin(38400, 256, 16);
-#endif
-
-#if GPS2_ENABLE
-    if (hal.uartE != NULL) {
-        hal.uartE->begin(38400, 256, 16);
-    }
-#endif
+    // initialise serial port
+    serial_manager.init();
 
     cliSerial->printf_P(PSTR("\n\nInit " FIRMWARE_STRING
                          "\n\nFree RAM: %u\n"),
@@ -160,21 +136,14 @@ static void init_ardupilot()
     ap.usb_connected = true;
     check_usb_mux();
 
-#if CONFIG_HAL_BOARD != HAL_BOARD_APM2
-    // we have a 2nd serial port for telemetry on all boards except
-    // APM2. We actually do have one on APM2 but it isn't necessary as
-    // a MUX is used
-    gcs[1].setup_uart(hal.uartC, map_baudrate(g.serial1_baud), 128, 128);
-#endif
+    // setup serial port for telem1
+    gcs[1].setup_uart(serial_manager, AP_SerialManager::SerialProtocol_MAVLink1);
 
-#if MAVLINK_COMM_NUM_BUFFERS > 2
-    if (g.serial2_protocol == SERIAL2_FRSKY_DPORT || 
-        g.serial2_protocol == SERIAL2_FRSKY_SPORT) {
-        frsky_telemetry.init(hal.uartD, g.serial2_protocol);
-    } else {
-        gcs[2].setup_uart(hal.uartD, map_baudrate(g.serial2_baud), 128, 128);
-    }
-#endif
+    // setup serial port for telem2
+    gcs[2].setup_uart(serial_manager, AP_SerialManager::SerialProtocol_MAVLink2);
+
+    // setup frsky
+    frsky_telemetry.init(serial_manager);
 
     // identify ourselves correctly with the ground station
     mavlink_system.sysid = g.sysid_this_mav;
@@ -211,7 +180,7 @@ static void init_ardupilot()
  #endif // CONFIG_ADC
 
     // Do GPS init
-    gps.init(&DataFlash);
+    gps.init(&DataFlash, serial_manager);
 
     if(g.compass_enabled)
         init_compass();
@@ -232,7 +201,7 @@ static void init_ardupilot()
     inertial_nav.init();
 
     // initialise camera mount
-    camera_mount.init();
+    camera_mount.init(serial_manager);
 
 #ifdef USERHOOK_INIT
     USERHOOK_INIT
@@ -390,18 +359,6 @@ static void check_usb_mux(void)
 
     // the user has switched to/from the telemetry port
     ap.usb_connected = usb_check;
-
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM2
-    // the APM2 has a MUX setup where the first serial port switches
-    // between USB and a TTL serial connection. When on USB we use
-    // SERIAL0_BAUD, but when connected as a TTL serial port we run it
-    // at SERIAL1_BAUD.
-    if (ap.usb_connected) {
-        hal.uartA->begin(map_baudrate(g.serial0_baud));
-    } else {
-        hal.uartA->begin(map_baudrate(g.serial1_baud));
-    }
-#endif
 }
 
 /*
@@ -410,8 +367,7 @@ static void check_usb_mux(void)
 static void telemetry_send(void)
 {
 #if FRSKY_TELEM_ENABLED == ENABLED
-    frsky_telemetry.send_frames((uint8_t)control_mode, 
-                                (AP_Frsky_Telem::FrSkyProtocol)g.serial2_protocol.get());
+    frsky_telemetry.send_frames((uint8_t)control_mode);
 #endif
 }
 
