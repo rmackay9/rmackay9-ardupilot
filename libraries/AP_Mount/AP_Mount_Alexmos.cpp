@@ -10,6 +10,7 @@ void AP_Mount_Alexmos::init(const AP_SerialManager& serial_manager)
     if (serial_manager.find_serial(AP_SerialManager::SerialProtocol_AlexMos, alexmos_serial)) {
         _port = alexmos_serial.uart;
         _initialised = true;
+        _port->begin(115200);
         get_boardinfo();
         read_params(0); //we request parameters for profile 0 and therfore get global and profile parameters
     }
@@ -65,12 +66,19 @@ void AP_Mount_Alexmos::update()
 // has_pan_control - returns true if this mount can control it's pan (required for multicopters)
 bool AP_Mount_Alexmos::has_pan_control() const
 {
+    if (!_initialised) {
+        return false;
+    }
     return _gimbal_3axis;
 }
 
 // set_mode - sets mount's mode
 void AP_Mount_Alexmos::set_mode(enum MAV_MOUNT_MODE mode)
 {
+    if (!_initialised) {
+        return;
+    }
+
     // record the mode change and return success
     _state._mode = mode;
 }
@@ -78,6 +86,10 @@ void AP_Mount_Alexmos::set_mode(enum MAV_MOUNT_MODE mode)
 // status_msg - called to allow mounts to send their status to GCS using the MOUNT_STATUS message
 void AP_Mount_Alexmos::status_msg(mavlink_channel_t chan)
 {
+    if (!_initialised) {
+        return;
+    }
+    
     get_angles();
     mavlink_msg_mount_status_send(chan, 0, 0, _current_angle.x*100, _current_angle.y*100, _current_angle.z*100);
 }
@@ -221,7 +233,7 @@ void AP_Mount_Alexmos::read_incoming()
 
     numc = _port->available();
 
-    if (numc < 0 ){
+    if (numc <= 0 ){
         return;
     }
         
