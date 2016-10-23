@@ -129,7 +129,7 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
     // @DisplayName: Channels to which ignore the safety switch state
     // @Description: A bitmask which controls what channels can move while the safety switch has not been pressed
     // @Values: 0:Disabled,1:Enabled
-    // @Bitmask: 0:Ch1,1:Ch2,2:Ch3,3:Ch4,4:Ch5,5:Ch6,6:Ch7,7:Ch8
+    // @Bitmask: 0:Ch1,1:Ch2,2:Ch3,3:Ch4,4:Ch5,5:Ch6,6:Ch7,7:Ch8,8:Ch9,9:Ch10,10:Ch11,11:Ch12,12:Ch13,13:Ch14
     // @RebootRequired: True
     AP_GROUPINFO("SAFETY_MASK", 7, AP_BoardConfig, px4.ignore_safety_channels, 0),
 #endif
@@ -166,5 +166,14 @@ void AP_BoardConfig::init()
     // we want the user to be able to change the parameter without
     // rebooting
     hal.util->set_imu_target_temp((int8_t *)&_imu_target_temperature);
+#endif
+}
+
+// set default value for BRD_SAFETY_MASK
+void AP_BoardConfig::set_default_safety_ignore_mask(uint16_t mask)
+{
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+    px4.ignore_safety_channels.set_default(mask);
+    px4_setup_safety_mask();
 #endif
 }

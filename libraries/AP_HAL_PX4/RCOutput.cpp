@@ -55,10 +55,14 @@ void PX4RCOutput::init()
     }
 
 #if !defined(CONFIG_ARCH_BOARD_PX4FMU_V4)
-    _alt_fd = open("/dev/px4fmu", O_RDWR);
-    if (_alt_fd == -1) {
-        hal.console->printf("RCOutput: failed to open /dev/px4fmu");
-        return;
+    struct stat st;
+    // don't try and open px4fmu unless there is a px4io. Otherwise we
+    // can end up opening the same device twice
+    if (stat("/dev/px4io", &st) == 0) {
+        _alt_fd = open("/dev/px4fmu", O_RDWR);
+        if (_alt_fd == -1) {
+            hal.console->printf("RCOutput: failed to open /dev/px4fmu");
+        }
     }
 #endif
 
@@ -434,6 +438,8 @@ void PX4RCOutput::_publish_actuators(void)
     }
     if (hal.util->safety_switch_state() != AP_HAL::Util::SAFETY_DISARMED) {
         _arm_actuators(true);
+    } else {
+        _arm_actuators(false);
     }
 }
 
