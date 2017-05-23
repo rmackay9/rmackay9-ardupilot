@@ -583,7 +583,7 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
             }
             break;
 
-        case MOTOR_FRAME_DODECAHEXA: {
+        case MOTOR_FRAME_DODECAHEXA:
             switch (frame_type) {
                 case MOTOR_FRAME_TYPE_PLUS:
                     add_motor(AP_MOTORS_MOT_1,     0, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   1);  // TU(Top Up)
@@ -618,7 +618,7 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
                 default:
                     // hexa frame class does not support this frame type
                     break;
-            }}
+            }
             break;
 
         case MOTOR_FRAME_Y6:
