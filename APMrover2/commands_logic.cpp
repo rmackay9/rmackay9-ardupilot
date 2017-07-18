@@ -132,7 +132,7 @@ void Rover::exit_mission()
 {
     if (control_mode == &mode_auto) {
         gcs().send_text(MAV_SEVERITY_NOTICE, "No commands. Can't set AUTO. Setting HOLD");
-        set_mode(mode_hold);
+        set_mode(mode_hold, MODE_REASON_MISSION_END);
     }
 }
 

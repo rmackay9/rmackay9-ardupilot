@@ -72,7 +72,7 @@ void Rover::read_control_switch()
 
         Mode *new_mode = control_mode_from_num((enum mode)modes[switchPosition].get());
         if (new_mode != nullptr) {
-            set_mode(*new_mode);
+            set_mode(*new_mode, MODE_REASON_TX_COMMAND);
         }
 
         oldSwitchPosition = switchPosition;
@@ -155,23 +155,11 @@ void Rover::read_trim_switch()
                     }
                 } else if (control_mode == &mode_auto) {
                     // if SW7 is ON in AUTO = set to RTL
-                    set_mode(mode_rtl);
+                    set_mode(mode_rtl, MODE_REASON_TX_COMMAND);
                     break;
                 }
             }
         }
         break;
     }
-}
-
-bool Rover::motor_active()
-{
-    // Check if armed and output throttle servo is not neutral
-    if (hal.util->get_soft_armed()) {
-        if (!is_zero(g2.motors.get_throttle())) {
-            return true;
-        }
-    }
-
-    return false;
 }
