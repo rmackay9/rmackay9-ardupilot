@@ -169,13 +169,6 @@ void Rover::set_system_time_from_GPS()
     }
 }
 
-void Rover::restart_nav()
-{
-    g.pidSpeedThrottle.reset_I();
-    prev_WP = current_loc;
-    mission.start_or_resume();
-}
-
 /*
   update home location from GPS
   this is called as long as we have 3D lock and the arming switch is
