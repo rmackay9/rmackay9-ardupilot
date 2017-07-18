@@ -342,13 +342,6 @@ void Rover::startup_INS_ground(void)
     ahrs.reset();
 }
 
-// updates the notify state
-// should be called at 50hz
-void Rover::update_notify()
-{
-    notify.update();
-}
-
 void Rover::resetPerfData(void) {
     mainLoop_count = 0;
     G_Dt_max = 0;

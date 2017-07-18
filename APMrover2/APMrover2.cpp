@@ -421,4 +421,11 @@ void Rover::update_navigation()
     control_mode->update_navigation();
 }
 
+// updates the notify state
+// should be called at 50hz
+void Rover::update_notify()
+{
+    notify.update();
+}
+
 AP_HAL_MAIN_CALLBACKS(&rover);
