@@ -23,7 +23,7 @@ void ModeRTL::update_navigation()
     // no loitering around the wp with the rover, goes direct to the wp position
     if (rover.verify_nav_wp()) {
         g2.motors.set_throttle(g.throttle_min.get());
-        rover.set_mode(rover.mode_hold);
+        rover.set_mode(rover.mode_hold, MODE_REASON_MISSION_END);
     } else {
         calc_lateral_acceleration();
         calc_nav_steer();

@@ -460,7 +460,7 @@ private:
     void gcs_retry_deferred(void);
 
     Mode *control_mode_from_num(enum mode num);
-    bool set_mode(Mode &mode);
+    bool set_mode(Mode &mode, mode_reason_t reason=0);
     bool mavlink_set_mode(uint8_t mode);
 
     void do_erase_logs(void);
