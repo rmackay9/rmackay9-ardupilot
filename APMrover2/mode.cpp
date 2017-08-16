@@ -72,7 +72,7 @@ void Mode::calc_throttle(float target_speed, bool nudge_allowed)
     }
 
     // call throttle controller and convert output to -100 to +100 range
-    float throttle_out = 100.0f * attitude_control.get_throttle_out_speed(target_speed, g2.motors.have_skid_steering(), g2.motors.limit.throttle_lower, g2.motors.limit.throttle_upper, g.speed_cruise, g.throttle_cruise / 100.0f);
+    float throttle_out = 100.0f * attitude_control.get_throttle_out_speed(target_speed, g2.motors.have_skid_steering(), g2.motors.limit.throttle_lower, g2.motors.limit.throttle_upper, g.speed_cruise, g.throttle_cruise * 0.01f);
 
     // send to motor
     g2.motors.set_throttle(throttle_out);
@@ -83,7 +83,7 @@ bool Mode::stop_vehicle()
 {
     // call throttle controller and convert output to -100 to +100 range
     bool stopped = false;
-    float throttle_out = 100.0f * attitude_control.get_throttle_out_stop(g2.motors.have_skid_steering(), g2.motors.limit.throttle_lower, g2.motors.limit.throttle_upper, g.speed_cruise, g.throttle_cruise / 100.0f, stopped);
+    float throttle_out = 100.0f * attitude_control.get_throttle_out_stop(g2.motors.have_skid_steering(), g2.motors.limit.throttle_lower, g2.motors.limit.throttle_upper, g.speed_cruise, g.throttle_cruise * 0.01f, stopped);
 
     // send to motor
     g2.motors.set_throttle(throttle_out);
@@ -140,7 +140,7 @@ float Mode::calc_speed_nudge(float target_speed, float cruise_speed, float cruis
     }
 
     const float speed_increase_max = vehicle_speed_max - fabsf(target_speed);
-    float speed_nudge = ((fabsf(pilot_throttle) - 50.0f) / 50.0f) * speed_increase_max;
+    float speed_nudge = ((static_cast<float>(abs(pilot_throttle)) - 50.0f) * 0.02f) * speed_increase_max;
     if (pilot_throttle < 0) {
         speed_nudge = -speed_nudge;
     }
