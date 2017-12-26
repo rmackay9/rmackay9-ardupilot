@@ -939,6 +939,7 @@ private:
 #endif
     ModeBrake mode_brake;
     ModeCircle mode_circle;
+    ModeChase mode_chase;
     ModeDrift mode_drift;
     ModeFlip mode_flip;
     ModeGuided mode_guided;
