@@ -688,7 +688,8 @@ void GCS_MAVLINK_Copter::packetReceived(const mavlink_status_t &status,
         // optional handling of GLOBAL_POSITION_INT as a MAVLink based avoidance source
         copter.avoidance_adsb.handle_msg(msg);
     }
-    copter.mode_chase.mavlink_packet_received(msg);
+    // pass message to follow library
+    copter.g2.follow.handle_msg(msg);
     GCS_MAVLINK::packetReceived(status, msg);
 }
 
@@ -818,6 +819,14 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
         mavlink_msg_command_int_decode(msg, &packet);
         switch(packet.command)
         {
+            case MAV_CMD_DO_FOLLOW:
+                // param1: sysid of target to follow
+                if ((packet.param1 > 0) && (packet.param1 <= 255)) {
+                    copter.g2.follow.set_target_sysid((uint8_t)packet.param1);
+                    result = MAV_RESULT_ACCEPTED;
+                }
+                break;
+
             case MAV_CMD_DO_SET_HOME: {
                 // assume failure
                 result = MAV_RESULT_FAILED;
@@ -933,6 +942,14 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
 
         case MAV_CMD_NAV_LAND:
             if (copter.set_mode(LAND, MODE_REASON_GCS_COMMAND)) {
+                result = MAV_RESULT_ACCEPTED;
+            }
+            break;
+
+        case MAV_CMD_DO_FOLLOW:
+            // param1: sysid of target to follow
+            if ((packet.param1 > 0) && (packet.param1 <= 255)) {
+                copter.g2.follow.set_target_sysid((uint8_t)packet.param1);
                 result = MAV_RESULT_ACCEPTED;
             }
             break;
