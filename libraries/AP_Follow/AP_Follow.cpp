@@ -122,7 +122,7 @@ bool AP_Follow::get_target_location_and_velocity(Location &loc, Vector3f& vel) c
     }
 
     // calculate time since last actual position update
-    float dt = (AP_HAL::millis() - _last_location_update_ms) / 1000.0f;
+    float dt = (AP_HAL::millis() - _last_location_update_ms) * 0.001f;
 
     // get velocity estimate
     if (!get_velocity_ned(vel, dt)) {
@@ -223,13 +223,13 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
         mavlink_msg_global_position_int_decode(&msg, &packet);
         _target_location.lat = packet.lat;
         _target_location.lng = packet.lon;
-        _target_location.alt = packet.alt/10;       // convert millimeters to cm
-        _target_velocity_ned.x = packet.vx/100.0f;  // velocity north
-        _target_velocity_ned.y = packet.vy/100.0f;  // velocity east
-        _target_velocity_ned.z = packet.vz/100.0f;  // velocity down
+        _target_location.alt = packet.alt / 10;     // convert millimeters to cm
+        _target_velocity_ned.x = packet.vx * 0.01f; // velocity north
+        _target_velocity_ned.y = packet.vy * 0.01f; // velocity east
+        _target_velocity_ned.z = packet.vz * 0.01f; // velocity down
         _last_location_update_ms = now;
         if (packet.hdg <= 36000) {                  // heading (UINT16_MAX if unknown)
-            _target_heading = packet.hdg / 100.0f;  // convert centi-degrees to degrees
+            _target_heading = packet.hdg * 0.01f;   // convert centi-degrees to degrees
             _last_heading_update_ms = now;
         }
         // initialise _sysid if zero to sender's id
