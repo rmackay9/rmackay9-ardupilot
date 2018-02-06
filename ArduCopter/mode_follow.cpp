@@ -18,7 +18,7 @@
 #define Debug(fmt, args ...)
 #endif
 
-// initialise avoid_adsb controller
+// initialise follow mode
 bool Copter::ModeFollow::init(const bool ignore_checks)
 {
     // re-use guided mode
@@ -106,7 +106,7 @@ void Copter::ModeFollow::run()
         // calculate vehicle heading
         switch (g2.follow.get_yaw_behave()) {
             case AP_Follow::YAW_BEHAVE_FACE_LEAD_VEHICLE: {
-                Vector3f dist_vec_xy(dist_vec.x, dist_vec.y, 0.0f);
+                const Vector3f dist_vec_xy(dist_vec.x, dist_vec.y, 0.0f);
                 if (dist_vec_xy.length() > 1.0f) {
                     yaw_cd = get_bearing_cd(Vector3f(), dist_vec_xy);
                     use_yaw = true;
@@ -115,7 +115,7 @@ void Copter::ModeFollow::run()
             }
 
             case AP_Follow::YAW_BEHAVE_SAME_AS_LEAD_VEHICLE: {
-                float target_hdg = 0.0f;;
+                float target_hdg = 0.0f;
                 if (g2.follow.get_target_heading(target_hdg)) {
                     yaw_cd = target_hdg * 100.0f;
                     use_yaw = true;
@@ -124,7 +124,7 @@ void Copter::ModeFollow::run()
             }
 
             case AP_Follow::YAW_BEHAVE_DIR_OF_FLIGHT: {
-                Vector3f vel_vec(desired_velocity.x, desired_velocity.y, 0.0f);
+                const Vector3f vel_vec(desired_velocity.x, desired_velocity.y, 0.0f);
                 if (vel_vec.length() > 100.0f) {
                     yaw_cd = get_bearing_cd(Vector3f(), vel_vec);
                     use_yaw = true;
