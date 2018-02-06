@@ -140,8 +140,15 @@ void Copter::ModeFollow::run()
         }
     }
 
+    // log output at 10hz
+    uint32_t now = AP_HAL::millis();
+    bool log_request = false;
+    if ((now - last_log_ms >= 100) || (last_log_ms == 0)) {
+        log_request = true;
+        last_log_ms = now;
+    }
     // re-use guided mode's velocity controller (takes NEU)
-    Copter::ModeGuided::set_velocity(desired_velocity, use_yaw, yaw_cd);
+    Copter::ModeGuided::set_velocity(desired_velocity, use_yaw, yaw_cd, false, 0.0f, false, log_request);
 
     Copter::ModeGuided::run();
 }
