@@ -1104,8 +1104,6 @@ public:
     bool allows_arming(bool from_gcs) const override { return false; }
     bool is_autopilot() const override { return true; }
 
-    bool set_velocity(const Vector3f& velocity_neu);
-
 protected:
 
     const char *name() const override { return "FOLLOW"; }

@@ -25,16 +25,6 @@ bool Copter::ModeFollow::init(const bool ignore_checks)
     return Copter::ModeGuided::init(ignore_checks);
 }
 
-bool Copter::ModeFollow::set_velocity(const Vector3f& velocity_neu)
-{
-    // check flight mode
-    if (_copter.flightmode != &_copter.mode_follow) {
-        return false;
-    }
-
-    return true;
-}
-
 void Copter::ModeFollow::run()
 {
     // if not auto armed or motor interlock not enabled set throttle to zero and exit immediately
