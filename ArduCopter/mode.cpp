@@ -54,10 +54,6 @@ Copter::Mode *Copter::mode_from_mode_num(const uint8_t mode)
             ret = &mode_auto;
             break;
 
-        case CHASE:
-            ret = &mode_chase;
-            break;
-
         case CIRCLE:
             ret = &mode_circle;
             break;
@@ -126,6 +122,10 @@ Copter::Mode *Copter::mode_from_mode_num(const uint8_t mode)
             break;
 #endif
             
+        case FOLLOW:
+            ret = &mode_follow;
+            break;
+
         default:
             break;
     }
