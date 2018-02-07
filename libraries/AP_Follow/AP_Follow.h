@@ -20,6 +20,7 @@
 #include <AP_Math/AP_Math.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <GCS_MAVLink/GCS.h>
+#include <AC_PID/AC_P.h>
 
 class AP_Follow
 {
@@ -52,6 +53,9 @@ public:
 
     // get distance vector to target (in meters), target plus offsets, and target's velocity all in NED frame
     bool get_target_dist_and_vel_ned(Vector3f &dist, Vector3f &dist_with_ofs, Vector3f &vel);
+
+    // get position controller.  this controller is not used within this library but it is convenient to hold it here
+    const AC_P& get_pos_p() const { return _p_pos; }
 
     //
     // yaw/heading related methods
@@ -90,6 +94,7 @@ private:
     AP_Int8     _offset_type;       // offset frame type (0:North-East-Down, 1:RelativeToLeadVehicleHeading)
     AP_Vector3f _offset;            // offset from lead vehicle in meters
     AP_Int8     _yaw_behave;        // following vehicle's yaw/heading behaviour
+    AC_P        _p_pos;             // position error P controller
 
     // local variables
     bool _healthy;                  // true if we are receiving mavlink messages (regardless of whether they have target position info within them)

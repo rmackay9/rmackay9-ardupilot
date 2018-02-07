@@ -26,6 +26,8 @@ extern const AP_HAL::HAL& hal;
 #define AP_FOLLOW_OFFSET_TYPE_NED       0   // offsets are in north-east-down frame
 #define AP_FOLLOW_OFFSET_TYPE_RELATIVE  0   // offsets are relative to lead vehicle's heading
 
+#define AP_FOLLOW_POS_P_DEFAULT 0.1f    // position error gain default
+
 // table of user settable parameters
 const AP_Param::GroupInfo AP_Follow::var_info[] = {
 
@@ -94,6 +96,14 @@ const AP_Param::GroupInfo AP_Follow::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("_YAW_BEHAVE", 8, AP_Follow, _yaw_behave, 1),
 
+    // @Param: _POS_P
+    // @DisplayName: Follow position error P gain
+    // @Description: Follow position error P gain.  Converts the difference between desired vertical speed and actual speed into a desired acceleration that is passed to the throttle acceleration controller
+    // @Range: 0.01 1.00
+    // @Increment: 0.01
+    // @User: Standard
+    AP_SUBGROUPINFO(_p_pos, "_POS_", 9, AP_Follow, AC_P),
+
     AP_GROUPEND
 };
 
@@ -103,7 +113,8 @@ const AP_Param::GroupInfo AP_Follow::var_info[] = {
    already know that we should setup the proximity sensor
 */
 AP_Follow::AP_Follow(const AP_AHRS &ahrs) :
-        _ahrs(ahrs)
+        _ahrs(ahrs),
+        _p_pos(AP_FOLLOW_POS_P_DEFAULT)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
