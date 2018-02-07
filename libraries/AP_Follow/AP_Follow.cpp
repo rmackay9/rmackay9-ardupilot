@@ -234,7 +234,7 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
         }
         // initialise _sysid if zero to sender's id
         if (_sysid == 0) {
-            _sysid = msg.msgid;
+            _sysid = msg.sysid;
         }
     }
 }
