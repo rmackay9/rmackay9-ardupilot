@@ -53,9 +53,10 @@ void Copter::ModeFollow::run()
         const Vector3f dist_vec_offs_neu(dist_vec_offs.x * 100.0f, dist_vec_offs.y * 100.0f, -dist_vec_offs.z * 100.0f);
 
         // calculate desired velocity vector in cm/s in NEU
-        desired_velocity.x = (vel_of_target.x * 100.0f) + (dist_vec_offs_neu.x * pos_control->get_pos_xy_p().kP());
-        desired_velocity.y = (vel_of_target.y * 100.0f) + dist_vec_offs_neu.y * pos_control->get_pos_xy_p().kP();
-        desired_velocity.z = (-vel_of_target.z * 100.0f) + dist_vec_offs_neu.z * pos_control->get_pos_z_p().kP();
+        const float kp = g2.follow.get_pos_p().kP();
+        desired_velocity.x = (vel_of_target.x * 100.0f) + (dist_vec_offs_neu.x * kp);
+        desired_velocity.y = (vel_of_target.y * 100.0f) + (dist_vec_offs_neu.y * kp);
+        desired_velocity.z = (-vel_of_target.z * 100.0f) + (dist_vec_offs_neu.z * kp);
 
         // scale desired velocity to stay within horizontal speed limit
         float desired_speed_xy = safe_sqrt(sq(desired_velocity.x) + sq(desired_velocity.y));
