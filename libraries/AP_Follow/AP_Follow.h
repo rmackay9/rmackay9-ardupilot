@@ -73,6 +73,9 @@ public:
     // parameter list
     static const struct AP_Param::GroupInfo var_info[];
 
+    // returns true if library is enabled
+    bool enabled() const { return _enabled; }
+
 private:
 
     // get velocity estimate in NED frame using dt since last update
