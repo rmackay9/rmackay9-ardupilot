@@ -27,6 +27,10 @@
 bool Copter::ModeFollow::init(const bool ignore_checks)
 {
     // re-use guided mode
+    gcs().send_text(MAV_SEVERITY_WARNING, "Follow-mode init");
+    if (!g2.follow.enabled()) {
+        return false;
+    }
     return Copter::ModeGuided::init(ignore_checks);
 }
 
