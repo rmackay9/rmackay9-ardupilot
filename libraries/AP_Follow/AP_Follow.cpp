@@ -22,6 +22,7 @@
 extern const AP_HAL::HAL& hal;
 
 #define AP_FOLLOW_TIMEOUT_MS    1000    // position estimate timeout after 1 second
+#define AP_GCS_INTERVAL_MS 1000 // interval between updating GCS on position of vehicle
 
 #define AP_FOLLOW_OFFSET_TYPE_NED       0   // offsets are in north-east-down frame
 #define AP_FOLLOW_OFFSET_TYPE_RELATIVE  0   // offsets are relative to lead vehicle's heading
@@ -117,6 +118,7 @@ AP_Follow::AP_Follow(const AP_AHRS &ahrs) :
         _p_pos(AP_FOLLOW_POS_P_DEFAULT)
 {
     AP_Param::setup_object_defaults(this, var_info);
+    _sysid_to_follow = _sysid;
 }
 
 // get target's estimated location
@@ -222,7 +224,13 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
     }
 
     // skip message if not from our target
-    if ((_sysid != 0) && (msg.sysid != _sysid)) {
+    if ((_sysid_to_follow != 0) && (msg.sysid != _sysid_to_follow)) {
+        if (_sysid == 0) {
+            // maybe timeout who we were following...
+            if ((_last_location_update_ms == 0) || (AP_HAL::millis() - _last_location_update_ms > AP_FOLLOW_TIMEOUT_MS)) {
+                _sysid_to_follow = 0;
+            }
+        }
         return;
     }
 
@@ -244,8 +252,15 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
             _last_heading_update_ms = now;
         }
         // initialise _sysid if zero to sender's id
-        if (_sysid == 0) {
-            _sysid = msg.sysid;
+        if (_sysid_to_follow == 0) {
+            _sysid_to_follow = msg.sysid;
+        }
+        if ((AP_HAL::millis() - _last_location_sent_to_gcs > AP_GCS_INTERVAL_MS)) {
+            gcs().send_text(MAV_SEVERITY_INFO, "Follow: %u %f %f %f\n",
+                            _sysid_to_follow,
+                            _target_location.lat,
+                            _target_location.lng,
+                            _target_location.alt);
         }
     }
 }
