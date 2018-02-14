@@ -12,8 +12,13 @@
  * TODO: ensure AC_AVOID_ENABLED is true because we rely on it velocity limiting functions
  */
 
-#if 0
-#define Debug(fmt, args ...)  do {::fprintf(stderr, "%s:%d: " fmt "\n", __FUNCTION__, __LINE__, ## args); hal.scheduler->delay(1); } while(0)
+#if 1
+#define Debug(fmt, args ...)  do {                                      \
+        gcs().send_text(MAV_SEVERITY_WARNING, fmt, ## args);            \
+    } while(0)
+#elif 0
+#define Debug(fmt, args ...)  do {                                      \
+    ::fprintf(stderr, "%s:%d: " fmt "\n", __FUNCTION__, __LINE__, ## args);
 #else
 #define Debug(fmt, args ...)
 #endif
