@@ -88,17 +88,17 @@ void Copter::ModeFollow::run()
 
         // slow down horizontally as we approach target (use 1/2 of maximum deceleration for gentle slow down)
         const float dist_to_target_xy = Vector2f(dist_vec_offs_neu.x, dist_vec_offs_neu.y).length();
-        _copter.avoid.limit_velocity(pos_control->get_pos_xy_p().kP().get(), pos_control->get_accel_xy() / 2.0f, desired_velocity_xy, dir_to_target_xy, dist_to_target_xy, _copter.G_Dt);
+        copter.avoid.limit_velocity(pos_control->get_pos_xy_p().kP().get(), pos_control->get_accel_xy() / 2.0f, desired_velocity_xy, dir_to_target_xy, dist_to_target_xy, copter.G_Dt);
 
         // limit the horizontal velocity to prevent fence violations
-        _copter.avoid.adjust_velocity(pos_control->get_pos_xy_p().kP().get(), pos_control->get_accel_xy(), desired_velocity_xy, G_Dt);
+        copter.avoid.adjust_velocity(pos_control->get_pos_xy_p().kP().get(), pos_control->get_accel_xy(), desired_velocity_xy, G_Dt);
 
         // copy horizontal velocity limits back to 3d vector
         desired_velocity.x = desired_velocity_xy.x;
         desired_velocity.y = desired_velocity_xy.y;
 
         // limit vertical desired_velocity to slow as we approach target (we use 1/2 of maximum deceleration for gentle slow down)
-        const float des_vel_z_max = _copter.avoid.get_max_speed(pos_control->get_pos_z_p().kP().get(), pos_control->get_accel_z() / 2.0f, fabsf(dist_vec_offs_neu.z), _copter.G_Dt);
+        const float des_vel_z_max = copter.avoid.get_max_speed(pos_control->get_pos_z_p().kP().get(), pos_control->get_accel_z() / 2.0f, fabsf(dist_vec_offs_neu.z), copter.G_Dt);
         desired_velocity.z = constrain_float(desired_velocity.z, -des_vel_z_max, des_vel_z_max);
 
         // get avoidance adjusted climb rate

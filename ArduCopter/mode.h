@@ -1092,9 +1092,8 @@ class ModeFollow : public ModeGuided {
 
 public:
 
-    ModeFollow(Copter &copter) :
-        Copter::ModeGuided(copter) {
-    }
+    // inherit constructor
+    using Copter::ModeGuided::Mode;
 
     bool init(bool ignore_checks) override;
     void run() override;
