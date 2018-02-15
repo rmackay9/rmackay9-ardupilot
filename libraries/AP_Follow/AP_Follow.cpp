@@ -237,15 +237,22 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
     // decode global-position-int message
     if (msg.msgid == MAVLINK_MSG_ID_GLOBAL_POSITION_INT) {
 
+        uint32_t now = AP_HAL::millis();
+
         // get estimated location and velocity (for logging)
         Location loc_estimate{};
         Vector3f vel_estimate;
         UNUSED_RESULT(get_target_location_and_velocity(loc_estimate, vel_estimate));
 
-        uint32_t now = AP_HAL::millis();
         // decode message
         mavlink_global_position_int_t packet;
         mavlink_msg_global_position_int_decode(&msg, &packet);
+
+        // ignore message if lat and lon are zero
+        if ((packet.lat != 0) || (packet.lon != 0)) {
+            return;
+        }
+
         _target_location.lat = packet.lat;
         _target_location.lng = packet.lon;
         _target_location.alt = packet.alt / 10;     // convert millimeters to cm
