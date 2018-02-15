@@ -56,7 +56,12 @@ void Copter::ModeFollow::run()
     Vector3f vel_of_target;  // velocity of lead vehicle
     if (g2.follow.get_target_dist_and_vel_ned(dist_vec, dist_vec_offs, vel_of_target)) {
         // debug
-        Debug("dist to veh: %f %f %f", (double)dist_vec.x, (double)dist_vec.y, (double)dist_vec.z);
+        static uint16_t counter = 0;
+        counter++;
+        if (counter >= 400) {
+            counter = 0;
+            Debug("dist to veh: %f %f %f", (double)dist_vec.x, (double)dist_vec.y, (double)dist_vec.z);
+        }
 
         // convert dist_vec_offs to cm in NEU
         const Vector3f dist_vec_offs_neu(dist_vec_offs.x * 100.0f, dist_vec_offs.y * 100.0f, -dist_vec_offs.z * 100.0f);
