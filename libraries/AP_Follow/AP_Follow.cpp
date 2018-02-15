@@ -238,9 +238,9 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
     if (msg.msgid == MAVLINK_MSG_ID_GLOBAL_POSITION_INT) {
 
         // get estimated location and velocity (for logging)
-        Location loc_estimate;
+        Location loc_estimate{};
         Vector3f vel_estimate;
-        get_target_location_and_velocity(loc_estimate, vel_estimate);
+        UNUSED_RESULT(get_target_location_and_velocity(loc_estimate, vel_estimate));
 
         uint32_t now = AP_HAL::millis();
         // decode message
@@ -266,7 +266,7 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
                             (unsigned)_sysid_to_follow,
                             (long)_target_location.lat,
                             (long)_target_location.lng,
-                            (double)_target_location.alt/100.0f);
+                            (double)(_target_location.alt * 0.01f));
         }
 
         // log lead's estimated vs reported position
