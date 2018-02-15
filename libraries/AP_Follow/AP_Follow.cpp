@@ -240,7 +240,7 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
         // get estimated location and velocity (for logging)
         Location loc_estimate;
         Vector3f vel_estimate;
-        bool estimate_ok = get_target_location_and_velocity(loc_estimate, vel_estimate)
+        bool estimate_ok = get_target_location_and_velocity(loc_estimate, vel_estimate);
 
         uint32_t now = AP_HAL::millis();
         // decode message
