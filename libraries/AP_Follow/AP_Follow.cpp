@@ -262,11 +262,11 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
             _sysid_to_follow = msg.sysid;
         }
         if ((AP_HAL::millis() - _last_location_sent_to_gcs > AP_GCS_INTERVAL_MS)) {
-            gcs().send_text(MAV_SEVERITY_INFO, "Follow: %u %f %f %f\n",
-                            _sysid_to_follow,
-                            _target_location.lat,
-                            _target_location.lng,
-                            _target_location.alt);
+            gcs().send_text(MAV_SEVERITY_INFO, "Foll: %u %ld %ld %4.2f\n",
+                            (unsigned)_sysid_to_follow,
+                            (long)_target_location.lat,
+                            (long)_target_location.lng,
+                            (double)_target_location.alt/100.0f);
         }
 
         // log lead's estimated vs reported position
