@@ -238,7 +238,7 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
     // decode global-position-int message
     if (msg.msgid == MAVLINK_MSG_ID_GLOBAL_POSITION_INT) {
 
-        uint32_t now = AP_HAL::millis();
+        const uint32_t now = AP_HAL::millis();
 
         // get estimated location and velocity (for logging)
         Location loc_estimate{};
