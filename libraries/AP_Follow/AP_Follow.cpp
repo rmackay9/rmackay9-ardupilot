@@ -21,7 +21,8 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define AP_FOLLOW_TIMEOUT_MS    1000    // position estimate timeout after 1 second
+#define AP_FOLLOW_TIMEOUT_MS    3000    // position estimate timeout after 1 second
+#define AP_FOLLOW_SYSID_TIMEOUT_MS 10000 // forget sysid we are following if we haave not heard from them in 10 seconds
 #define AP_GCS_INTERVAL_MS 1000 // interval between updating GCS on position of vehicle
 
 #define AP_FOLLOW_OFFSET_TYPE_NED       0   // offsets are in north-east-down frame
@@ -227,7 +228,7 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
     if ((_sysid_to_follow != 0) && (msg.sysid != _sysid_to_follow)) {
         if (_sysid == 0) {
             // maybe timeout who we were following...
-            if ((_last_location_update_ms == 0) || (AP_HAL::millis() - _last_location_update_ms > AP_FOLLOW_TIMEOUT_MS)) {
+            if ((_last_location_update_ms == 0) || (AP_HAL::millis() - _last_location_update_ms > AP_FOLLOW_SYSID_TIMEOUT_MS)) {
                 _sysid_to_follow = 0;
             }
         }
