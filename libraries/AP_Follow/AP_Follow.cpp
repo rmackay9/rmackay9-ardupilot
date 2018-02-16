@@ -248,8 +248,8 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
         mavlink_global_position_int_t packet;
         mavlink_msg_global_position_int_decode(&msg, &packet);
 
-        // ignore message if lat and lon are zero
-        if ((packet.lat != 0) || (packet.lon != 0)) {
+        // ignore message if lat and lon are (exactly) zero
+        if ((packet.lat == 0 && packet.lon == 0)) {
             return;
         }
 
