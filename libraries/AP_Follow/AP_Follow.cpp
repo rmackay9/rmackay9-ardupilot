@@ -281,7 +281,7 @@ void AP_Follow::handle_msg(const mavlink_message_t &msg)
         DataFlash_Class::instance()->Log_Write("FOLL",
                                                "TimeUS,Lat,Lon,Alt,VelX,VelY,VelZ,LatE,LonE,AltE",
                                                "QLLifffLLi",
-                                               now,
+                                               AP_HAL::micros64(),
                                                _target_location.lat,
                                                _target_location.lng,
                                                _target_location.alt,
