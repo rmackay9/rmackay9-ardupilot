@@ -344,6 +344,14 @@ public:
     void writeExtNavData(const Vector3f &pos, const Quaternion &quat, float posErr, float angErr, uint32_t timeStamp_ms, uint16_t delay_ms, uint32_t resetTime_ms);
 
     /*
+     * Write velocity data from an external navigation system
+     * vel : velocity in NED (m)
+     * timeStamp_ms : system time the measurement was taken, not the time it was received (mSec)
+     * delay_ms   : average delay of external nav system measurements relative to inertial measurements
+     */
+    void writeExtNavVelData(const Vector3f &vel, uint32_t timeStamp_ms, uint16_t delay_ms);
+
+    /*
       check if switching lanes will reduce the normalised
       innovations. This is called when the vehicle code is about to
       trigger an EKF failsafe, and it would like to avoid that by
