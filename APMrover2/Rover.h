@@ -276,8 +276,8 @@ private:
         // have we detected an obstacle?
         uint8_t detected_count;
         float turn_angle;
-        uint16_t rangefinder1_distance_cm;
-        uint16_t rangefinder2_distance_cm;
+        float dist_left;
+        float dist_right;
 
         // time when we last detected an obstacle, in milliseconds
         uint32_t detected_time_ms;
@@ -494,7 +494,7 @@ private:
     void Log_Write_Startup(uint8_t type);
     void Log_Write_Steering();
     void Log_Write_Throttle();
-    void Log_Write_Rangefinder();
+    void Log_Write_Avoidance();
     void Log_Write_RC(void);
     void Log_Write_WheelEncoder();
     void Log_Write_Vehicle_Startup_Messages();
@@ -536,6 +536,7 @@ private:
     void accel_cal_update(void);
     void read_rangefinders(void);
     void init_proximity();
+    void update_proximity();
     void read_airspeed();
     void update_sensor_status_flags(void);
 

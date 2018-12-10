@@ -25,7 +25,7 @@
 #define LOG_THR_MSG             0x01
 #define LOG_NTUN_MSG            0x02
 #define LOG_STARTUP_MSG         0x06
-#define LOG_RANGEFINDER_MSG     0x07
+#define LOG_AVOIDANCE_MSG       0x07
 #define LOG_ARM_DISARM_MSG      0x08
 #define LOG_STEERING_MSG        0x0D
 #define LOG_GUIDEDTARGET_MSG    0x0E
