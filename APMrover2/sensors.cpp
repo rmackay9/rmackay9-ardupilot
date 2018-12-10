@@ -191,6 +191,8 @@ void Rover::update_proximity()
     // update dodge avoidance state using proximity sensors
     // results used in Mode::calc_steering_from_lateral_acceleration
     if (g2.proximity.get_object_angle_and_distance(0, obstacle.angle, obstacle.distance)) {
+        // wrap angle into -180 ~ +180 range
+        obstacle.angle = wrap_180(obstacle.angle);
         const float trigger_dist = (g.rangefinder_trigger_cm * 0.01f);
         if (obstacle.distance <= trigger_dist)  {
             if (obstacle.detected_count < 127) {
