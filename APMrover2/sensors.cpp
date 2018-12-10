@@ -200,7 +200,7 @@ void Rover::update_proximity()
             }
             // send message to ground station
             if (obstacle.detected_count == g.rangefinder_debounce) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm", (unsigned)obstacle.dist_left);
+                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm", (double)obstacle.dist_left);
             }
             obstacle.detected_time_ms = AP_HAL::millis();
             obstacle.turn_angle = g.rangefinder_turn_angle;
@@ -211,7 +211,7 @@ void Rover::update_proximity()
             }
             // send message to ground station
             if (obstacle.detected_count == g.rangefinder_debounce) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle to right at %4.2fm", (unsigned)obstacle.dist_right);
+                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle to right at %4.2fm", (double)obstacle.dist_right);
             }
             obstacle.detected_time_ms = AP_HAL::millis();
             obstacle.turn_angle = -g.rangefinder_turn_angle;
