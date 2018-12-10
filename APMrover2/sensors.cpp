@@ -203,15 +203,19 @@ void Rover::update_proximity()
                 gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm, %4.0fdeg", (double)obstacle.distance, (double)obstacle.angle);
             }
             // turn_angle increases as object becomes closer
-            obstacle.turn_angle = (MAX(trigger_dist - obstacle.distance, 0.0f) / trigger_dist) * g.rangefinder_turn_angle * (obstacle.angle >= 0 ? -1 : +1);
-            obstacle.detected_time_ms = AP_HAL::millis();
+            if (obstacle.detected_count >= g.rangefinder_debounce) {
+                obstacle.turn_angle = (MAX(trigger_dist - obstacle.distance, 0.0f) / trigger_dist) * g.rangefinder_turn_angle * (obstacle.angle >= 0 ? -1 : +1);
+                obstacle.detected_time_ms = AP_HAL::millis();
+            }
         }
     }
 
     // no object detected - reset after the turn time
-    if (obstacle.detected_count >= g.rangefinder_debounce &&
-        AP_HAL::millis() > obstacle.detected_time_ms + g.rangefinder_turn_time * 1000) {
-        gcs().send_text(MAV_SEVERITY_INFO, "Obstacle passed");
+    uint32_t time_diff_ms = AP_HAL::millis() - obstacle.detected_time_ms;
+    if (time_diff_ms > (g.rangefinder_turn_time * 1000)) {
+        if (obstacle.detected_count >= g.rangefinder_debounce) {
+            gcs().send_text(MAV_SEVERITY_INFO, "Obstacle passed");
+        }
         obstacle.detected_count = 0;
         obstacle.turn_angle = 0;
     }
