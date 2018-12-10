@@ -193,25 +193,25 @@ void Rover::update_proximity()
     if (g2.proximity.get_horizontal_distance(-10, obstacle.dist_left) && g2.proximity.get_horizontal_distance(-10, obstacle.dist_right)) {
 
         // check distance slightly left and right of center
-        if ((obstacle.dist_left < g.rangefinder_trigger_cm) && (obstacle.dist_left <= obstacle.dist_right))  {
+        if (((obstacle.dist_left * 100.0f) < g.rangefinder_trigger_cm) && (obstacle.dist_left <= obstacle.dist_right))  {
             // we have an object straight ahead or to the left
             if (obstacle.detected_count < 127) {
                 obstacle.detected_count++;
             }
             // send message to ground station
             if (obstacle.detected_count == g.rangefinder_debounce) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %u cm", (unsigned)obstacle.dist_left);
+                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm", (unsigned)obstacle.dist_left);
             }
             obstacle.detected_time_ms = AP_HAL::millis();
             obstacle.turn_angle = g.rangefinder_turn_angle;
-        } else if (obstacle.dist_right < g.rangefinder_trigger_cm) {
+        } else if ((obstacle.dist_right * 100.0f) < g.rangefinder_trigger_cm) {
             // we have an object to the right
             if (obstacle.detected_count < 127) {
                 obstacle.detected_count++;
             }
             // send message to ground station
             if (obstacle.detected_count == g.rangefinder_debounce) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle to right at %u cm", (unsigned)obstacle.dist_right);
+                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle to right at %4.2fm", (unsigned)obstacle.dist_right);
             }
             obstacle.detected_time_ms = AP_HAL::millis();
             obstacle.turn_angle = -g.rangefinder_turn_angle;

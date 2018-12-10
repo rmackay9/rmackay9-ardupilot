@@ -265,8 +265,8 @@ struct PACKED log_Avoidance {
     LOG_PACKET_HEADER;
     uint64_t time_us;
     float    lateral_accel;
-    uint16_t dist_left;
-    uint16_t dist_right;
+    uint16_t dist_left_cm;
+    uint16_t dist_right_cm;
     uint16_t detected_count;
     int8_t   turn_angle;
     uint16_t turn_time;
@@ -285,8 +285,8 @@ void Rover::Log_Write_Avoidance()
         LOG_PACKET_HEADER_INIT(LOG_AVOIDANCE_MSG),
         time_us               : AP_HAL::micros64(),
         lateral_accel         : g2.attitude_control.get_desired_lat_accel(),
-        dist_left             : (uint16_t)obstacle.dist_left,
-        dist_right            : (uint16_t)obstacle.dist_right,
+        dist_left_cm          : (uint16_t)(obstacle.dist_left * 100.0f),
+        dist_right_cm         : (uint16_t)(obstacle.dist_right * 100.0f),
         detected_count        : obstacle.detected_count,
         turn_angle            : static_cast<int8_t>(obstacle.turn_angle),
         turn_time             : turn_time,
