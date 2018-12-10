@@ -190,19 +190,18 @@ void Rover::update_proximity()
 
     // update dodge avoidance state using proximity sensors
     // results used in Mode::calc_steering_from_lateral_acceleration
-    float obj_angle_deg, obj_distance;
-    if (g2.proximity.get_object_angle_and_distance(0, obj_angle_deg, obj_distance)) {
+    if (g2.proximity.get_object_angle_and_distance(0, obstacle.angle, obstacle.distance)) {
         const float trigger_dist = (g.rangefinder_trigger_cm * 0.01f);
-        if (obj_distance <= trigger_dist)  {
+        if (obstacle.distance <= trigger_dist)  {
             if (obstacle.detected_count < 127) {
                 obstacle.detected_count++;
             }
             // send message to ground station
             if (obstacle.detected_count == g.rangefinder_debounce) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm, %4.0fdeg", (double)obj_distance, (double)obj_angle_deg);
+                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm, %4.0fdeg", (double)obstacle.distance, (double)obstacle.angle);
             }
             // turn_angle increases as object becomes closer
-            obstacle.turn_angle = (MAX(trigger_dist - obj_distance, 0.0f) / trigger_dist) * g.rangefinder_turn_angle * (obj_angle_deg >= 0 ? -1 : +1);
+            obstacle.turn_angle = (MAX(trigger_dist - obstacle.distance, 0.0f) / trigger_dist) * g.rangefinder_turn_angle * (obstacle.angle >= 0 ? -1 : +1);
             obstacle.detected_time_ms = AP_HAL::millis();
         }
     }
@@ -220,20 +219,11 @@ void Rover::update_proximity()
     counter++;
     if (counter > 10) {
         counter = 0;
-        float closest_ang = 999.0f;
-        float closest_dist = 0.0f;
-        if (g2.proximity.get_closest_object(closest_ang, closest_dist)) {
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "L:%4.2f R:%4.2f An:%3.0f Di:%4.2f",
-                    (double)obstacle.dist_left,
-                    (double)obstacle.dist_right,
-                    (double)closest_ang,
-                    (double)closest_dist
-                    );
-        } else {
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "L:%4.2f R:%4.2f",
-                    (double)obstacle.dist_left,
-                    (double)obstacle.dist_right);
-        }
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "Ang:%4.2f Di:%4.2f Turn:%3.0f",
+                (double)obstacle.angle,
+                (double)obstacle.distance,
+                (double)obstacle.turn_angle
+                );
     }
 }
 

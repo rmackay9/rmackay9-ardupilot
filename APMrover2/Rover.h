@@ -276,8 +276,8 @@ private:
         // have we detected an obstacle?
         uint8_t detected_count;
         float turn_angle;
-        float dist_left;    // distance to object on left in meters
-        float dist_right;   // distance to object on right in meters
+        float angle;        // angle to obstacle in body frame (negative is left, positive right)
+        float distance;     // distance to obstacle in meters
 
         // time when we last detected an obstacle, in milliseconds
         uint32_t detected_time_ms;
