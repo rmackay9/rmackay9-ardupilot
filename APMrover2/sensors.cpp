@@ -190,31 +190,19 @@ void Rover::update_proximity()
 
     // update dodge avoidance state using proximity sensors
     // results used in Mode::calc_steering_from_lateral_acceleration
-    if (g2.proximity.get_horizontal_distance(-10, obstacle.dist_left) && g2.proximity.get_horizontal_distance(-10, obstacle.dist_right)) {
-
-        // check distance slightly left and right of center
-        if (((obstacle.dist_left * 100.0f) < g.rangefinder_trigger_cm) && (obstacle.dist_left <= obstacle.dist_right))  {
-            // we have an object straight ahead or to the left
+    float obj_angle_deg, obj_distance;
+    if (g2.proximity.get_object_angle_and_distance(0, obj_angle_deg, obj_distance)) {
+        // check distance to object is less than trigger distance
+        if (obj_distance <= (g.rangefinder_trigger_cm * 0.01f))  {
             if (obstacle.detected_count < 127) {
                 obstacle.detected_count++;
             }
             // send message to ground station
             if (obstacle.detected_count == g.rangefinder_debounce) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm", (double)obstacle.dist_left);
+                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm, %4.0fdeg", (double)obj_distance, (double)obj_angle_deg);
             }
+            obstacle.turn_angle = g.rangefinder_turn_angle * (obj_angle_deg >= 0 ? -1 : +1);
             obstacle.detected_time_ms = AP_HAL::millis();
-            obstacle.turn_angle = g.rangefinder_turn_angle;
-        } else if ((obstacle.dist_right * 100.0f) < g.rangefinder_trigger_cm) {
-            // we have an object to the right
-            if (obstacle.detected_count < 127) {
-                obstacle.detected_count++;
-            }
-            // send message to ground station
-            if (obstacle.detected_count == g.rangefinder_debounce) {
-                gcs().send_text(MAV_SEVERITY_INFO, "Obstacle to right at %4.2fm", (double)obstacle.dist_right);
-            }
-            obstacle.detected_time_ms = AP_HAL::millis();
-            obstacle.turn_angle = -g.rangefinder_turn_angle;
         }
     }
 
