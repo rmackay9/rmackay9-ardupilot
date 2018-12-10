@@ -192,8 +192,8 @@ void Rover::update_proximity()
     // results used in Mode::calc_steering_from_lateral_acceleration
     float obj_angle_deg, obj_distance;
     if (g2.proximity.get_object_angle_and_distance(0, obj_angle_deg, obj_distance)) {
-        // check distance to object is less than trigger distance
-        if (obj_distance <= (g.rangefinder_trigger_cm * 0.01f))  {
+        const float trigger_dist = (g.rangefinder_trigger_cm * 0.01f);
+        if (obj_distance <= trigger_dist)  {
             if (obstacle.detected_count < 127) {
                 obstacle.detected_count++;
             }
@@ -201,7 +201,8 @@ void Rover::update_proximity()
             if (obstacle.detected_count == g.rangefinder_debounce) {
                 gcs().send_text(MAV_SEVERITY_INFO, "Obstacle at %4.2fm, %4.0fdeg", (double)obj_distance, (double)obj_angle_deg);
             }
-            obstacle.turn_angle = g.rangefinder_turn_angle * (obj_angle_deg >= 0 ? -1 : +1);
+            // turn_angle increases as object becomes closer
+            obstacle.turn_angle = (MAX(trigger_dist - obj_distance, 0.0f) / trigger_dist) * g.rangefinder_turn_angle * (obj_angle_deg >= 0 ? -1 : +1);
             obstacle.detected_time_ms = AP_HAL::millis();
         }
     }
