@@ -205,8 +205,8 @@ void Rover::update_proximity()
             // turn_angle increases as object becomes closer
             if (obstacle.detected_count >= g.rangefinder_debounce) {
                 obstacle.turn_angle = (MAX(trigger_dist - obstacle.distance, 0.0f) / trigger_dist) * g.rangefinder_turn_angle * (obstacle.angle >= 0 ? -1 : +1);
-                obstacle.detected_time_ms = AP_HAL::millis();
             }
+            obstacle.detected_time_ms = AP_HAL::millis();
         }
     }
 
