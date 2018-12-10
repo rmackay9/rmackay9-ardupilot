@@ -225,6 +225,27 @@ void Rover::update_proximity()
         obstacle.detected_count = 0;
         obstacle.turn_angle = 0;
     }
+
+    // debug
+    static uint8_t counter = 0;
+    counter++;
+    if (counter > 10) {
+        counter = 0;
+        float closest_ang = 999.0f;
+        float closest_dist = 0.0f;
+        if (g2.proximity.get_closest_object(closest_ang, closest_dist)) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "L:%4.2f R:%4.2f An:%3.0f Di:%4.2f",
+                    (double)obstacle.dist_left,
+                    (double)obstacle.dist_right,
+                    (double)closest_ang,
+                    (double)closest_dist
+                    );
+        } else {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "L:%4.2f R:%4.2f",
+                    (double)obstacle.dist_left,
+                    (double)obstacle.dist_right);
+        }
+    }
 }
 
 /*
