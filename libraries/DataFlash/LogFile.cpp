@@ -184,6 +184,11 @@ void DataFlash_Class::Log_Write_RFND(const RangeFinder &rangefinder)
     AP_RangeFinder_Backend *s0 = rangefinder.get_backend(0);
     AP_RangeFinder_Backend *s1 = rangefinder.get_backend(1);
 
+    // skip logging if no range finders
+    if ((s0 == nullptr) && (s1 == nullptr)) {
+        return;
+    }
+
     struct log_RFND pkt = {
         LOG_PACKET_HEADER_INIT((uint8_t)(LOG_RFND_MSG)),
         time_us       : AP_HAL::micros64(),
