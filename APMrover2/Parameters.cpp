@@ -688,6 +688,20 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("MIS_DONE_BEHAVE", 38, ParametersG2, mis_done_behave, 0),
 
+    // @Param: CRASH_RECOVER_ENABLE
+    // @DisplayName: Crash Recover Enable
+    // @Description: Enable crash recovery. Zero disables recovery
+    // @Values: 0:Disable,1:Enable
+    // @User: Standard
+    AP_GROUPINFO("CRSH_RCVR_ENABLE", 39, ParametersG2, crash_recover_enable, 0),
+
+    // @Param: CRASH_RECOVER_ACTION
+    // @DisplayName: Crash Recover Action
+    // @Description: Enable crash recovery action. Zero do nothing
+    // @Values: 0:Wait, 1:Back
+    // @User: Standard
+    AP_GROUPINFO("CRSH_RCVR_ACTION", 40, ParametersG2, crash_recover_action, 0),
+
     AP_GROUPEND
 };
 

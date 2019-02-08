@@ -357,6 +357,8 @@ public:
 
     // pitch/roll angle for crash check
     AP_Int8 crash_angle;
+    AP_Int8 crash_recover_enable;
+    AP_Int8 crash_recover_action;
 
     // follow mode library
     AP_Follow follow;

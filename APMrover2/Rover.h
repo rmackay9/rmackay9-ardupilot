@@ -381,6 +381,27 @@ private:
         uint32_t auto_tack_start_ms;    // system time when tack was started in autonomous mode
     } sailboat;
 
+    // crash check
+    enum Crash_Stage {
+        CrashStage_None      = 0,
+        CrashStage_Detected  = 1,
+        CrashStage_Recovery  = 2,
+        CrashStage_Emergency = 3
+    };
+    enum Crash_Action {
+        CrashAction_Stay       = 0,
+        CrashAction_Back       = 1,
+        CrashAction_ChangeMode = 2
+    };
+    typedef struct {
+        uint16_t recovery_counter;
+        Mode *recovery_mode;
+        uint32_t detected_angle_ms;
+        uint32_t detected_vel_ms;
+        Crash_Stage stage;
+    } crashcheck_t;
+    crashcheck_t crashcheck;
+
 private:
 
     // APMrover2.cpp
@@ -416,6 +437,10 @@ private:
 
     // crash_check.cpp
     void crash_check();
+    void crash_check_init();
+    void crash_action();
+    bool crash_recovery_action();
+    bool is_recoverable_crash();
 
     // cruise_learn.cpp
     void cruise_learn_start();
