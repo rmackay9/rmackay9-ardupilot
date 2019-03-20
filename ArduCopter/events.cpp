@@ -6,6 +6,9 @@
  */
 void Copter::failsafe_radio_on_event()
 {
+    // turn off artificial clipping on rc failsafe
+    ins.set_artificial_clipping(0);
+
     // if motors are not armed there is nothing to do
     if( !motors->armed() ) {
         return;

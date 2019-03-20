@@ -233,5 +233,9 @@ void Copter::tuning()
          copter.mode_systemid.set_magnitude(tuning_value);
 #endif
          break;
-    }
+
+     case TUNING_ARTIFICIAL_CLIPPING:
+         ins.set_artificial_clipping(tuning_value);
+         break;
+     }
 }
