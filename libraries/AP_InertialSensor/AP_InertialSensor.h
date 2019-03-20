@@ -295,6 +295,9 @@ public:
         IMU_SENSOR_TYPE_GYRO = 1,
     };
 
+    // turn artificial clipping on/off
+    void set_artificial_clipping(float range_mss) { _artificial_clipping_range_mss = range_mss; }
+
     class BatchSampler {
     public:
         BatchSampler(const AP_InertialSensor &imu) :
@@ -608,6 +611,9 @@ private:
     uint32_t _startup_ms;
 
     uint8_t imu_kill_mask;
+
+    // artificial clipping limit
+    float _artificial_clipping_range_mss;
 };
 
 namespace AP {

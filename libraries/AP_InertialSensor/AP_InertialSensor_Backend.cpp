@@ -358,8 +358,17 @@ void AP_InertialSensor_Backend::_notify_new_accel_raw_sample(uint8_t instance,
     // call accel_sample hook if any
     AP_Module::call_hook_accel_sample(instance, dt, accel, fsync_set);
 #endif    
-    
+
     _imu.calc_vibration_and_clipping(instance, accel, dt);
+
+    // apply artificial clipping
+    Vector3f accel_clipped = accel;
+    if (is_positive(_imu._artificial_clipping_range_mss)) {
+        const float range_mss = _imu._artificial_clipping_range_mss;
+        accel_clipped.x = constrain_float(accel.x, -range_mss, range_mss);
+        accel_clipped.y = constrain_float(accel.y, -range_mss, range_mss);
+        accel_clipped.z = constrain_float(accel.z, -range_mss, range_mss);
+    }
 
     {
         WITH_SEMAPHORE(_sem);
@@ -374,10 +383,10 @@ void AP_InertialSensor_Backend::_notify_new_accel_raw_sample(uint8_t instance,
         }
         
         // delta velocity
-        _imu._delta_velocity_acc[instance] += accel * dt;
+        _imu._delta_velocity_acc[instance] += accel_clipped * dt;
         _imu._delta_velocity_acc_dt[instance] += dt;
 
-        _imu._accel_filtered[instance] = _imu._accel_filter[instance].apply(accel);
+        _imu._accel_filtered[instance] = _imu._accel_filter[instance].apply(accel_clipped);
         if (_imu._accel_filtered[instance].is_nan() || _imu._accel_filtered[instance].is_inf()) {
             _imu._accel_filter[instance].reset();
         }
@@ -388,7 +397,7 @@ void AP_InertialSensor_Backend::_notify_new_accel_raw_sample(uint8_t instance,
     }
 
     if (!_imu.batchsampler.doing_post_filter_logging()) {
-        log_accel_raw(instance, sample_us, accel);
+        log_accel_raw(instance, sample_us, accel_clipped);
     } else {
         log_accel_raw(instance, sample_us, _imu._accel_filtered[instance]);
     }

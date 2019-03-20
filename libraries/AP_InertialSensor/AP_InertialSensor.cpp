@@ -1635,13 +1635,14 @@ AuxiliaryBus *AP_InertialSensor::get_auxiliary_bus(int16_t backend_id, uint8_t i
 // calculate vibration levels and check for accelerometer clipping (called by a backends)
 void AP_InertialSensor::calc_vibration_and_clipping(uint8_t instance, const Vector3f &accel, float dt)
 {
-    // check for clipping
     if (_backends[instance] == nullptr) {
         return;
     }
-    if (fabsf(accel.x) >  _backends[instance]->get_clip_limit() ||
-        fabsf(accel.y) >  _backends[instance]->get_clip_limit() ||
-        fabsf(accel.z) > _backends[instance]->get_clip_limit()) {
+    // check for clipping
+    const float range_mss = is_positive(_artificial_clipping_range_mss) ? _artificial_clipping_range_mss : _backends[instance]->get_clip_limit();
+    if (fabsf(accel.x) > range_mss ||
+        fabsf(accel.y) > range_mss ||
+        fabsf(accel.z) > range_mss) {
         _accel_clip_count[instance]++;
     }
 
