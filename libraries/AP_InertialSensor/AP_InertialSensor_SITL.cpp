@@ -76,13 +76,13 @@ void AP_InertialSensor_SITL::generate_accel(uint8_t instance)
     float zAccel = sitl->state.zAccel + accel_bias.z;
     const Vector3f &vibe_freq = sitl->vibe_freq;
     if (vibe_freq.is_zero()) {
-        xAccel += accel_noise * rand_float();
-        yAccel += accel_noise * rand_float();
+        //xAccel += accel_noise * rand_float();
+        //yAccel += accel_noise * rand_float();
         zAccel += accel_noise * rand_float();
     } else {
         float t = AP_HAL::micros() * 1.0e-6f;
-        xAccel += sinf(t * 2 * M_PI * vibe_freq.x) * accel_noise;
-        yAccel += sinf(t * 2 * M_PI * vibe_freq.y) * accel_noise;
+        //xAccel += sinf(t * 2 * M_PI * vibe_freq.x) * accel_noise;
+        //yAccel += sinf(t * 2 * M_PI * vibe_freq.y) * accel_noise;
         zAccel += sinf(t * 2 * M_PI * vibe_freq.z) * accel_noise;
     }
     
