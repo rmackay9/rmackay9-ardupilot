@@ -66,7 +66,14 @@ void MissionItemProtocol::handle_mission_count(
     }
 
     if (packet.count > max_items()) {
+        // FIXME: different items take up different storage space!
         send_mission_ack(_link, msg, MAV_MISSION_NO_SPACE);
+        return;
+    }
+
+    MAV_MISSION_RESULT ret_alloc = allocate_receive_resources(packet.count);
+    if (ret_alloc != MAV_MISSION_ACCEPTED) {
+        send_mission_ack(_link, msg, ret_alloc);
         return;
     }
 
@@ -76,6 +83,7 @@ void MissionItemProtocol::handle_mission_count(
         // no requests to send...
         const MAV_MISSION_RESULT result = complete(_link);
         send_mission_ack(_link, msg, result);
+        free_upload_resources();
         return;
     }
 
@@ -235,6 +243,7 @@ void MissionItemProtocol::handle_mission_item(const mavlink_message_t &msg, cons
         send_mission_ack(msg, result);
         receiving = false;
         link = nullptr;
+        free_upload_resources();
         return;
     }
 
@@ -247,6 +256,7 @@ void MissionItemProtocol::handle_mission_item(const mavlink_message_t &msg, cons
         send_mission_ack(msg, complete_result);
         receiving = false;
         link = nullptr;
+        free_upload_resources();
         return;
     }
     // if we have enough space, then send the next WP request immediately
@@ -318,6 +328,7 @@ void MissionItemProtocol::update()
         receiving = false;
         timeout();
         link = nullptr;
+        free_upload_resources();
         return;
     }
     // resend request if we haven't gotten one:
