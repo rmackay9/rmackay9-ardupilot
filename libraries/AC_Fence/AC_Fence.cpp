@@ -109,7 +109,7 @@ uint8_t AC_Fence::get_enabled_fences() const
 }
 
 // additional checks for the polygon fence:
-bool AC_Fence::pre_arm_check_polygon(const char* &fail_msg) const
+bool AC_Fence::pre_arm_check_polygon(const char* &fail_msg)
 {
     if (!(_enabled_fences & AC_FENCE_TYPE_POLYGON)) {
         // not enabled; all good
@@ -146,7 +146,7 @@ bool AC_Fence::pre_arm_check_alt(const char* &fail_msg) const
 
 
 /// pre_arm_check - returns true if all pre-takeoff checks have completed successfully
-bool AC_Fence::pre_arm_check(const char* &fail_msg) const
+bool AC_Fence::pre_arm_check(const char* &fail_msg)
 {
     fail_msg = nullptr;
 
@@ -426,116 +426,15 @@ void AC_Fence::manual_recovery_start()
     _manual_recovery_start_ms = AP_HAL::millis();
 }
 
-/// returns pointer to array of polygon points and num_points is filled in with the total number
+/// returns pointer to array of inclusion fence comprised of polygon
+/// points and num_points is filled in with the total number
 Vector2f* AC_PolyFence_loader::get_boundary_points(uint16_t& num_points) const
 {
-    // return array minus the first point which holds the return location
-    if (_boundary == nullptr) {
+    if (loaded_inclusion_boundary == nullptr) {
         return nullptr;
     }
-    if (!valid()) {
-        return nullptr;
-    }
-    // minus one for return point, minus one for closing point
-    // (polygon().valid() is not true unless we have a closing point AND
-    // we have a minumum number of points)
-    if (_boundary_num_points < 2) {
-        return nullptr;
-    }
-    num_points = _boundary_num_points - 2;
-    return &_boundary[1];
-}
-
-/// handler for polygon fence messages with GCS
-void AC_PolyFence_loader::handle_msg(GCS_MAVLINK &link, const mavlink_message_t& msg)
-{
-    switch (msg.msgid) {
-        // receive a fence point from GCS and store in EEPROM
-        case MAVLINK_MSG_ID_FENCE_POINT: {
-            mavlink_fence_point_t packet;
-            mavlink_msg_fence_point_decode(&msg, &packet);
-            if (!check_latlng(packet.lat,packet.lng)) {
-                link.send_text(MAV_SEVERITY_WARNING, "Invalid fence point, lat or lng too large");
-            } else {
-                Vector2l point;
-                point.x = packet.lat*1.0e7f;
-                point.y = packet.lng*1.0e7f;
-                if (!save_point_to_eeprom(packet.idx, point)) {
-                    link.send_text(MAV_SEVERITY_WARNING, "Failed to save polygon point, too many points?");
-                } else {
-                    // trigger reload of points
-                    _boundary_num_points = 0;
-                }
-            }
-            break;
-        }
-
-        // send a fence point to GCS
-        case MAVLINK_MSG_ID_FENCE_FETCH_POINT: {
-            mavlink_fence_fetch_point_t packet;
-            mavlink_msg_fence_fetch_point_decode(&msg, &packet);
-            // attempt to retrieve from eeprom
-            Vector2l point;
-            if (load_point_from_eeprom(packet.idx, point)) {
-                mavlink_msg_fence_point_send(link.get_chan(), msg.sysid, msg.compid, packet.idx, _total, point.x*1.0e-7f, point.y*1.0e-7f);
-            } else {
-                link.send_text(MAV_SEVERITY_WARNING, "Bad fence point");
-            }
-            break;
-        }
-
-        default:
-            // do nothing
-            break;
-    }
-}
-
-/// load polygon points stored in eeprom into boundary array and perform validation
-bool AC_PolyFence_loader::load_from_eeprom()
-{
-    // check if we need to create array
-    if (!_create_attempted) {
-        _boundary = (Vector2f *)create_point_array(sizeof(Vector2f));
-        _create_attempted = true;
-    }
-
-    // exit if we could not allocate RAM for the boundary
-    if (_boundary == nullptr) {
-        return false;
-    }
-
-    // get current location from EKF
-    Location temp_loc;
-    if (!AP::ahrs_navekf().get_location(temp_loc)) {
-        return false;
-    }
-    struct Location ekf_origin {};
-    if (!AP::ahrs().get_origin(ekf_origin)) {
-        return false;
-    }
-
-    // sanity check total
-    _total = constrain_int16(_total, 0, max_points());
-
-    // load each point from eeprom
-    Vector2l temp_latlon;
-    for (uint16_t index=0; index<_total; index++) {
-        // load boundary point as lat/lon point
-        if (!load_point_from_eeprom(index, temp_latlon)) {
-            return false;
-        }
-        // move into location structure and convert to offset from ekf origin
-        temp_loc.lat = temp_latlon.x;
-        temp_loc.lng = temp_latlon.y;
-        _boundary[index] = ekf_origin.get_distance_NE(temp_loc) * 100.0f;
-    }
-    _boundary_num_points = _total;
-    _update_ms = AP_HAL::millis();
-
-    // update validity of polygon
-    _valid = calculate_boundary_valid();
-
-    return true;
+    num_points = loaded_inclusion_point_count;
+    return loaded_inclusion_boundary;
 }
 
 // methods for mavlink SYS_STATUS message (send_sys_status)
@@ -565,7 +464,7 @@ bool AC_Fence::sys_status_failed() const
         return true;
     }
     if (_enabled_fences & AC_FENCE_TYPE_POLYGON) {
-        if (!_poly_loader.valid()) {
+        if (!_poly_loader.valid_const()) {
             return true;
         }
     }
@@ -590,6 +489,9 @@ bool AC_Fence::sys_status_failed() const
 
     return false;
 }
+
+class AC_PolyFence_loader &AC_Fence::polyfence() { return _poly_loader; }
+const class AC_PolyFence_loader &AC_Fence::polyfence_const() const { return _poly_loader; }
 
 // singleton instance
 AC_Fence *AC_Fence::_singleton;

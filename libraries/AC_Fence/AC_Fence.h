@@ -51,7 +51,7 @@ public:
     uint8_t get_enabled_fences() const;
 
     /// pre_arm_check - returns true if all pre-takeoff checks have completed successfully
-    bool pre_arm_check(const char* &fail_msg) const;
+    bool pre_arm_check(const char* &fail_msg);
 
     ///
     /// methods to check we are within the boundaries and recover
@@ -106,8 +106,8 @@ public:
     // get singleton instance
     static AC_Fence *get_singleton() { return _singleton; }
 
-    AC_PolyFence_loader &polyfence() { return _poly_loader; }
-    const AC_PolyFence_loader &polyfence_const() const { return _poly_loader; }
+    class AC_PolyFence_loader &polyfence();
+    const class AC_PolyFence_loader &polyfence_const() const;
 
 private:
     static AC_Fence *_singleton;
@@ -128,7 +128,7 @@ private:
     void clear_breach(uint8_t fence_type);
 
     // additional checks for the different fence types:
-    bool pre_arm_check_polygon(const char* &fail_msg) const;
+    bool pre_arm_check_polygon(const char* &fail_msg);
     bool pre_arm_check_circle(const char* &fail_msg) const;
     bool pre_arm_check_alt(const char* &fail_msg) const;
 

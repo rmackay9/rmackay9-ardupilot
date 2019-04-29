@@ -1,8 +1,31 @@
 #pragma once
 
 #include <AP_Common/AP_Common.h>
+#include <AP_Common/Location.h>
 #include <AP_Math/AP_Math.h>
-#include <GCS_MAVLink/GCS.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
+
+enum class AC_PolyFenceType {
+    END_OF_STORAGE    = 99,
+    POLYGON_INCLUSION = 98,
+    POLYGON_EXCLUSION = 97,
+    CIRCLE_EXCLUSION  = 96,
+    RETURN_POINT = 95,
+};
+
+// a FenceItem is just a means of passing data about an item into
+// and out of the polyfence loader.  It uses a AC_PolyFenceType to
+// indicate the item type, assuming each fence type is made up of
+// only one sort of item.
+// FIXME: make this a union to save space (or a sublcass thing)
+class AC_PolyFenceItem {
+public:
+    AC_PolyFenceType type;
+    // FIXME: make this a Vector2l
+    Vector2l loc;
+    uint8_t vertex_count;
+    float radius;
+};
 
 class AC_PolyFence_loader
 {
@@ -17,56 +40,178 @@ public:
 
     /// returns pointer to array of polygon points and num_points is
     /// filled in with the total number.  This does not include the
-    /// return point or the closing point.
+    /// return point or the closing point.  This is the inclusion fence
     Vector2f* get_boundary_points(uint16_t& num_points) const;
 
-    /// handler for polygon fence messages with GCS
-    void handle_msg(GCS_MAVLINK &link, mavlink_message_t* msg);
+    // methods primarily for MissionItemProtocol_Fence to use:
+    // return the total number of points stored
+    uint16_t num_stored_items() const { return _eeprom_item_count; }
+    bool get_item(const uint16_t seq, AC_PolyFenceItem &item) WARN_IF_UNUSED;
+    // bool replace_item(const uint16_t seq, const AC_PolyFenceItem &item) WARN_IF_UNUSED;
+    // bool append_item(const AC_PolyFenceItem &item) WARN_IF_UNUSED;
+    bool truncate(uint8_t num) WARN_IF_UNUSED;
 
-    bool breached();
+    /// handler for polygon fence messages with GCS
+    void handle_msg(class GCS_MAVLINK &link, const mavlink_message_t& msg);
+
+    bool breached() WARN_IF_UNUSED;
     //   returns true if location is outside the boundary
-    bool breached(const Location& loc);
+    bool breached(const Location& loc) WARN_IF_UNUSED;
 
     //   returns true if boundary is valid
-    bool valid() const {
-        return _valid;
-    }
+    bool valid_const() const WARN_IF_UNUSED { return _boundary != nullptr; }
+
+    //   returns true if boundary is valid
+    bool valid() WARN_IF_UNUSED;
 
     // returns the system in in millis when the boundary was last updated
     uint32_t update_ms() const {
         return _update_ms;
     }
 
+    uint8_t num_exclusion_fences() { return _num_loaded_exclusion_boundaries; }
+
+    bool get_stored_return_point(Vector2f &ret) const WARN_IF_UNUSED {
+        if (_loaded_return_point == nullptr) {
+            return false;
+        }
+        ret = *_loaded_return_point;
+        return true;
+    }
+
+    bool loaded() const WARN_IF_UNUSED;
+
+    uint16_t eeprom_item_count() {
+        return _eeprom_item_count;
+    }
+
+    // maximum number of fence points we can store in eeprom
+    uint16_t max_items() const;
+
+    bool validate_fence(const AC_PolyFenceItem *new_items, uint16_t count) const WARN_IF_UNUSED;
+    bool write_fence(const AC_PolyFenceItem *new_items, uint16_t count)  WARN_IF_UNUSED;
+
 private:
 
-    bool breached(const Vector2f& location);
     /// load polygon points stored in eeprom into boundary array and
     /// perform validation.  returns true if load successfully
     /// completed
-    bool load_from_eeprom();
+    bool load_from_eeprom() WARN_IF_UNUSED;
+    bool format() WARN_IF_UNUSED;
 
-    // maximum number of fence points we can store in eeprom
-    uint8_t max_points() const;
+    bool get_return_point(Vector2l &ret) const WARN_IF_UNUSED;
 
-    // create buffer to hold copy of eeprom points in RAM
-    // returns nullptr if not enough memory can be allocated
-    void* create_point_array(uint8_t element_size);
+    bool breached(const Vector2f& location)  WARN_IF_UNUSED;
 
     // load boundary point from eeprom, returns true on successful load
-    bool load_point_from_eeprom(uint16_t i, Vector2l& point);
-
-    // save a fence point to eeprom, returns true on successful save
-    bool save_point_to_eeprom(uint16_t i, const Vector2l& point);
+    bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
 
     // update the validity flag:
-    bool calculate_boundary_valid() const;
+    bool calculate_boundary_valid() const WARN_IF_UNUSED;
+
+    class FenceIndex {
+    public:
+        AC_PolyFenceType type;
+        uint16_t count;
+        uint16_t storage_offset;
+    };
 
     Vector2f *_boundary;          // array of boundary points.  Note: point 0 is the return point
+    // FIXME:
+    static FenceIndex *_boundary_index;   // array specifying type of each boundary point
     uint8_t _boundary_num_points; // number of points in the boundary array (should equal _total parameter after load has completed)
-    bool   _create_attempted;     // true if we have attempted to create the boundary array
-    bool   _valid;                // true if boundary forms a closed polygon
-    uint32_t        _update_ms;   // system time of last update to the boundary
+    static uint16_t _num_fences;
+
+    uint32_t        _update_ms;   // system time of last update to the boundary in storage
+
+    void void_index() {
+        free(_boundary_index);
+        _boundary_index = nullptr;
+        free(_boundary);
+        _boundary = nullptr;
+    }
+
+    bool check_indexed() WARN_IF_UNUSED;
 
     AP_Int8 &_total;
-};
 
+    template<typename T>
+    bool calculate_centroid(T *points, uint16_t count, T &centroid) WARN_IF_UNUSED;
+    // if no return point is present, and the boundary is complete,
+    // fill the return point with the centroid of the boundary both
+    // within eeprom and in points
+
+    FenceIndex *find_first_fence(const AC_PolyFenceType type) const;
+    FenceIndex *get_or_create_include_fence();
+    FenceIndex *get_or_create_return_point();
+    void create_return_point();
+
+    uint16_t eos_offset;
+
+    bool formatted_for_new_storage() const WARN_IF_UNUSED;
+    bool format_for_new_storage() WARN_IF_UNUSED;
+    bool contains_compatible_fence() const WARN_IF_UNUSED;
+
+    bool find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const WARN_IF_UNUSED;
+    bool find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const WARN_IF_UNUSED;
+
+    void handle_msg_fetch_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
+    void handle_msg_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
+
+    static const uint8_t new_fence_storage_magic = 235; // FIXME: ensure this is out-of-band for old lat/lon point storage
+
+    // pointer into the boundary point array where the inclusion fence
+    // can be found, and the number of points in that boundary:
+    Vector2f *loaded_inclusion_boundary;
+    uint8_t loaded_inclusion_point_count;
+
+    // pointer into the boundary point array where the return point
+    // can be found:
+    Vector2f *_loaded_return_point;
+
+    // pointers into the boundary point array where exclusion polygons
+    // can be found:
+    static const uint8_t MAX_EXCLUSION_BOUNDARIES = 10;
+    Vector2f *_loaded_exclusion_boundary[MAX_EXCLUSION_BOUNDARIES];
+    uint8_t _loaded_exclusion_point_count[MAX_EXCLUSION_BOUNDARIES];
+    uint8_t _num_loaded_exclusion_boundaries;
+
+    // FIXME?  this is getting nasty; consider just having two arrays
+    class ExclusionCircle {
+    public:
+        float lat() const { return float(((float*)this)[0]); }
+        float lon() const { return float(((float*)this)[1]); }
+        float radius() const { return float(((float*)this)[2]); }
+        Vector2f loc() const {
+            return Vector2f(((float*)this)[0], ((float*)this)[1]);
+        }
+    };
+
+    bool _load_attempted;
+
+    static const uint8_t MAX_CIRCLE_EXCLUSION_BOUNDARIES = 2;
+    ExclusionCircle *_loaded_circle_exclusion_boundary[MAX_CIRCLE_EXCLUSION_BOUNDARIES];
+    uint8_t _num_loaded_circle_exclusion_boundaries;
+
+    bool convert_to_new_storage() WARN_IF_UNUSED;
+    bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f *&next_storage_point) WARN_IF_UNUSED;
+    bool read_polygon_from_storage(const Location &origin,
+                                   uint16_t &read_offset,
+                                   const uint8_t vertex_count,
+                                   Vector2f *&next_storage_point) WARN_IF_UNUSED;
+
+    bool write_type_to_storage(uint16_t &offset, AC_PolyFenceType type) WARN_IF_UNUSED;
+    bool write_latlon_to_storage(uint16_t &offset, const Vector2l &latlon) WARN_IF_UNUSED;
+    bool write_fenceitem_to_storage(uint16_t &offset, const AC_PolyFenceItem &item) WARN_IF_UNUSED;
+    bool read_latlon_from_storage(uint16_t &read_offset, Vector2l &latlon) const WARN_IF_UNUSED;
+
+    bool scan_eeprom(void (*callback)(AC_PolyFenceType type, uint16_t offset)) WARN_IF_UNUSED;
+    static void scan_eeprom_count_fences(const AC_PolyFenceType type, uint16_t read_offset);
+    static void scan_eeprom_index_fences(const AC_PolyFenceType type, uint16_t read_offset);
+    bool count_eeprom_fences() WARN_IF_UNUSED;
+    bool index_eeprom() WARN_IF_UNUSED;
+    bool create_compatible_fence() WARN_IF_UNUSED;
+
+    static uint16_t _eeprom_fence_count;
+    static uint16_t _eeprom_item_count;
+};
