@@ -96,6 +96,13 @@ private:
                             const mavlink_message_t &msg,
                             const int16_t _request_first,
                             const int16_t _request_last);
+    virtual MAV_MISSION_RESULT allocate_receive_resources(const uint16_t count) {
+        return MAV_MISSION_ACCEPTED;
+    }
+    virtual MAV_MISSION_RESULT allocate_update_resources() {
+        return MAV_MISSION_ACCEPTED;
+    }
+    virtual void free_upload_resources() { }
 
     void send_mission_ack(const mavlink_message_t &msg, MAV_MISSION_RESULT result) const;
     void send_mission_ack(const GCS_MAVLINK &link, const mavlink_message_t &msg, MAV_MISSION_RESULT result) const;

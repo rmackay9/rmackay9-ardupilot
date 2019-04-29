@@ -16,6 +16,7 @@
  */
 #include "GCS.h"
 
+#include <AC_Fence/AC_Fence.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Arming/AP_Arming.h>
@@ -446,6 +447,8 @@ MissionItemProtocol *GCS::get_prot_for_mission_type(const MAV_MISSION_TYPE missi
         return _missionitemprotocol_waypoints;
     case MAV_MISSION_TYPE_RALLY:
         return _missionitemprotocol_rally;
+    case MAV_MISSION_TYPE_FENCE:
+        return _missionitemprotocol_fence;
     default:
         return nullptr;
     }
@@ -1863,12 +1866,19 @@ void GCS::update_send()
         if (rally != nullptr) {
             _missionitemprotocol_rally = new MissionItemProtocol_Rally(*rally);
         }
+        AC_Fence *fence = AP::fence();
+        if (fence != nullptr) {
+            _missionitemprotocol_fence = new MissionItemProtocol_Fence(*fence);
+        }
     }
     if (_missionitemprotocol_waypoints != nullptr) {
         _missionitemprotocol_waypoints->update();
     }
     if (_missionitemprotocol_rally != nullptr) {
         _missionitemprotocol_rally->update();
+    }
+    if (_missionitemprotocol_fence != nullptr) {
+        _missionitemprotocol_fence->update();
     }
     for (uint8_t i=0; i<num_gcs(); i++) {
         if (chan(i).initialised) {
@@ -3804,6 +3814,11 @@ bool GCS_MAVLINK::try_send_mission_message(const enum ap_message id)
         gcs().try_send_queued_message_for_type(MAV_MISSION_TYPE_RALLY);
         ret = true;
         break;
+    case MSG_NEXT_MISSION_REQUEST_FENCE:
+        CHECK_PAYLOAD_SIZE(MISSION_REQUEST);
+        gcs().try_send_queued_message_for_type(MAV_MISSION_TYPE_FENCE);
+        ret = true;
+        break;
     default:
         ret = true;
         break;
@@ -4039,6 +4054,7 @@ bool GCS_MAVLINK::try_send_message(const enum ap_message id)
     case MSG_MISSION_ITEM_REACHED:
     case MSG_NEXT_MISSION_REQUEST_WAYPOINTS:
     case MSG_NEXT_MISSION_REQUEST_RALLY:
+    case MSG_NEXT_MISSION_REQUEST_FENCE:
         ret = try_send_mission_message(id);
         break;
 
@@ -4552,6 +4568,10 @@ uint64_t GCS_MAVLINK::capabilities() const
 
     if (AP::rally()) {
         ret |= MAV_PROTOCOL_CAPABILITY_MISSION_RALLY;
+    }
+    if (AP::fence()) {
+        // FIXME: plane also supports this...
+        ret |= MAV_PROTOCOL_CAPABILITY_MISSION_FENCE;
     }
     return ret;
 }
