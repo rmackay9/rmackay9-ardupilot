@@ -2,10 +2,6 @@
 
 #include <AC_Fence/AC_Fence.h>
 
-#include <AP_HAL/HAL.h>
-
-extern const AP_HAL::HAL& hal;
-
 MAV_MISSION_RESULT MissionItemProtocol_Fence::get_item(const GCS_MAVLINK &_link,
                                                        const mavlink_message_t &msg,
                                                        const mavlink_mission_request_int_t &packet,
@@ -13,7 +9,6 @@ MAV_MISSION_RESULT MissionItemProtocol_Fence::get_item(const GCS_MAVLINK &_link,
 {
     const uint8_t num_stored_items = fence.polyfence().num_stored_items();
     if (packet.seq > num_stored_items) {
-        gcs().send_text(MAV_SEVERITY_INFO, "request for seq=%u >stored_items=%i", packet.seq, num_stored_items);
         return MAV_MISSION_INVALID_SEQUENCE;
     }
 
@@ -51,7 +46,6 @@ MAV_MISSION_RESULT MissionItemProtocol_Fence::get_item(const GCS_MAVLINK &_link,
     ret_packet.y = fenceitem.loc.y;
     ret_packet.z = 0;
 
-    gcs().send_text(MAV_SEVERITY_WARNING, "Got fence point %u", packet.seq);
     return MAV_MISSION_ACCEPTED;
 }
 
@@ -60,7 +54,6 @@ uint16_t MissionItemProtocol_Fence::item_count() const
     if (receiving) {
         return _new_items_count;
     }
-    hal.console->printf("### count is %u\n", fence.polyfence().eeprom_item_count());
     return fence.polyfence().eeprom_item_count();
 }
 
