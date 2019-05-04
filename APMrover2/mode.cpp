@@ -192,22 +192,8 @@ void Mode::set_desired_location(const struct Location& destination, float next_l
     g2.wp_nav.set_desired_location(destination, next_leg_bearing_cd);
 
     // initialise distance
-    _distance_to_destination = _origin.get_distance(_destination);
+    _distance_to_destination = g2.wp_nav.get_distance_to_destination();
     _reached_destination = false;
-}
-
-// set desired location as an offset from the EKF origin in NED frame
-bool Mode::set_desired_location_NED(const Vector3f& destination, float next_leg_bearing_cd)
-{
-    Location destination_ned;
-    // initialise destination to ekf origin
-    if (!ahrs.get_origin(destination_ned)) {
-        return false;
-    }
-    // apply offset
-    destination_ned.offset(destination.x, destination.y);
-    set_desired_location(destination_ned, next_leg_bearing_cd);
-    return true;
 }
 
 // set desired heading and speed
