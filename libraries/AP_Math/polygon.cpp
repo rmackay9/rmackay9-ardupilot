@@ -131,8 +131,7 @@ template bool Polygon_complete<float>(const Vector2f *V, unsigned n);
  */
 bool Polygon_intersects(const Vector2f *V, unsigned N, const Vector2f &p1, const Vector2f &p2, Vector2f &intersection)
 {
-    bool intersects = false;
-    float intersect_dist_sq = 0.0f;
+    float intersect_dist_sq = FLT_MAX;
     for (uint8_t i=0; i<N-1; i++) {
         const Vector2f &v1 = V[i];
         const Vector2f &v2 = V[i+1];
@@ -152,14 +151,13 @@ bool Polygon_intersects(const Vector2f *V, unsigned N, const Vector2f &p1, const
         Vector2f intersect_tmp;
         if (Vector2f::segment_intersection(v1,v2,p1,p2,intersect_tmp)) {
             float dist_sq = sq(intersect_tmp.x - p1.x) + sq(intersect_tmp.y - p1.y);
-            if (!intersects || dist_sq < intersect_dist_sq) {
-                intersects = true;
+            if (dist_sq < intersect_dist_sq) {
                 intersect_dist_sq = dist_sq;
                 intersection = intersect_tmp;
             }
         }
     }
-    return intersects;
+    return (intersect_dist_sq < FLT_MAX);
 }
 
 /*
