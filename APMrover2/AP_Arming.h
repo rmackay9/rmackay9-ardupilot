@@ -28,6 +28,7 @@ public:
 
 protected:
     bool proximity_check(bool report);
+    bool oa_check(bool report);
 
 private:
 
