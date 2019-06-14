@@ -44,16 +44,16 @@ public:
     // allow use as an array for assigning to elements. no bounds checking is performed
     T &operator[](uint16_t i)
     {
-        const uint16_t chunk_num = i % chunk_size;
-        const uint16_t chunk_index = i - chunk_num;
+        const uint16_t chunk_num = i / chunk_size;
+        const uint16_t chunk_index = i % chunk_size;
         return chunk_ptrs[chunk_num][chunk_index];
     }
 
     // allow use as an array for accessing elements. no bounds checking is performed
     const T &operator[](uint16_t i) const
     {
-        const uint16_t chunk_num = i % chunk_size;
-        const uint16_t chunk_index = i - chunk_num;
+        const uint16_t chunk_num = i / chunk_size;
+        const uint16_t chunk_index = i % chunk_size;
         return chunk_ptrs[chunk_num][chunk_index];
     }
 
