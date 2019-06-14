@@ -86,7 +86,7 @@ public:
     ///     called by update_z_controller if z-axis speed or accelerations are changed
     void calc_leash_length_z();
 
-    /// set_alt_target - set altitude target in cm above home
+    /// set_alt_target - set altitude target in cm above ekf origin
     void set_alt_target(float alt_cm) { _pos_target.z = alt_cm; }
 
     /// set_alt_target_with_slew - adjusts target towards a final altitude target
@@ -123,7 +123,7 @@ public:
     /// relax_alt_hold_controllers - set all desired and targets to measured
     void relax_alt_hold_controllers(float throttle_setting);
 
-    /// get_alt_target - get desired altitude (in cm above home) from loiter or wp controller which should be fed into throttle controller
+    /// get_alt_target - get desired altitude (in cm above ekf origin) from loiter or wp controller which should be fed into throttle controller
     float get_alt_target() const { return _pos_target.z; }
 
     /// get_alt_error - returns altitude error in cm
@@ -132,7 +132,7 @@ public:
     // returns horizontal error in cm
     float get_horizontal_error() const;
 
-    /// set_target_to_stopping_point_z - sets altitude target to reasonable stopping altitude in cm above home
+    /// set_target_to_stopping_point_z - sets altitude target to reasonable stopping altitude in cm above ekf origin
     void set_target_to_stopping_point_z();
 
     /// get_stopping_point_z - calculates stopping point based on current position, velocity, vehicle acceleration
@@ -144,7 +144,7 @@ public:
     // is_active - returns true if the z-axis position controller has been run very recently
     bool is_active_z() const;
 
-    /// update_z_controller - fly to altitude in cm above home
+    /// update_z_controller - fly to altitude in cm above ekf origin
     void update_z_controller();
 
     // get_leash_down_z, get_leash_up_z - returns vertical leash lengths in cm
@@ -185,13 +185,13 @@ public:
     /// set the horizontal leash length
     void set_leash_length_xy(float leash) { _leash = leash; _flags.recalc_leash_xy = false; }
 
-    /// get_pos_target - get target as position vector (from home in cm)
+    /// get_pos_target - get target as position vector (from ekf origin in cm)
     const Vector3f& get_pos_target() const { return _pos_target; }
 
-    /// set_pos_target in cm from home
+    /// set_pos_target in cm from ekf origin
     void set_pos_target(const Vector3f& position);
 
-    /// set_xy_target in cm from home
+    /// set_xy_target in cm from ekf origin
     void set_xy_target(float x, float y);
 
     /// shift position target target in x, y axis
@@ -231,7 +231,7 @@ public:
     ///     when use_desired_velocity is true the desired velocity (i.e. feed forward) is incorporated at the pos_to_rate step
     void update_xy_controller();
 
-    /// set_target_to_stopping_point_xy - sets horizontal target to reasonable stopping position in cm from home
+    /// set_target_to_stopping_point_xy - sets horizontal target to reasonable stopping position in cm from ekf origin
     void set_target_to_stopping_point_xy();
 
     /// get_stopping_point_xy - calculates stopping point based on current position, velocity, vehicle acceleration
@@ -401,7 +401,7 @@ protected:
     float       _pitch_target;          // desired roll pitch in centi-degrees calculated by position controller
 
     // position controller internal variables
-    Vector3f    _pos_target;            // target location in cm from home
+    Vector3f    _pos_target;            // target location in cm from ekf origin
     Vector3f    _pos_error;             // error between desired and actual position in cm
     Vector3f    _vel_desired;           // desired velocity in cm/s
     Vector3f    _vel_target;            // velocity target in cm/s calculated by pos_to_rate step

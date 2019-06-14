@@ -389,7 +389,7 @@ float AC_PosControl::get_alt_error() const
     return (_pos_target.z - _inav.get_altitude());
 }
 
-/// set_target_to_stopping_point_z - returns reasonable stopping altitude in cm above home
+/// set_target_to_stopping_point_z - returns reasonable stopping altitude in cm above ekf origin
 void AC_PosControl::set_target_to_stopping_point_z()
 {
     // check if z leash needs to be recalculated
@@ -461,7 +461,7 @@ bool AC_PosControl::is_active_z() const
     return ((AP_HAL::micros64() - _last_update_z_us) <= POSCONTROL_ACTIVE_TIMEOUT_US);
 }
 
-/// update_z_controller - fly to altitude in cm above home
+/// update_z_controller - fly to altitude in cm above ekf origin
 void AC_PosControl::update_z_controller()
 {
     // check time since last cast
@@ -652,7 +652,7 @@ void AC_PosControl::set_max_speed_xy(float speed_cms)
     }
 }
 
-/// set_pos_target in cm from home
+/// set_pos_target in cm from ekf origin
 void AC_PosControl::set_pos_target(const Vector3f& position)
 {
     _pos_target = position;
@@ -665,7 +665,7 @@ void AC_PosControl::set_pos_target(const Vector3f& position)
     //_pitch_target = constrain_int32(_ahrs.pitch_sensor,-_attitude_control.lean_angle_max(),_attitude_control.lean_angle_max());
 }
 
-/// set_xy_target in cm from home
+/// set_xy_target in cm from ekf origin
 void AC_PosControl::set_xy_target(float x, float y)
 {
     _pos_target.x = x;
@@ -680,7 +680,7 @@ void AC_PosControl::shift_pos_xy_target(float x_cm, float y_cm)
     _pos_target.y += y_cm;
 }
 
-/// set_target_to_stopping_point_xy - sets horizontal target to reasonable stopping position in cm from home
+/// set_target_to_stopping_point_xy - sets horizontal target to reasonable stopping position in cm from ekf origin
 void AC_PosControl::set_target_to_stopping_point_xy()
 {
     // check if xy leash needs to be recalculated
