@@ -28,29 +28,77 @@ public:
         expand(1);
     }
 
-    //AP_ExpandingArray<T>(uint16_t initial_size, uint16_t elements_per_chunk);
+    AP_ExpandingArray<T>(uint16_t num_chunks, uint16_t elements_per_chunk) :
+        chunk_size(elements_per_chunk)
+    {   // create requested number of chunks
+        expand(num_chunks);
+    }
 
     /* Do not allow copies */
-    //AP_ExpandingArray<T>(const AP_ExpandingArray<T> &other) = delete;
-    //AP_ExpandingArray<T> &operator=(const AP_ExpandingArray<T>&) = delete;
+    AP_ExpandingArray<T>(const AP_ExpandingArray<T> &other) = delete;
+    AP_ExpandingArray<T> &operator=(const AP_ExpandingArray<T>&) = delete;
 
     // current maximum number of items (using expand may increase this)
     uint16_t max_items() const { return chunk_size * chunk_count; }
 
-    // allow use as an array. no bounds checking is performed
-    T &operator[](uint16_t i);
-    const T &operator[](uint16_t i) const;
+    // allow use as an array for assigning to elements. no bounds checking is performed
+    T &operator[](uint16_t i)
+    {
+        const uint16_t chunk_num = i % chunk_size;
+        const uint16_t chunk_index = i - chunk_num;
+        return chunk_ptrs[chunk_num][chunk_index];
+    }
 
-    // expand the array by 1 chunk, returns true on success
-    bool expand(uint16_t num_chunks = 1);
+    // allow use as an array for accessing elements. no bounds checking is performed
+    const T &operator[](uint16_t i) const
+    {
+        const uint16_t chunk_num = i % chunk_size;
+        const uint16_t chunk_index = i - chunk_num;
+        return chunk_ptrs[chunk_num][chunk_index];
+    }
+
+    // expand the array by specified number of chunks, returns true on success
+    bool expand(uint16_t num_chunks = 1)
+    {
+        // expand chunk_ptrs array if necessary
+        if (chunk_count + num_chunks >= chunk_count_max) {
+            uint16_t chunk_ptr_size = chunk_count + num_chunks + chunk_ptr_increment;
+            chunk_ptr *chunk_ptrs_new = (chunk_ptr*)calloc(chunk_ptr_size, sizeof(T*));
+            if (chunk_ptrs_new == nullptr) {
+                return false;
+            }
+            // copy pointers to new points array
+            memcpy(chunk_ptrs_new, chunk_ptrs, chunk_count_max * sizeof(T*));
+
+            // free old pointers array
+            delete chunk_ptrs;
+
+            // use new pointers array
+            chunk_ptrs = chunk_ptrs_new;
+            chunk_count_max = chunk_ptr_size;
+        }
+
+        // allocate new chunks
+        for (uint16_t i = 0; i < num_chunks; i++) {
+            T *new_chunk = (T *)calloc(chunk_size, sizeof(T));
+            if (new_chunk == nullptr) {
+                // failed to allocate new chunk
+                return false;
+            }
+            chunk_ptrs[chunk_count] = new_chunk;
+            chunk_count++;
+        }
+        return true;
+    }
 
 private:
 
     // chunk_ptrs array is grown by this many elements each time it fills
     const uint16_t chunk_ptr_increment = 50;
 
+    typedef T* chunk_ptr;
     uint16_t chunk_size;        // the number of T elements in each chunk
-    T *chunk_ptrs;              // table of pointers to allocated chunks
+    chunk_ptr* chunk_ptrs;      // array of pointers to allocated chunks
     uint16_t chunk_count_max;   // number of elements in chunk_ptrs array
     uint16_t chunk_count;       // number of allocated chunks
 };
