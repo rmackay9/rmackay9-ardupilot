@@ -248,7 +248,7 @@ void Rover::update_logging2(void)
 void Rover::one_second_loop(void)
 {
     // expanding array debug
-    ::printf("-----------\n");
+    /*::printf("-----------\n");
     ::printf("count: %d count_max:%d\n",(int)_ab_array_count,(int)_ab_array.max_items());
     for (uint16_t i=0; i<_ab_array_count; i++) {
         ::printf("%d a:%d b:%d\n",(int)i,(int)_ab_array[i].a,(int)_ab_array[i].b);
@@ -265,6 +265,7 @@ void Rover::one_second_loop(void)
         _ab_array_count++;
     }
     ::printf("-----------\n");
+    */
 
     // allow orientation change at runtime to aid config
     ahrs.update_orientation();
