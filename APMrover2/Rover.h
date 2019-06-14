@@ -504,6 +504,15 @@ public:
 
     // sailboat enabled
     bool get_sailboat_enable() { return g2.sailboat.enabled(); }
+
+    // expanding array debug
+    typedef struct {
+        uint16_t a;
+        uint16_t b;
+    } AB;
+
+    AP_ExpandingArray<AB> _ab_array;
+    uint16_t _ab_array_count;
 };
 
 extern const AP_HAL::HAL& hal;

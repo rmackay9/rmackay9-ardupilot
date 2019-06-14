@@ -30,6 +30,7 @@ Rover::Rover(void) :
     logger{g.log_bitmask},
     modes(&g.mode1),
     control_mode(&mode_initializing),
-    G_Dt(0.02f)
+    G_Dt(0.02f),
+    _ab_array(1,5)
 {
 }
