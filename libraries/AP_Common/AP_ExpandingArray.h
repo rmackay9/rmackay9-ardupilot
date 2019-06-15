@@ -91,6 +91,17 @@ public:
         return true;
     }
 
+    // expand to hold at least num_items
+    bool expand_to_hold(uint16_t num_items)
+    {
+        // check if already big enough
+        if (num_items <= max_items()) {
+            return true;
+        }
+        uint16_t chunks_required = ((num_items - max_items()) / chunk_size) + 1;
+        return expand(chunks_required);
+    }
+
 private:
 
     // chunk_ptrs array is grown by this many elements each time it fills
