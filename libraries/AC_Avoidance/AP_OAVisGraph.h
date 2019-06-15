@@ -58,9 +58,7 @@ public:
 
 private:
 
-    VisGraphItem *_items;
-    uint8_t _num_items_max;
+    AP_ExpandingArray<VisGraphItem> _items;
     uint8_t _num_items;
 
-    AP_ExpandingArray<VisGraphItem> _vis_items;
 };
