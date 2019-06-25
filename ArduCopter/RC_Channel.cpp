@@ -564,6 +564,12 @@ void RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const aux_sw
 #endif
             break;
 
+        case AUX_FUNC::STAR:
+#if MODE_STAR_ENABLED == ENABLED
+            do_aux_function_change_mode(control_mode_t::STAR, ch_flag);
+#endif
+            break;
+
     default:
         RC_Channel::do_aux_function(ch_option, ch_flag);
         break;

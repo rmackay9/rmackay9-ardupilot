@@ -380,7 +380,7 @@ void Copter::update_auto_armed()
         // if motors are armed and throttle is above zero auto_armed should be true
         // if motors are armed and we are in throw mode, then auto_armed should be true
         } else if (motors->armed() && !ap.using_interlock) {
-            if(!ap.throttle_zero || control_mode == THROW) {
+            if(!ap.throttle_zero || control_mode == THROW || control_mode == STAR) {
                 set_auto_armed(true);
             }
         }

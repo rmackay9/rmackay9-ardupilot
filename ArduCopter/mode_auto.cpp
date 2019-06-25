@@ -22,12 +22,14 @@
 // auto_init - initialise auto controller
 bool ModeAuto::init(bool ignore_checks)
 {
+    fprintf(stderr,"[%s:%d] Entering... Num cmd=%d\n", __FUNCTION__, __LINE__, mission.num_commands());
     if (mission.num_commands() > 1 || ignore_checks) {
         _mode = Auto_Loiter;
 
         // reject switching to auto mode if landed with motors armed but first command is not a takeoff (reduce chance of flips)
         if (motors->armed() && copter.ap.land_complete && !mission.starts_with_takeoff_cmd()) {
             gcs().send_text(MAV_SEVERITY_CRITICAL, "Auto: Missing Takeoff Cmd");
+            fprintf(stderr,"[%s:%d] Leaving w/ return false.\n", __FUNCTION__, __LINE__);
             return false;
         }
 
@@ -45,8 +47,10 @@ bool ModeAuto::init(bool ignore_checks)
 
         // start/resume the mission (based on MIS_RESTART parameter)
         mission.start_or_resume();
+        fprintf(stderr,"[%s:%d] Leaving w/ return false.\n", __FUNCTION__, __LINE__);
         return true;
     } else {
+        fprintf(stderr,"[%s:%d] Leaving w/ return false.\n", __FUNCTION__, __LINE__);
         return false;
     }
 }
@@ -56,6 +60,8 @@ bool ModeAuto::init(bool ignore_checks)
 //      relies on run_autopilot being called at 10hz which handles decision making and non-navigation related commands
 void ModeAuto::run()
 {
+    //fprintf(stderr,"[%s:%d] Entering... mode=\n", __FUNCTION__, __LINE__, _mode);
+
     // call the correct auto controller
     switch (_mode) {
 
@@ -401,6 +407,7 @@ void ModeAuto::payload_place_start()
 // start_command - this function will be called when the ap_mission lib wishes to start a new command
 bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 {
+    fprintf(stderr,"[%s:%d] Entering...\n", __FUNCTION__, __LINE__);
     // To-Do: logging when new commands start/end
     if (copter.should_log(MASK_LOG_CMD)) {
         copter.logger.Write_Mission_Cmd(mission, cmd);
@@ -533,6 +540,7 @@ bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 // exit_mission - function that is called once the mission completes
 void ModeAuto::exit_mission()
 {
+    fprintf(stderr,"[%s:%d] Entering...\n", __FUNCTION__, __LINE__);
     // play a tone
     AP_Notify::events.mission_complete = 1;
     // if we are not on the ground switch to loiter or land
@@ -632,6 +640,7 @@ Return true if we do not recognize the command so that we move on to the next co
 //      we double check that the flight mode is AUTO to avoid the possibility of ap-mission triggering actions while we're not in AUTO mode
 bool ModeAuto::verify_command(const AP_Mission::Mission_Command& cmd)
 {
+    fprintf(stderr,"[%s:%d] Entering...\n", __FUNCTION__, __LINE__);
     if (copter.flightmode != &copter.mode_auto) {
         return false;
     }

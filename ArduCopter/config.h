@@ -366,6 +366,12 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Star - allow vehicle to fly in a star shape with predefined point A to E via B, C and D.
+#ifndef MODE_STAR_ENABLED
+# define MODE_STAR_ENABLED ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 // Beacon support - support for local positioning systems
 #ifndef BEACON_ENABLED
 # define BEACON_ENABLED !HAL_MINIMIZE_FEATURES

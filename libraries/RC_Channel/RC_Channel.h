@@ -170,7 +170,8 @@ public:
         ALTHOLD   =           70, // althold mode
         FLOWHOLD  =           71, // flowhold mode
         CIRCLE    =           72, // circle mode
-        DRIFT     =           73  // drift mode
+        DRIFT     =           73, // drift mode
+        STAR      =           74, // star mode
         // if you add something here, make sure to update the documentation of the parameter in RC_Channel.cpp!
         // also, if you add an option >255, you will need to fix duplicate_options_exist
     };

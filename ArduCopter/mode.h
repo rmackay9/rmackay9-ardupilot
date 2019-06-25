@@ -1240,7 +1240,7 @@ protected:
     uint32_t last_log_ms;   // system time of last time desired velocity was logging
 };
 
-class ModeZigZag : public Mode {        
+class ModeZigZag : public Mode {
 
 public:
 
@@ -1283,4 +1283,83 @@ private:
     } stage;
 
     uint32_t reach_wp_time_ms = 0;  // time since vehicle reached destination (or zero if not yet reached)
+};
+
+class ModeStar : public Mode {
+
+public:
+
+    // inherit constructor
+    using Mode::Mode;
+
+    bool init(bool ignore_checks) override;
+    void run() override;
+
+    bool requires_GPS() const override { return true; }
+    bool has_manual_throttle() const override { return false; }
+    bool allows_arming(bool from_gcs) const override { return false; }
+    bool is_autopilot() const override { return true; }
+
+    // Auto
+    AutoMode mode() const { return _mode; }
+
+    void rtl_start();
+    void takeoff_start(const Location& dest_loc);
+    void takeoff_run();
+	void wp_run();
+    void wp_start(const Location& dest_loc);
+	void land_run();
+	void rtl_run();
+	void loiter_run();
+
+    // save current position as A (dest_num = 0) or B (dest_num = 1).  If both A and B have been saved move to the one specified
+    void save_or_move_to_destination(uint8_t dest_num);
+
+    // return manual control to the pilot
+    void return_to_manual_control(bool maintain_target);
+
+    // for GCS_MAVLink to call:
+    bool do_guided(const AP_Mission::Mission_Command& cmd);
+
+	/*
+    AP_Mission mission {
+        FUNCTOR_BIND_MEMBER(&ModeStar::start_command, bool, const AP_Mission::Mission_Command &),
+        FUNCTOR_BIND_MEMBER(&ModeStar::verify_command, bool, const AP_Mission::Mission_Command &),
+        FUNCTOR_BIND_MEMBER(&ModeStar::exit_mission, void)
+	};
+	*/
+
+protected:
+
+    const char *name() const override { return "STAR"; }
+    const char *name4() const override { return "STAR"; }
+
+    uint32_t wp_distance() const override;
+    int32_t wp_bearing() const override;
+
+private:
+
+    bool start_command(const AP_Mission::Mission_Command& cmd);
+    bool verify_command(const AP_Mission::Mission_Command& cmd);
+    void exit_mission();
+
+	bool setup_star_wp();
+	float calc_scale();
+    void auto_control();
+    void manual_control();
+    bool reached_destination();
+    bool calculate_next_dest(uint8_t position_num, bool use_wpnav_alt, Vector3f& next_dest, bool& terrain_alt) const;
+
+    AutoMode _mode = Auto_TakeOff;   // controls which auto controller is run
+
+    void do_yaw(const AP_Mission::Mission_Command& cmd);
+
+    Vector3f origin;    // in NEU frame in cm relative to ekf origin
+    Location startLoc;  // Starting location
+	int curDest = 0;
+	const int numDest = 6;
+	Location wPnts[6];
+	float side_length = 50.0;   // [m]
+
+	bool completed = false;
 };
