@@ -35,6 +35,10 @@ public:
 
 private:
 
+    //
+    // polygon fence related methods
+    //
+
     // returns true if polygon fence is enabled
     bool polygon_fence_enabled() const;
 
@@ -44,6 +48,25 @@ private:
     // create a smaller polygon fence within the existing polygon fence
     // returns true on success
     bool create_polygon_fence_with_margin(float margin_cm);
+
+    //
+    // exclusion polygon methods
+    //
+
+    // check if exclusion polygons have been updated since create_exclusion_polygon_with_margin was run
+    // returns true if changed
+    bool check_exclusion_polygon_updated() const;
+
+    // create polygons around existing exclusion polygons
+    // returns true on success
+    bool create_exclusion_polygon_with_margin(float margin_cm);
+
+    //
+    // others methods
+    //
+
+    // returns true if line segment intersects polygon or circular fence
+    bool intersects_fence(const Vector2f &seg_start, const Vector2f &seg_end) const;
 
     // create a visibility graph of the polygon fence
     // returns true on success
@@ -58,6 +81,7 @@ private:
 
     // shortest path state variables
     bool _polyfence_with_margin_ok;
+    bool _exclusion_polygon_with_margin_ok;
     bool _polyfence_visgraph_ok;
     bool _shortest_path_ok;
 
@@ -70,10 +94,15 @@ private:
     uint8_t _polyfence_numpoints;
     uint32_t _polyfence_update_ms;  // system time of boundary update from AC_Fence (used to detect changes to polygon fence)
 
+    // exclusion polygon related variables
+    AP_ExpandingArray<Vector2f> _exclusion_polygon_pts; // array of nodes corresponding to exclusion polygon points plus a margin
+    uint8_t _exclusion_polygon_numpoints;   // number of points held in above array
+    uint32_t _exclusion_polygon_update_ms;  // system time exclusion polygon was updated (used to detect changes)
+
     // visibility graphs
-    AP_OAVisGraph _polyfence_visgraph;
-    AP_OAVisGraph _source_visgraph;
-    AP_OAVisGraph _destination_visgraph;
+    AP_OAVisGraph _polyfence_visgraph;      // holds distances between all polygon fence points (with margin) and exclusion polygon points (with margin)
+    AP_OAVisGraph _source_visgraph;         // holds distances from source point to all other nodes
+    AP_OAVisGraph _destination_visgraph;    // holds distances from the destination to all other nodes
 
     // updates visibility graph for a given position which is an offset (in cm) from the ekf origin
     // to add an additional position (i.e. the destination) set add_extra_position = true and provide the position in the extra_position argument
@@ -90,6 +119,7 @@ private:
     };
     AP_ExpandingArray<ShortPathNode> _short_path_data;
     node_index _short_path_data_numpoints;  // number of elements in _short_path_data array
+    node_index _short_path_data_excl_poly_start;    // index into _short_path_data of first exclusion polygon point (used by find_node_from_id)
 
     // update total distance for all nodes visible from current node
     // curr_node_idx is an index into the _short_path_data array
