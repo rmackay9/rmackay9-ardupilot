@@ -25,6 +25,7 @@
 /// Constructor
 AP_OADijkstra::AP_OADijkstra() :
         _polyfence_pts(OA_DIJKSTRA_EXPANDING_ARRAY_ELEMENTS_PER_CHUNK),
+        _exclusion_polygon_pts(OA_DIJKSTRA_EXPANDING_ARRAY_ELEMENTS_PER_CHUNK),
         _short_path_data(OA_DIJKSTRA_EXPANDING_ARRAY_ELEMENTS_PER_CHUNK),
         _path(OA_DIJKSTRA_EXPANDING_ARRAY_ELEMENTS_PER_CHUNK)
 {
@@ -54,11 +55,26 @@ AP_OADijkstra::AP_OADijkstra_State AP_OADijkstra::update(const Location &current
         _shortest_path_ok = false;
     }
 
+    // check for exclusion polygon updates
+    if (check_exclusion_polygon_updated()) {
+        _exclusion_polygon_with_margin_ok = false;
+        _polyfence_visgraph_ok = false;
+        _shortest_path_ok = false;
+    }
+
     // create inner polygon fence
     if (!_polyfence_with_margin_ok) {
         _polyfence_with_margin_ok = create_polygon_fence_with_margin(_polyfence_margin * 100.0f);
         if (!_polyfence_with_margin_ok) {
             AP::logger().Write_OADijkstra(DIJKSTRA_STATE_ERROR, 0, 0, destination, destination);
+            return DIJKSTRA_STATE_ERROR;
+        }
+    }
+
+    // create exclusion polygon outer fence
+    if (!_exclusion_polygon_with_margin_ok) {
+        _exclusion_polygon_with_margin_ok = create_exclusion_polygon_with_margin(_polyfence_margin * 100.0f);
+        if (!_exclusion_polygon_with_margin_ok) {
             return DIJKSTRA_STATE_ERROR;
         }
     }
@@ -217,6 +233,129 @@ bool AP_OADijkstra::create_polygon_fence_with_margin(float margin_cm)
     return true;
 }
 
+// check if exclusion polygons have been updated since create_exclusion_polygon_with_margin was run
+// returns true if changed
+bool AP_OADijkstra::check_exclusion_polygon_updated() const
+{
+    // exit immediately if polygon fence is not enabled
+    const AC_Fence *fence = AC_Fence::get_singleton();
+    if (fence == nullptr) {
+        return false;
+    }
+    return (_exclusion_polygon_update_ms != fence->get_exclusion_polygon_update_ms());
+}
+
+// create polygons around existing exclusion polygons
+// returns true on success
+bool AP_OADijkstra::create_exclusion_polygon_with_margin(float margin_cm)
+{
+    // exit immediately if polygon fence is not enabled
+    const AC_Fence *fence = AC_Fence::get_singleton();
+    if (fence == nullptr) {
+        return false;
+    }
+
+    // clear all points
+    _exclusion_polygon_numpoints = 0;
+
+    // return immediately if no exclusion polygons
+    const uint16_t num_exclusion_polygons = fence->get_exclusion_polygon_count();
+
+    // iterate through exclusion polygons and create outer points
+    for (uint16_t i = 0; i < num_exclusion_polygons; i++) {
+        uint16_t num_points;
+        const Vector2f* boundary = fence->get_exclusion_polygon(i, num_points);
+        if (num_points < 3) {
+            // ignore exclusion polygons with less than 3 points
+            continue;
+        }
+
+        // expand array if required
+        if (!_exclusion_polygon_pts.expand_to_hold(_exclusion_polygon_numpoints + num_points)) {
+            return false;
+        }
+
+        // for each point in exclusion polygon
+        // Note: boundary is "unclosed" meaning the last point is *not* the same as the first
+        for (uint8_t j=0; j<num_points; j++) {
+
+            // find points before and after current point (relative to current point)
+            const uint8_t before_idx = (j == 0) ? num_points-1 : j-1;
+            const uint8_t after_idx = (j == num_points-1) ? 0 : j+1;
+            Vector2f before_pt = boundary[before_idx] - boundary[j];
+            Vector2f after_pt = boundary[after_idx] - boundary[j];
+
+            // if points are overlapping fail
+            if (before_pt.is_zero() || after_pt.is_zero() || (before_pt == after_pt)) {
+                return false;
+            }
+
+            // scale points to be unit vectors
+            before_pt.normalize();
+            after_pt.normalize();
+
+            // calculate intermediate point and scale to margin
+            Vector2f intermediate_pt = (after_pt + before_pt) * 0.5f;
+            float intermediate_len = intermediate_pt.length();
+            intermediate_pt *= (margin_cm / intermediate_len);
+
+            // find final point which is outside the original polygon
+            uint16_t next_index = _exclusion_polygon_numpoints + j;
+            _exclusion_polygon_pts[next_index] = boundary[j] + intermediate_pt;
+            if (!Polygon_outside(_exclusion_polygon_pts[next_index], boundary, num_points)) {
+                _exclusion_polygon_pts[next_index] = boundary[j] - intermediate_pt;
+                if (!Polygon_outside(_exclusion_polygon_pts[next_index], boundary, num_points)) {
+                    // could not find a point on either side that was outside the exclusion polygon so fail
+                    // this may happen if the exclusion polygon has overlapping lines
+                    return false;
+                }
+            }
+        }
+
+        // update total number of points
+        _exclusion_polygon_numpoints += num_points;
+    }
+
+    // record fence update time so we don't process these exclusion polygons again
+    _exclusion_polygon_update_ms = fence->get_exclusion_polygon_update_ms();
+
+    return true;
+}
+
+// returns true if line segment intersects polygon or circular fence
+bool AP_OADijkstra::intersects_fence(const Vector2f &seg_start, const Vector2f &seg_end) const
+{
+    // exit immediately if fence is not enabled
+    const AC_Fence *fence = AC_Fence::get_singleton();
+    if (fence == nullptr) {
+        return false;
+    }
+
+    // determine if segment crosses the polygon fence
+    uint16_t num_points;
+    const Vector2f* boundary = fence->get_boundary_points(num_points);
+    if ((boundary != nullptr) && (num_points >= 3)) {
+        Vector2f intersection;
+        if (Polygon_intersects(boundary, num_points, seg_start, seg_end, intersection)) {
+            return true;
+        }
+    }
+
+    // determine if segment crosses any of the exclusion polygons
+    for (uint8_t i=0; i<fence->get_exclusion_polygon_count(); i++) {
+        boundary = fence->get_exclusion_polygon(i, num_points);
+        if ((boundary != nullptr) && (num_points >= 3)) {
+            Vector2f intersection;
+            if (Polygon_intersects(boundary, num_points, seg_start, seg_end, intersection)) {
+                return true;
+            }
+        }
+    }
+
+    // if we got this far then no intersection
+    return false;
+}
+
 // create a visibility graph of the polygon fence
 // returns true on success
 // requires create_polygon_fence_with_margin to have been run
@@ -248,19 +387,44 @@ bool AP_OADijkstra::create_polygon_fence_visgraph()
     // clear polygon visibility graph
     _polyfence_visgraph.clear();
 
-    // calculate distance from each polygon fence point to all other points
+    // calculate distance from each polygon fence point to all polygon points and exclusion polygon points
     for (uint8_t i=0; i<_polyfence_numpoints-1; i++) {
         const Vector2f &start1 = _polyfence_pts[i];
+
+        // calculate distance to other polygon fence points
         for (uint8_t j=i+1; j<_polyfence_numpoints; j++) {
             const Vector2f &end1 = _polyfence_pts[j];
-            Vector2f intersection;
-            // ToDo: calculation below could be sped up by removing unused intersection and
-            //       skipping segments we know are parallel to our fence-with-margin segments
-            if (!Polygon_intersects(boundary, num_points, start1, end1, intersection)) {
-                // line segment does not intersect with original fence so add to visgraph
+            if (!intersects_fence(start1, end1)) {
+                // line segment does not intersect with original fence or exclusion polygons so add to visgraph
                 _polyfence_visgraph.add_item({AP_OAVisGraph::OATYPE_FENCE_POINT, i},
                                              {AP_OAVisGraph::OATYPE_FENCE_POINT, j},
                                              (_polyfence_pts[i] - _polyfence_pts[j]).length());
+            }
+        }
+
+        // calculate distance to exclusion polygon points
+        for (uint8_t j=0; j<_exclusion_polygon_numpoints; j++) {
+            const Vector2f &end1 = _exclusion_polygon_pts[j];
+            if (!intersects_fence(start1, end1)) {
+                // line segment does not intersect with original fence or exclusion polygons so add to visgraph
+                _polyfence_visgraph.add_item({AP_OAVisGraph::OATYPE_FENCE_POINT, i},
+                                             {AP_OAVisGraph::OATYPE_EXCL_POLY, j},
+                                             (_polyfence_pts[i] - _exclusion_polygon_pts[j]).length());
+            }
+        }
+    }
+
+    // calculate distances between exclusion polygon points
+    for (uint8_t i=0; i<_exclusion_polygon_numpoints-1; i++) {
+        const Vector2f &start1 = _exclusion_polygon_pts[i];
+        // calculate distance to exclusion polygon points
+        for (uint8_t j=i+1; j<_exclusion_polygon_numpoints; j++) {
+            const Vector2f &end1 = _exclusion_polygon_pts[j];
+            if (!intersects_fence(start1, end1)) {
+                // line segment does not intersect with original fence or exclusion polygons so add to visgraph
+                _polyfence_visgraph.add_item({AP_OAVisGraph::OATYPE_EXCL_POLY, i},
+                                             {AP_OAVisGraph::OATYPE_EXCL_POLY, j},
+                                             (_exclusion_polygon_pts[i] - _exclusion_polygon_pts[j]).length());
             }
         }
     }
@@ -279,36 +443,29 @@ bool AP_OADijkstra::update_visgraph(AP_OAVisGraph& visgraph, const AP_OAVisGraph
         return false;
     }
 
-    // exit immediately if polygon fence is not enabled
-    const AC_Fence *fence = AC_Fence::get_singleton();
-    if (fence == nullptr) {
-        return false;
-    }
-
-    // get polygon boundary
-    uint16_t num_points;
-    const Vector2f* boundary = fence->get_boundary_points(num_points);
-    if ((boundary == nullptr) || (num_points < 3)) {
-        return false;
-    }
-
     // clear visibility graph
     visgraph.clear();
 
-    // calculate distance from extra_position to all fence points
+    // calculate distance from position to all fence points
     for (uint8_t i=0; i<_polyfence_numpoints; i++) {
-        Vector2f intersection;
-        if (!Polygon_intersects(boundary, num_points, position, _polyfence_pts[i], intersection)) {
+        if (!intersects_fence(position, _polyfence_pts[i])) {
             // line segment does not intersect with original fence so add to visgraph
             visgraph.add_item(oaid, {AP_OAVisGraph::OATYPE_FENCE_POINT, i}, (position - _polyfence_pts[i]).length());
         }
         // ToDo: store infinity when there is no clear path between points to allow faster search later
     }
 
-    // add extra point to visibility graph if it doesn't intersect with polygon fence
+    // calculate distance from position to all exclusion polygon points
+    for (uint8_t i=0; i<_exclusion_polygon_numpoints; i++) {
+        if (!intersects_fence(position, _exclusion_polygon_pts[i])) {
+            // line segment does not intersect with original fence so add to visgraph
+            visgraph.add_item(oaid, {AP_OAVisGraph::OATYPE_EXCL_POLY, i}, (position - _exclusion_polygon_pts[i]).length());
+        }
+    }
+
+    // add extra point to visibility graph if it doesn't intersect with polygon fence or exclusion polygons
     if (add_extra_position) {
-        Vector2f intersection;
-        if (!Polygon_intersects(boundary, num_points, position, extra_position, intersection)) {
+        if (!intersects_fence(position, extra_position)) {
             visgraph.add_item(oaid, {AP_OAVisGraph::OATYPE_DESTINATION, 0}, (position - extra_position).length());
         }
     }
@@ -380,9 +537,16 @@ bool AP_OADijkstra::find_node_from_id(const AP_OAVisGraph::OAItemID &id, node_in
         }
         break;
     case AP_OAVisGraph::OATYPE_FENCE_POINT:
-        // must be a fence node which start from 3rd node
+        // fence nodes start from 3rd node
         if (_short_path_data_numpoints > id.id_num + 2) {
             node_idx = id.id_num + 2;
+            return true;
+        }
+        break;
+    case AP_OAVisGraph::OATYPE_EXCL_POLY:
+        // exclusion polygon nodes start after polygon fence nodes
+        if (_short_path_data_numpoints > _short_path_data_excl_poly_start) {
+            node_idx = id.id_num + _short_path_data_excl_poly_start;
             return true;
         }
         break;
@@ -432,7 +596,7 @@ bool AP_OADijkstra::calc_shortest_path(const Location &origin, const Location &d
     update_visgraph(_destination_visgraph, {AP_OAVisGraph::OATYPE_DESTINATION, 0}, destination_NE);
 
     // expand _short_path_data if necessary
-    if (!_short_path_data.expand_to_hold(2 + _polyfence_numpoints)) {
+    if (!_short_path_data.expand_to_hold(2 + _polyfence_numpoints + _exclusion_polygon_numpoints)) {
         return false;
     }
 
@@ -444,6 +608,12 @@ bool AP_OADijkstra::calc_shortest_path(const Location &origin, const Location &d
     // add fence points to short_path_data array (node_type, id, visited, distance_from_idx, distance_cm)
     for (uint8_t i=0; i<_polyfence_numpoints; i++) {
         _short_path_data[_short_path_data_numpoints++] = {{AP_OAVisGraph::OATYPE_FENCE_POINT, i}, false, OA_DIJKSTRA_POLYGON_SHORTPATH_NOTSET_IDX, FLT_MAX};
+    }
+
+    // add exclusion polygon points to short_path_data array
+    _short_path_data_excl_poly_start = _short_path_data_numpoints;
+    for (uint8_t i=0; i<_exclusion_polygon_numpoints; i++) {
+        _short_path_data[_short_path_data_numpoints++] = {{AP_OAVisGraph::OATYPE_EXCL_POLY, i}, false, OA_DIJKSTRA_POLYGON_SHORTPATH_NOTSET_IDX, FLT_MAX};
     }
 
     // start algorithm from source point
@@ -535,6 +705,13 @@ bool AP_OADijkstra::get_shortest_path_point(uint8_t point_num, Vector2f& pos)
         // sanity check polygon fence has the point
         if (id.id_num < _polyfence_numpoints) {
             pos = _polyfence_pts[id.id_num];
+            return true;
+        }
+        return false;
+    case AP_OAVisGraph::OATYPE_EXCL_POLY:
+        // sanity check exclusion polygon array has the point
+        if (id.id_num < _exclusion_polygon_numpoints) {
+            pos = _exclusion_polygon_pts[id.id_num];
             return true;
         }
         return false;
