@@ -59,6 +59,12 @@ AP_OADijkstra::AP_OADijkstra_State AP_OADijkstra::update(const Location &current
         }
     }
 
+    // change in circular fence causes recalc of visibility graphs
+    if (check_circular_fence_updated()) {
+        _polyfence_visgraph_ok = false;
+        _shortest_path_ok = false;
+    }
+
     // create visgraph for inner polygon fence
     if (!_polyfence_visgraph_ok) {
         _polyfence_visgraph_ok = create_polygon_fence_visgraph();
@@ -139,6 +145,34 @@ bool AP_OADijkstra::check_polygon_fence_updated() const
         return false;
     }
     return (_polyfence_update_ms != fence->get_boundary_update_ms());
+
+    // check polygon fence
+    if (_polyfence_update_ms != fence->get_boundary_update_ms()) {
+        return true;
+    }
+}
+
+// check if circular fence has been updated since we updated visibility graphs
+bool AP_OADijkstra::check_circular_fence_updated() const
+{
+    // exit immediately if fence is not enabled
+    const AC_Fence *fence = AC_Fence::get_singleton();
+    if (fence == nullptr) {
+        return false;
+    }
+
+    // check for change in enabled state
+    if (_circle_enabled_last != (fence->get_enabled_fences() & AC_FENCE_TYPE_CIRCLE)) {
+        return true;
+    }
+
+    // check for change in radius
+    if (!is_equal(_circle_fence_radius_last, fence->get_radius())) {
+        return true;
+    }
+
+    // check if home has moved
+    return (AP::ahrs().get_home().same_latlon_as(_circle_fence_home_last));
 }
 
 // create a smaller polygon fence within the existing polygon fence
@@ -208,6 +242,41 @@ bool AP_OADijkstra::create_polygon_fence_with_margin(float margin_cm)
     return true;
 }
 
+// returns true if line segment intersects polygon or circular fence
+bool AP_OADijkstra::intersects_fence(const Vector2f &seg_start, const Vector2f &seg_end) const
+{
+    // exit immediately if fence is not enabled
+    const AC_Fence *fence = AC_Fence::get_singleton();
+    if (fence == nullptr) {
+        return false;
+    }
+
+    // check if segment crosses circular fence
+    if ((fence->get_enabled_fences() & AC_FENCE_TYPE_CIRCLE) > 0) {
+        const float circle_radius_cm_sq = sq(fence->get_radius() * 100.0f);
+        // get home as offset from ekf origin
+        Vector2f home_NE;
+        if (AP::ahrs().get_home().get_vector_xy_from_origin_NE(home_NE)) {
+            const bool seg_start_within = (seg_start - home_NE).length_squared() <= circle_radius_cm_sq;
+            const bool seg_end_within = (seg_end - home_NE).length_squared() <= circle_radius_cm_sq;
+            if (seg_start_within != seg_end_within) {
+                return true;
+            }
+        }
+    }
+
+    // get polygon boundary
+    uint16_t num_points;
+    const Vector2f* boundary = fence->get_boundary_points(num_points);
+    if ((boundary == nullptr) || (num_points < 3)) {
+        return false;
+    }
+
+    // determine if segment crosses any of the polygon fence points
+    Vector2f intersection;
+    return Polygon_intersects(boundary, num_points, seg_start, seg_end, intersection);
+}
+
 // create a visibility graph of the polygon fence
 // returns true on success
 // requires create_polygon_fence_with_margin to have been run
@@ -244,10 +313,7 @@ bool AP_OADijkstra::create_polygon_fence_visgraph()
         const Vector2f &start1 = _polyfence_pts[i];
         for (uint8_t j=i+1; j<_polyfence_numpoints; j++) {
             const Vector2f &end1 = _polyfence_pts[j];
-            Vector2f intersection;
-            // ToDo: calculation below could be sped up by removing unused intersection and
-            //       skipping segments we know are parallel to our fence-with-margin segments
-            if (!Polygon_intersects(boundary, num_points, start1, end1, intersection)) {
+            if (!intersects_fence(start1, end1)) {
                 // line segment does not intersect with original fence so add to visgraph
                 _polyfence_visgraph.add_item({AP_OAVisGraph::OATYPE_FENCE_POINT, i},
                                              {AP_OAVisGraph::OATYPE_FENCE_POINT, j},
@@ -255,6 +321,11 @@ bool AP_OADijkstra::create_polygon_fence_visgraph()
             }
         }
     }
+
+    // store circular fence state so we can detect changes later
+    _circle_enabled_last = (fence->get_enabled_fences() & AC_FENCE_TYPE_CIRCLE);
+    _circle_fence_radius_last = fence->get_radius();
+    _circle_fence_home_last = AP::ahrs().get_home();
 
     return true;
 }
@@ -270,26 +341,12 @@ bool AP_OADijkstra::update_visgraph(AP_OAVisGraph& visgraph, const AP_OAVisGraph
         return false;
     }
 
-    // exit immediately if polygon fence is not enabled
-    const AC_Fence *fence = AC_Fence::get_singleton();
-    if (fence == nullptr) {
-        return false;
-    }
-
-    // get polygon boundary
-    uint16_t num_points;
-    const Vector2f* boundary = fence->get_boundary_points(num_points);
-    if ((boundary == nullptr) || (num_points < 3)) {
-        return false;
-    }
-
     // clear visibility graph
     visgraph.clear();
 
     // calculate distance from extra_position to all fence points
     for (uint8_t i=0; i<_polyfence_numpoints; i++) {
-        Vector2f intersection;
-        if (!Polygon_intersects(boundary, num_points, position, _polyfence_pts[i], intersection)) {
+        if (!intersects_fence(position, _polyfence_pts[i])) {
             // line segment does not intersect with original fence so add to visgraph
             visgraph.add_item(oaid, {AP_OAVisGraph::OATYPE_FENCE_POINT, i}, (position - _polyfence_pts[i]).length());
         }
@@ -298,8 +355,7 @@ bool AP_OADijkstra::update_visgraph(AP_OAVisGraph& visgraph, const AP_OAVisGraph
 
     // add extra point to visibility graph if it doesn't intersect with polygon fence
     if (add_extra_position) {
-        Vector2f intersection;
-        if (!Polygon_intersects(boundary, num_points, position, extra_position, intersection)) {
+        if (!intersects_fence(position, extra_position)) {
             visgraph.add_item(oaid, {AP_OAVisGraph::OATYPE_DESTINATION, 0}, (position - extra_position).length());
         }
     }

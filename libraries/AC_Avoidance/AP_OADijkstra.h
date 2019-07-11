@@ -41,9 +41,15 @@ private:
     // check if polygon fence has been updated since we created the inner fence. returns true if changed
     bool check_polygon_fence_updated() const;
 
+    // check if circular fence has been updated since we updated visibility graphs
+    bool check_circular_fence_updated() const;
+
     // create a smaller polygon fence within the existing polygon fence
     // returns true on success
     bool create_polygon_fence_with_margin(float margin_cm);
+
+    // returns true if line segment intersects polygon or circular fence
+    bool intersects_fence(const Vector2f &seg_start, const Vector2f &seg_end) const;
 
     // create a visibility graph of the polygon fence
     // returns true on success
@@ -69,6 +75,11 @@ private:
     AP_ExpandingArray<Vector2f> _polyfence_pts;
     uint8_t _polyfence_numpoints;
     uint32_t _polyfence_update_ms;  // system time of boundary update from AC_Fence (used to detect changes to polygon fence)
+
+    // circular fence related variables
+    bool _circle_enabled_last;          // last enabled value of circular fence
+    float _circle_fence_radius_last;    // last used circle radius (0 means disabled)
+    Location _circle_fence_home_last;   // last used home location for circular fence
 
     // visibility graphs
     AP_OAVisGraph _polyfence_visgraph;
