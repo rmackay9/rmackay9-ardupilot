@@ -167,8 +167,13 @@ float AP_OABendyRuler::calc_avoidance_margin(const Location &start, const Locati
         proximity_margin = FLT_MAX;
     }
 
+    float exclusion_polygon_margin;
+    if (!calc_margin_from_exclusion_polygon(start, end, exclusion_polygon_margin)) {
+        exclusion_polygon_margin = FLT_MAX;
+    }
+
     // return smallest margin from any obstacle
-    return MIN(MIN(circular_fence_margin, polygon_fence_margin), proximity_margin);
+    return MIN(MIN(MIN(circular_fence_margin, polygon_fence_margin), proximity_margin), exclusion_polygon_margin);
 }
 
 // calculate minimum distance between a path and the circular fence (centered on home)
@@ -230,6 +235,57 @@ bool AP_OABendyRuler::calc_margin_from_polygon_fence(const Location &start, cons
     // calculate min distance (in meters) from line to polygon
     margin = sign * Polygon_closest_distance_line(boundary, num_points, start_NE, end_NE) * 0.01f;
     return true;
+}
+
+// calculate minimum distance between a path and all exclusion polygons
+// on success returns true and updates margin
+bool AP_OABendyRuler::calc_margin_from_exclusion_polygon(const Location &start, const Location &end, float &margin)
+{
+    // exit immediately if polygon fence is not enabled
+    const AC_Fence *fence = AC_Fence::get_singleton();
+    if (fence == nullptr) {
+        return false;
+    }
+
+    // exclusion polygons enabled along with polygon fences
+    if ((fence->get_enabled_fences() & AC_FENCE_TYPE_POLYGON) == 0) {
+        return false;
+    }
+
+    // return immediately if no exclusion polygons
+    const uint16_t num_exclusion_polygons = fence->polyfence_const().get_exclusion_polygon_count();
+    if (num_exclusion_polygons == 0) {
+        return false;
+    }
+
+    // convert start and end to offsets from EKF origin
+    Vector2f start_NE, end_NE;
+    if (!start.get_vector_xy_from_origin_NE(start_NE) || !end.get_vector_xy_from_origin_NE(end_NE)) {
+        return false;
+    }
+
+    // iterate through exclusion polygons and calculate minimum margin
+    bool margin_updated = false;
+    for (uint16_t i = 0; i < num_exclusion_polygons; i++) {
+        uint16_t num_points;
+        const Vector2f* boundary = fence->polyfence_const().get_exclusion_polygon(i, num_points);
+        if (num_points < 3) {
+            // ignore exclusion polygons with less than 3 points
+            continue;
+        }
+
+        // if start is inside the polygon the margin's sign is reversed
+        const float sign = Polygon_outside(start_NE, boundary, num_points) ? 1.0f : -1.0f;
+
+        // calculate min distance (in meters) from line to polygon
+        float margin_new = sign * Polygon_closest_distance_line(boundary, num_points, start_NE, end_NE) * 0.01f;
+        if (!margin_updated || (margin_new < margin)) {
+            margin_updated = true;
+            margin = margin_new;
+        }
+    }
+
+    return margin_updated;
 }
 
 // calculate minimum distance between a path and proximity sensor obstacles
