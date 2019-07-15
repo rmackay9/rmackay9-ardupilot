@@ -96,6 +96,20 @@ public:
     ///     has no effect if no breaches have occurred
     void manual_recovery_start();
 
+    ///
+    /// exclusion zones
+    ///
+
+    /// returns number of polygon exclusion zones defined
+    uint16_t get_exclusion_polygon_count() const { return _exclusion_polygon_count; }
+
+    /// returns pointer to array of exclusion polygon points and num_points is filled in with the number of points in the polygon
+    /// points are offsets from EKF origin in NE frame
+    Vector2f* get_exclusion_polygon(uint16_t index, uint16_t &num_points) const { num_points = 0; return nullptr; }
+
+    /// return system time of last update to the exclusion polygon points
+    uint32_t get_exclusion_polygon_update_ms() const { return _exclusion_polygon_update_ms; }
+
     static const struct AP_Param::GroupInfo var_info[];
 
     // methods for mavlink SYS_STATUS message (send_sys_status)
@@ -164,6 +178,9 @@ private:
 
     AC_PolyFence_loader _poly_loader{_total}; // polygon fence
 
+    // exclusion polygons
+    uint16_t        _exclusion_polygon_count;       // number of exclusion polygons
+    uint32_t        _exclusion_polygon_update_ms;   // system time of last update to the exclusion polygons
 };
 
 namespace AP {
