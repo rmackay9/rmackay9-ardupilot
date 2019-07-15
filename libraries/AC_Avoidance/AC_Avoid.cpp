@@ -90,6 +90,7 @@ void AC_Avoid::adjust_velocity(float kP, float accel_cmss, Vector2f &desired_vel
     if ((_enabled & AC_AVOID_STOP_AT_FENCE) > 0) {
         adjust_velocity_circle_fence(kP, accel_cmss_limited, desired_vel_cms, dt);
         adjust_velocity_polygon_fence(kP, accel_cmss_limited, desired_vel_cms, dt);
+        adjust_velocity_exclusion_polygon(kP, accel_cmss_limited, desired_vel_cms, dt);
     }
 
     if ((_enabled & AC_AVOID_STOP_AT_BEACON_FENCE) > 0) {
@@ -402,7 +403,34 @@ void AC_Avoid::adjust_velocity_polygon_fence(float kP, float accel_cmss, Vector2
     const Vector2f* boundary = _fence.get_boundary_points(num_points);
 
     // adjust velocity using polygon
-    adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, true, _fence.get_margin(), dt);
+    adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, true, _fence.get_margin(), dt, true);
+}
+
+/*
+ * Adjusts the desired velocity for the exclusion polygons
+ */
+void AC_Avoid::adjust_velocity_exclusion_polygon(float kP, float accel_cmss, Vector2f &desired_vel_cms, float dt)
+{
+    AC_Fence *fence = AP::fence();
+    if (fence == nullptr) {
+        return;
+    }
+    AC_Fence &_fence = *fence;
+
+    // ToDo: check if exclusion polygons are enabled
+
+    // iterate through exclusion polygons
+    const uint16_t num_exclusion_polygons = fence->get_exclusion_polygon_count();
+    for (uint16_t i = 0; i < num_exclusion_polygons; i++) {
+        uint16_t num_points;
+        const Vector2f* boundary = fence->get_exclusion_polygon(i, num_points);
+        if (num_points < 3) {
+            // ignore exclusion polygons with less than 3 points
+            continue;
+        }
+        // adjust velocity
+        adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, true, _fence.get_margin(), dt, false);
+    }
 }
 
 /*
@@ -429,7 +457,7 @@ void AC_Avoid::adjust_velocity_beacon_fence(float kP, float accel_cmss, Vector2f
     if (AP::fence()) {
         margin = AP::fence()->get_margin();
     }
-    adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, true, margin, dt);
+    adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, true, margin, dt, true);
 }
 
 /*
@@ -452,13 +480,13 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector2f &d
     // get boundary from proximity sensor
     uint16_t num_points;
     const Vector2f *boundary = _proximity.get_boundary_points(num_points);
-    adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, false, _margin, dt);
+    adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, false, _margin, dt, true);
 }
 
 /*
  * Adjusts the desired velocity for the polygon fence.
  */
-void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &desired_vel_cms, const Vector2f* boundary, uint16_t num_points, bool earth_frame, float margin, float dt)
+void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &desired_vel_cms, const Vector2f* boundary, uint16_t num_points, bool earth_frame, float margin, float dt, bool stay_inside)
 {
     // exit if there are no points
     if (boundary == nullptr || num_points == 0) {
@@ -483,7 +511,9 @@ void AC_Avoid::adjust_velocity_polygon(float kP, float accel_cmss, Vector2f &des
         position_xy = position_xy * 100.0f;  // m to cm
     }
 
-    if (Polygon_outside(position_xy, boundary, num_points)) {
+    // return if we have already breached polygon
+    const bool inside_polygon = !Polygon_outside(position_xy, boundary, num_points);
+    if (inside_polygon != stay_inside) {
         return;
     }
 
