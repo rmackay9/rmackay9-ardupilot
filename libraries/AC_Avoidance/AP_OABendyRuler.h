@@ -37,6 +37,10 @@ private:
     // on success returns true and updates margin
     bool calc_margin_from_polygon_fence(const Location &start, const Location &end, float &margin);
 
+    // calculate minimum distance between a path and all exclusion polygons
+    // on success returns true and updates margin
+    bool calc_margin_from_exclusion_polygon(const Location &start, const Location &end, float &margin);
+
     // calculate minimum distance between a path and proximity sensor obstacles
     // on success returns true and updates margin
     bool calc_margin_from_object_database(const Location &start, const Location &end, float &margin);
