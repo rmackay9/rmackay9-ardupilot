@@ -120,14 +120,14 @@ public:
     ///
 
     /// returns number of polygon exclusion zones defined
-    uint16_t get_exclusion_polygon_count() const { return _exclusion_polygon_count; }
+    uint16_t get_exclusion_polygon_count() const { return 1; }
 
     /// returns pointer to array of exclusion polygon points and num_points is filled in with the number of points in the polygon
     /// points are offsets from EKF origin in NE frame
-    Vector2f* get_exclusion_polygon(uint16_t index, uint16_t &num_points) const { num_points = 0; return nullptr; }
+    const Vector2f* get_exclusion_polygon(uint16_t index, uint16_t &num_points) const { num_points = 4; return _exclusion_polygon; }
 
     /// return system time of last update to the exclusion polygon points
-    uint32_t get_exclusion_polygon_update_ms() const { return _exclusion_polygon_update_ms; }
+    uint32_t get_exclusion_polygon_update_ms() const { return _exclusion_polygon_update_ms+1; }
 
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -209,6 +209,9 @@ private:
     // exclusion polygons
     uint16_t        _exclusion_polygon_count;       // number of exclusion polygons
     uint32_t        _exclusion_polygon_update_ms;   // system time of last update to the exclusion polygons
+
+    // debug
+    const Vector2f _exclusion_polygon[4] = {{5000,-1000},{5000,1000},{3000,1000},{3000,-1000}};
 };
 
 namespace AP {
