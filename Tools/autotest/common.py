@@ -2124,9 +2124,17 @@ class AutoTest(ABC):
                 continue
 
             if m.get_type() == 'MISSION_ACK':
-                raise NotAchievedException("Received unexpected mission ack %s" % str(m))
+                if (m.target_system == 255 and
+                    m.target_component == 0 and
+                    m.type == 1 and
+                    m.mission_type == 0):
+                    # this is just MAVProxy trying to screw us up
+                    continue
+                else:
+                    raise NotAchievedException("Received unexpected mission ack %s" % str(m))
 
             self.progress("Handling request for item %u" % m.seq)
+            self.progress("Item (%s)" % str(items[m.seq]))
             if m.seq in sent:
                 raise NotAchievedException("received duplicate request for item %u" % m.seq)
 
@@ -2143,10 +2151,9 @@ class AutoTest(ABC):
             if items[m.seq].target_component != target_component:
                 raise NotAchievedException("supplied item not of correct target component")
             if items[m.seq].seq != m.seq:
-                raise NotAchievedException("requested item has incorrect sequence number")
+                raise NotAchievedException("supplied item has incorrect sequence number (%u vs %u)" % (items[m.seq].seq, m.seq))
 
             items[m.seq].pack(self.mav.mav)
-            self.progress("Sending (%s)" % str(items[m.seq]))
             self.mav.mav.send(items[m.seq])
             remaining_to_send.discard(m.seq)
             sent.add(m.seq)

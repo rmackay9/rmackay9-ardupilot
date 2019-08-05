@@ -1047,42 +1047,610 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.wait_location(loc, accuracy=accuracy)
         self.disarm_vehicle()
 
-    def roundtrip_fencepoint_protocol(self, offset, count, lat, lng, target_system=1, target_component=1):
+    def check_fence_items_same(self, want, got):
+        for i in range(0, len(want)):
+            item = want[i]
+            downloaded_item = got[i]
+            # note that we do not preserve frame for anything
+            check_atts = ['mission_type', 'command', 'x', 'y', 'seq', 'param1']
+            # z is not preserved
 
-        self.progress("Sending fence point")
+            for att in check_atts:
+                item_val = getattr(item, att)
+                downloaded_item_val = getattr(downloaded_item, att)
+                if abs(item_val - downloaded_item_val) > 1:
+                    raise NotAchievedException(
+                        "Item %u (%s) has different %s after download want=%s got=%s" %
+                        (i, str(item), att, str(item_val), str(downloaded_item_val)))
+
+    def check_fence_upload_download(self, items):
+        self.progress("check_fence_upload_download: upload %u items" % (len(items),))
+        self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                           items)
+        self.progress("check_fence_upload_download: download items")
+        downloaded_items = self.download_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        self.progress("Downloaded items: (%s)" % str(downloaded_items))
+        if len(items) != len(downloaded_items):
+            raise NotAchievedException("Did not download same number of items as uploaded want=%u got=%u" % (len(items), len(downloaded_items)))
+        self.check_fence_items_same(items, downloaded_items)
+
+    def fence_with_bad_frame(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0017 *1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+
+    def fence_with_zero_vertex_count(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0017 *1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+
+    def fence_with_wrong_vertex_count(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                2, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0017 *1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+
+    def fence_with_multiple_return_points(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0017 *1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                1, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0017 *1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+
+    def fence_with_invalid_latlon(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                100 * 1e7, # bad latitude. bad.
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+
+    def fences_which_should_not_upload(self, target_system=1, target_component=1):
+        return [ ("Bad Frame", self.fence_with_bad_frame(target_system=target_system, target_component=target_component)),
+                 ("Zero Vertex Count", self.fence_with_zero_vertex_count(target_system=target_system, target_component=target_component)),
+                 ("Wrong Vertex Count", self.fence_with_wrong_vertex_count(target_system=target_system, target_component=target_component)),
+                 ("Multiple return points", self.fence_with_multiple_return_points(target_system=target_system, target_component=target_component)),
+                 ("Invalid lat/lon", self.fence_with_invalid_latlon(target_system=target_system, target_component=target_component)),
+                 ]
+
+
+    def fence_with_single_return_point(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0017 *1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+    def fence_with_single_return_point_and_5_vertex_inclusion(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0017 *1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                1, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                5, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0000 *1e7, # latitude
+                1.0000 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                2, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                5, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0001 *1e7, # latitude
+                1.0000 *1e7, # longitude
+                32.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                3, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                5, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0001 *1e7, # latitude
+                1.0001 *1e7, # longitude
+                33.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                4, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                5, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0002 *1e7, # latitude
+                1.0002 *1e7, # longitude
+                33.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                5, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                5, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0002 *1e7, # latitude
+                1.0003 *1e7, # longitude
+                33.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+
+    def fence_with_many_exclusion_circles(self, count=50, target_system=1, target_component=1):
+        ret = []
+        for i in range(0, count):
+            lat_deg = 1.0003 + count/10
+            lng_deg = 1.0002 + count/10
+            item = self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                i, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
+                0, # current
+                0, # autocontinue
+                count, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                lat_deg *1e7, # latitude
+                lng_deg *1e7, # longitude
+                33.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+            ret.append(item)
+        return ret
+
+    def fence_with_many_exclusion_polyfences(self, target_system=1, target_component=1):
+        ret = []
+        seq = 0
+        for fencenum in range(0,4):
+            pointcount = fencenum + 6
+            for p in range(0, pointcount):
+                lat_deg = 1.0003 + p/10 + fencenum/100
+                lng_deg = 1.0002 + p/10 + fencenum/100
+                item = self.mav.mav.mission_item_int_encode(
+                    target_system,
+                    target_component,
+                    seq, # seq
+                    mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                    mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION,
+                    0, # current
+                    0, # autocontinue
+                    pointcount, # p1
+                    0, # p2
+                    0, # p3
+                    0, # p4
+                    lat_deg *1e7, # latitude
+                    lng_deg *1e7, # longitude
+                    33.0000, # altitude
+                    mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+                ret.append(item)
+                seq += 1
+        return ret
+
+    def fences_which_should_upload(self, target_system=1, target_component=1):
+        return [
+            ("Single Return Point", self.fence_with_single_return_point(target_system=target_system, target_component=target_component)),
+            ( "Return and 5-vertex-inclusion", self.fence_with_single_return_point_and_5_vertex_inclusion(target_system=target_system, target_component=target_component) ),
+            ( "Many exclusion circles", self.fence_with_many_exclusion_circles(target_system=target_system, target_component=target_component) ),
+            ( "Many exclusion polyfences", self.fence_with_many_exclusion_polyfences(target_system=target_system, target_component=target_component) ),
+            ( "Empty fence", [] ),
+            ]
+
+
+    def assert_fence_does_not_upload(self, fence, target_system=1, target_component=1):
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+        # upload single item using mission item protocol:
+        upload_failed = False
+        try:
+            self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                               fence)
+        except NotAchievedException:
+            # TODO: make sure we failed for correct reason
+            upload_failed = True
+        if not upload_failed:
+            raise NotAchievedException("Uploaded fence when should not be possible")
+        self.progress("Fence rightfully bounced")
+
+    def roundtrip_fencepoint_protocol(self, offset, count, lat, lng, target_system=1, target_component=1):
+        self.progress("Sending FENCE_POINT")
         self.mav.mav.fence_point_send(target_system,
                                       target_component,
                                       offset,
-                                      1,
+                                      count,
                                       lat,
                                       lng)
 
         self.progress("Requesting fence point")
-        self.mav.mav.fence_fetch_point_send(target_system,
-                                            target_component,
-                                            offset)
-        m = self.mav.recv_match(type="FENCE_POINT", blocking=True, timeout=2)
-        print("m: %s" % str(m))
-        if m is None:
-            raise NotAchievedException("Did not get fence return point back")
+        m = self.get_fence_point(offset, target_system=target_system, target_component=target_component)
         if abs(m.lat - lat) > 0.000001:
             raise NotAchievedException("Did not get correct lat in fencepoint: got=%f want=%f" % (m.lat, lat))
         if abs(m.lng - lng) > 0.000001:
             raise NotAchievedException("Did not get correct lng in fencepoint: got=%f want=%f" % (m.lng, lng))
         self.progress("Roundtrip OK")
 
+    def assert_parameter_value(self, parameter, required):
+        got = self.get_parameter(parameter)
+        if got != required:
+            raise NotAchievedException("%s has unexpected value; want=%f got=%f" %
+                                       (parameter, required, got))
+
+    def send_fencepoint_expect_statustext(self, offset, count, lat, lng, statustext_fragment, target_system=1, target_component=1, timeout=10):
+        self.mav.mav.fence_point_send(target_system,
+                                      target_component,
+                                      offset,
+                                      count,
+                                      lat,
+                                      lng)
+
+        tstart = self.get_sim_time_cached()
+        while True:
+            if self.get_sim_time_cached() - tstart > timeout:
+                raise NotAchievedException("Did not get error message back")
+            m = self.mav.recv_match(type='STATUSTEXT', blocking=True, timeout=1)
+            self.progress("statustext: %s (want='%s')" %
+                          (str(m), statustext_fragment))
+            if m is None:
+                continue
+            if statustext_fragment in m.text:
+                break
+
+    def get_fence_point(self, idx, target_system=1, target_component=1):
+        self.mav.mav.fence_fetch_point_send(target_system,
+                                            target_component,
+                                            idx)
+        m = self.mav.recv_match(type="FENCE_POINT", blocking=True, timeout=2)
+        print("m: %s" % str(m))
+        if m is None:
+            raise NotAchievedException("Did not get fence return point back")
+        if m.idx != idx:
+            raise NotAchievedException("Invalid idx returned (want=%u got=%u)" %
+                                       (idx, m.seq))
+        return m
+
     def test_gcs_fence(self):
         target_system = 1
         target_component = 1
 
         self.progress("Testing FENCE_POINT protocol")
-        self.set_parameter("FENCE_TOTAL", 1)
 
-        self.roundtrip_fencepoint_protocol(0, 1, 1.2345, 5.4321, target_system=target_component, target_component=target_component)
+        self.start_subtest("FENCE_TOTAL manipulation")
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE);
+        self.assert_parameter_value("FENCE_TOTAL", 0)
+
+        self.set_parameter("FENCE_TOTAL", 5)
+        self.assert_parameter_value("FENCE_TOTAL", 5)
+
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE);
+        self.assert_parameter_value("FENCE_TOTAL", 0)
+
+        # send out-of-range fencepoint:
+        self.send_fencepoint_expect_statustext(0,
+                                               0,
+                                               1.2345,
+                                               5.4321,
+                                               "index past total",
+                                               target_system=target_component,
+                                               target_component=target_component)
+
+        self.send_fencepoint_expect_statustext(0,
+                                               1,
+                                               1.2345,
+                                               5.4321,
+                                               "bad count",
+                                               target_system=target_component,
+                                               target_component=target_component)
+
+        self.set_parameter("FENCE_TOTAL", 1)
+        self.assert_parameter_value("FENCE_TOTAL", 1)
+
+        self.send_fencepoint_expect_statustext(0,
+                                               1,
+                                               1.2345,
+                                               5.4321,
+                                               "Invalid FENCE_TOTAL",
+                                               target_system=target_component,
+                                               target_component=target_component)
+
+        self.set_parameter("FENCE_TOTAL", 5)
+        self.progress("Checking default points")
+        for i in range(5):
+            m = self.get_fence_point(i)
+            if m.count != 5:
+                raise NotAchievedException("Unexpected count in fence point (want=%u got=%u" %
+                                           (5, m.count))
+            if m.lat != 0 or m.lng != 0:
+                raise NotAchievedException("Unexpected lat/lon in fencepoint")
+
+        self.progress("Storing a return point")
+        self.roundtrip_fencepoint_protocol(0, 5, 1.2345, 5.4321, target_system=target_component, target_component=target_component)
 
         lat = 2.345
         lng = 4.321
-        self.roundtrip_fencepoint_protocol(0, 1, lat, lng, target_system=target_component, target_component=target_component)
+        self.roundtrip_fencepoint_protocol(0, 5, lat, lng, target_system=target_component, target_component=target_component)
+
+        self.progress("Download with new protocol")
+        items = self.download_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        if len(items) != 1:
+            raise NotAchievedException("Unexpected fencepoint count (want=%u got=%u)" % (1, len(items)))
+        if items[0].command != mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT:
+            raise NotAchievedException("Fence return point not of correct type expected (%u) got %u" % (items[0].command, mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT))
+        if items[0].frame != mavutil.mavlink.MAV_FRAME_GLOBAL:
+            raise NotAchievedException("Unexpected frame want=%s got=%s," %
+                                       (mavutil.mavlink.enums["MAV_FRAME"][mavutil.mavlink.MAV_FRAME_GLOBAL].name,
+                                        mavutil.mavlink.enums["MAV_FRAME"][items[0].frame].name,))
+        got_lat = items[0].x
+        want_lat = lat * 1e7
+        if abs(got_lat - want_lat) > 1:
+            raise NotAchievedException("Disagree in lat (got=%f want=%f)" % (got_lat, want_lat))
+        if abs(items[0].y - lng * 1e7) > 1:
+            raise NotAchievedException("Disagree in lng")
+        if items[0].seq != 0:
+            raise NotAchievedException("Disagree in offset")
+        self.progress("Downloaded with new protocol OK")
+
+        # upload using mission protocol:
+        items = [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                3, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0000 *1e7, # latitude
+                1.0000 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                1, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                3, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0001 *1e7, # latitude
+                1.0000 *1e7, # longitude
+                32.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                2, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+                0, # current
+                0, # autocontinue
+                3, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0001 *1e7, # latitude
+                1.0001 *1e7, # longitude
+                33.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                3, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.00015 *1e7, # latitude
+                1.00015 *1e7, # longitude
+                33.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+        self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                           items)
+        self.progress("Download with new protocol")
+        downloaded_items = self.download_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        if len(downloaded_items) != len(items):
+            raise NotAchievedException("Did not download expected number of items (wanted=%u got=%u)" %
+                                       (len(items), len(downloaded_items)))
+        self.assert_parameter_value("FENCE_TOTAL", len(items) +1)  # +1 for closing
+        self.progress("Ensuring fence items match what we sent up")
+        self.check_fence_items_same(items, downloaded_items)
+
+        # now check centroid
+        self.progress("Requesting fence return point")
+        self.mav.mav.fence_fetch_point_send(target_system,
+                                            target_component,
+                                            0)
+        m = self.mav.recv_match(type="FENCE_POINT", blocking=True, timeout=1)
+        print("m: %s" % str(m))
+
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+        self.progress("Checking count post-nuke")
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                  target_system=target_system,
+                                  target_component=target_component)
+        self.assert_mission_count_on_link(self.mav,
+                                          0,
+                                          target_system,
+                                          target_component,
+                                          mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+
+        self.start_subtest("Ensuring bad fences get bounced")
+        for fence in self.fences_which_should_not_upload(target_system=target_system, target_component=target_component):
+            (name, items) = fence
+            self.progress("Ensuring (%s) gets bounced" % (name,))
+            self.assert_fence_does_not_upload(items)
+
+        self.start_subtest("Ensuring good fences don't get bounced")
+        for fence in self.fences_which_should_upload(target_system=target_system, target_component=target_component):
+            (name, items) = fence
+            self.progress("Ensuring (%s) gets uploaded" % (name,))
+            self.check_fence_upload_download(items)
+            self.progress("(%s) uploaded just fine" % (name,))
+
+    # FIXME: ensure we can upload the return point before any other point, after any other pint, or right in the middle
+    # FIXME: test converting invalid fences / minimally valid fences / normal fences
+    # FIXME: show that uploading smaller items take up less space
+    # FIXME: ensure we can't upload multiple zones for the time being
+    # FIXME: write a fence using old protocol containing 3 items, then
+    # go to 4 items then back to 3 items.
 
     def test_offboard(self, timeout=90):
         self.load_mission("rover-guided-mission.txt")
