@@ -755,7 +755,7 @@ bool AP_Arming::can_checks(bool report)
 
 bool AP_Arming::fence_checks(bool display_failure)
 {
-    const AC_Fence *fence = AP::fence();
+    AC_Fence *fence = AP::fence();
     if (fence == nullptr) {
         return true;
     }
