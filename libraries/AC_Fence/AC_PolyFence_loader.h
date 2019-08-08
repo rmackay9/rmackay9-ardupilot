@@ -116,6 +116,7 @@ private:
     /// perform validation.  returns true if load successfully
     /// completed
     bool load_from_eeprom() WARN_IF_UNUSED;
+    void unload();
     bool format() WARN_IF_UNUSED;
 
     bool get_return_point(Vector2l &ret) const WARN_IF_UNUSED;
@@ -127,6 +128,8 @@ private:
 
     // update the validity flag:
     bool calculate_boundary_valid() const WARN_IF_UNUSED;
+
+    bool _inclusion_fence_valid;
 
     class FenceIndex {
     public:
