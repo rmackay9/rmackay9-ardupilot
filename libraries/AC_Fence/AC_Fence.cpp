@@ -117,10 +117,10 @@ bool AC_Fence::pre_arm_check_polygon(const char* &fail_msg)
         return true;
     }
 
-    if (!_poly_loader.valid()) {
-        fail_msg = "Polygon boundary invalid";
-        return false;
-    }
+    // if (!_poly_loader.valid()) {
+    //     fail_msg = "Polygon boundary invalid";
+    //     return false;
+    // }
 
     return true;
 }
