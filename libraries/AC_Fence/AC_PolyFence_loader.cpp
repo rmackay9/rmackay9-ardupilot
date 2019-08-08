@@ -228,7 +228,7 @@ bool AC_PolyFence_loader::valid()
     if (!load_from_eeprom()) {
         return false;
     }
-    return _boundary != nullptr;
+    return _inclusion_fence_valid;
 }
 
 // validate array of inclusion fence boundary points
@@ -265,10 +265,6 @@ bool AC_PolyFence_loader::breached()
 
 bool AC_PolyFence_loader::breached(const Location& loc)
 {
-    if (!load_from_eeprom()) {
-        return false;
-    }
-
     Vector2f posNE;
     if (!loc.get_vector_xy_from_origin_NE(posNE)) {
         // not breached if we don't now where we are
@@ -323,6 +319,10 @@ bool AC_PolyFence_loader::calculate_centroid(T *points, uint16_t count, T &centr
 //   returns true if location is outside the boundary
 bool AC_PolyFence_loader::breached(const Vector2f& location)
 {
+    if (!load_from_eeprom()) { // FIXME: don't do this here
+        return false;
+    }
+
     // FIXME: consider updating a _breached flag as part of update and
     // slowly iterate across the fences as part of update.
     if (loaded_inclusion_boundary != nullptr &&
@@ -607,7 +607,7 @@ bool AC_PolyFence_loader::index_eeprom()
     _boundary_index = nullptr;
     if (_eeprom_fence_count) {
         const uint32_t index_allocation_size = _eeprom_fence_count*sizeof(FenceIndex);
-        gcs().send_text(MAV_SEVERITY_INFO, "Fence: Allocating %u bytes for index\n", index_allocation_size);
+        gcs().send_text(MAV_SEVERITY_INFO, "Fence: Allocating %u bytes for index", index_allocation_size);
         _boundary_index = (FenceIndex*)malloc(index_allocation_size);
         if (_boundary_index == nullptr) {
             return false;
@@ -641,6 +641,21 @@ bool AC_PolyFence_loader::check_indexed()
    return index_eeprom();
 }
 
+void AC_PolyFence_loader::unload()
+{
+    if (_boundary != nullptr) {
+        free(_boundary);
+        _boundary = nullptr;
+    }
+
+    _num_loaded_exclusion_boundaries = 0;
+    loaded_inclusion_boundary = nullptr;
+    loaded_inclusion_point_count = 0;
+    _loaded_return_point = nullptr;
+    _inclusion_fence_valid = false;
+    // FIXME: other loaded artificacts?
+}
+
 bool AC_PolyFence_loader::load_from_eeprom()
 {
     if (!check_indexed()) {
@@ -668,10 +683,8 @@ bool AC_PolyFence_loader::load_from_eeprom()
         return false;
     }
 
-    if (_boundary != nullptr) {
-        free(_boundary);
-        _boundary = nullptr;
-    }
+    unload();
+
     // FIXME: how many do we really need to allocate here?
     if (_eeprom_item_count == 0) {
         return true;
@@ -684,10 +697,6 @@ bool AC_PolyFence_loader::load_from_eeprom()
         return false;
     }
 
-    _num_loaded_exclusion_boundaries = 0;
-    loaded_inclusion_boundary = nullptr;
-    loaded_inclusion_point_count = 0;
-    _loaded_return_point = nullptr;
     Vector2f *next_storage_point = _boundary;
 
     // use index to load fences from eeprom
@@ -763,26 +772,18 @@ bool AC_PolyFence_loader::load_from_eeprom()
         }
     }
 
-    // FIXME: factor this:
+    gcs().send_text(MAV_SEVERITY_WARNING, "_num_loaded_exclusion_boundaries=%u\n", _num_loaded_exclusion_boundaries);
+
     if (!storage_valid) {
-        free(_boundary);
-        _boundary = nullptr;
-        _loaded_return_point = nullptr;
-        loaded_inclusion_boundary = nullptr;
+        unload();
+        return false;
     }
 
-    if (!calculate_boundary_valid()) {
-        free(_boundary);
-        _boundary = nullptr;
-        _loaded_return_point = nullptr;
-        loaded_inclusion_boundary = nullptr;
-    }
+    _inclusion_fence_valid = calculate_boundary_valid();
 
-    if (storage_valid) {
-        _load_time_ms = AP_HAL::millis();
-    }
+    _load_time_ms = AP_HAL::millis();
 
-    return storage_valid;
+    return true;
 }
 
 Vector2f* AC_PolyFence_loader::get_exclusion_polygon(uint16_t index, uint16_t &num_points) const
