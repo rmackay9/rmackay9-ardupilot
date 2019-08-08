@@ -192,12 +192,12 @@ MAV_MISSION_RESULT MissionItemProtocol_Fence::allocate_receive_resources(const u
 
 MAV_MISSION_RESULT MissionItemProtocol_Fence::allocate_update_resources()
 {
-    const uint16_t item_count = fence.polyfence().num_stored_items();
-    _updated_mask = new uint8_t[(item_count+7/8)];
+    const uint16_t _item_count = fence.polyfence().num_stored_items();
+    _updated_mask = new uint8_t[(_item_count+7/8)];
     if (_updated_mask == nullptr) {
         return MAV_MISSION_ERROR;
     }
-    MAV_MISSION_RESULT ret = allocate_receive_resources(item_count);
+    MAV_MISSION_RESULT ret = allocate_receive_resources(_item_count);
     if (ret != MAV_MISSION_ACCEPTED) {
         free(_updated_mask);
         _updated_mask = nullptr;
