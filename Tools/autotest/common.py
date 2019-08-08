@@ -2267,10 +2267,8 @@ class AutoTest(ABC):
         '''return a new location offset from passed-in location'''
         (target_lat, target_lng) = mavextra.gps_offset(location.lat,
                                                        location.lng,
-                                                       metres_north,
-                                                       metres_east)
-        print("In: %f %f out: %f %f" % (location.lat, location.lng,
-                                        target_lat, target_lng))
+                                                       metres_east,
+                                                       metres_north)
         return mavutil.location(target_lat,
                                 target_lng,
                                 location.alt,
@@ -3051,7 +3049,6 @@ class AutoTest(ABC):
 
         self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
                                            items)
-        sys.exit(0)
 
     def wait_for_initial_mode(self):
         '''wait until we get a heartbeat with an expected initial mode (the
