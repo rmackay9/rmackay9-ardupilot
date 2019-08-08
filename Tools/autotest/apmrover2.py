@@ -2328,6 +2328,31 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             if abs(distance-self.distance_to_home(use_cached_home=True)) <= accuracy:
                 break
 
+    def test_poly_fence(self):
+        '''test fence-related functions'''
+        target_system = 1
+        target_component = 1
+        self.start_subtest("Two exclusion zones, one ahead, one behind")
+        self.change_mode("LOITER")
+        self.wait_ready_to_arm()
+        here = self.mav.location()
+        self.progress("here: %f %f" % (here.lat, here.lng))
+        self.set_parameter("FENCE_ENABLE", 1)
+
+        self.upload_exclusion_fences_from_locations([
+            [ # above
+                self.offset_location_ne(here, 10, -50), # bl
+                self.offset_location_ne(here, 10, 50), # br
+                self.offset_location_ne(here, 40, 50), # tr
+                self.offset_location_ne(here, 40, -50), # tl,
+            ], [ # below
+                self.offset_location_ne(here, -10, -50), # tl
+                self.offset_location_ne(here, -10, 50), # tr
+                self.offset_location_ne(here, -40, 50), # br
+                self.offset_location_ne(here, -40, -50), # bl,
+            ],
+        ])
+
     def drive_smartrtl(self):
         self.change_mode("STEERING")
         self.wait_ready_to_arm()
@@ -2476,6 +2501,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             ("DataFlashOverMAVLink",
              "Test DataFlash over MAVLink",
              self.test_dataflash_over_mavlink),
+
+            ("PolyFence",
+             "PolyFence tests",
+             self.test_poly_fence),
 
             ("DownLoadLogs", "Download logs", lambda:
              self.log_download(
