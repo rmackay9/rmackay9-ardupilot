@@ -51,6 +51,27 @@ public:
     // bool append_item(const AC_PolyFenceItem &item) WARN_IF_UNUSED;
     bool truncate(uint8_t num) WARN_IF_UNUSED;
 
+    ///
+    /// exclusion zones
+    ///
+    /// returns number of polygon exclusion zones defined
+    uint16_t get_exclusion_polygon_count() const {
+        return _num_loaded_exclusion_boundaries;
+    }
+
+    /// returns pointer to array of exclusion polygon points and num_points is filled in with the number of points in the polygon
+    /// points are offsets from EKF origin in NE frame
+    Vector2f* get_exclusion_polygon(uint16_t index, uint16_t &num_points) const;
+
+    /// return system time of last update to the exclusion polygon points
+    uint32_t get_exclusion_polygon_update_ms() const {
+        return _load_time_ms;
+    }
+
+    ///
+    /// mavlink
+    ///
+
     /// handler for polygon fence messages with GCS
     void handle_msg(class GCS_MAVLINK &link, const mavlink_message_t& msg);
 
@@ -68,8 +89,6 @@ public:
     uint32_t update_ms() const {
         return _update_ms;
     }
-
-    uint8_t num_exclusion_fences() { return _num_loaded_exclusion_boundaries; }
 
     bool get_stored_return_point(Vector2f &ret) const WARN_IF_UNUSED {
         if (_loaded_return_point == nullptr) {
@@ -123,6 +142,7 @@ private:
     static uint16_t _num_fences;
 
     uint32_t        _update_ms;   // system time of last update to the boundary in storage
+    uint32_t _load_time_ms;
 
     void void_index() {
         free(_boundary_index);

@@ -650,6 +650,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
     if (_load_attempted) {
         return _boundary != nullptr;
     }
+    _load_time_ms = 0;
 
     struct Location ekf_origin{};
     if (!AP::ahrs().get_origin(ekf_origin)) {
@@ -778,7 +779,21 @@ bool AC_PolyFence_loader::load_from_eeprom()
         loaded_inclusion_boundary = nullptr;
     }
 
+    if (storage_valid) {
+        _load_time_ms = AP_HAL::millis();
+    }
+
     return storage_valid;
+}
+
+Vector2f* AC_PolyFence_loader::get_exclusion_polygon(uint16_t index, uint16_t &num_points) const
+{
+    if (index > _num_loaded_exclusion_boundaries) {
+        return nullptr;
+    }
+
+    num_points = _loaded_exclusion_point_count[index];
+    return _loaded_exclusion_boundary[index];
 }
 
 bool AC_PolyFence_loader::validate_fence(const AC_PolyFenceItem *new_items, uint16_t count) const
