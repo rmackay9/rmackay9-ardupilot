@@ -2802,6 +2802,36 @@ class AutoTest(ABC):
         if m is None:
             raise NotAchievedException("Requested CAMERA_FEEDBACK did not arrive")
 
+    def clear_mission(self, mission_type, target_system=1, target_component=1):
+        '''clear mision_type from autopilot.  Note that this does NOT actually
+        send a MISSION_CLEAR_ALL message
+        '''
+        if mission_type == mavutil.mavlink.MAV_MISSION_TYPE_ALL:
+            # recurse
+            self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+            self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_MISSION)
+            self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_RALLY)
+            return
+
+        self.mav.mav.mission_count_send(target_system,
+                                        target_component,
+                                        0,
+                                        mission_type)
+        m = self.mav.recv_match(type='MISSION_ACK',
+                                blocking=True,
+                                timeout=5)
+        if m is None:
+            raise NotAchievedException("Expected ACK for clearing mission")
+        if m.target_system != self.mav.mav.srcSystem:
+            raise NotAchievedException("ACK not targetted at correct system want=%u got=%u" %
+                                       (self.mav.mav.srcSystem, m.target_system))
+        if m.target_component != self.mav.mav.srcComponent:
+            raise NotAchievedException("ACK not targetted at correct component want=%u got=%u" %
+                                       (self.mav.mav.srcComponent, m.target_component))
+        if m.type != mavutil.mavlink.MAV_MISSION_ACCEPTED:
+            raise NotAchievedException("Expected MAV_MISSION_ACCEPTED got %s" %
+                                       (mavutil.mavlink.enums["MAV_MISSION_RESULT"][m.type].name,))
+
     def clear_fence_using_mavproxy(self):
         self.mavproxy.send("fence clear\n")
 
@@ -3047,6 +3077,7 @@ switch value'''
             self.progress("Setting up RC parameters")
             self.set_rc_default()
             self.wait_for_mode_switch_poll()
+            self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_ALL)
 
             for test in tests:
                 (name, desc, func) = test
