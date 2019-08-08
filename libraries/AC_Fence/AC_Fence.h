@@ -41,6 +41,9 @@ public:
     AC_Fence(const AC_Fence &other) = delete;
     AC_Fence &operator=(const AC_Fence&) = delete;
 
+    // get singleton instance
+    static AC_Fence *get_singleton() { return _singleton; }
+
     /// enable - allows fence to be enabled/disabled.  Note: this does not update the eeprom saved value
     void enable(bool value);
 
@@ -95,38 +98,15 @@ public:
     ///     has no effect if no breaches have occurred
     void manual_recovery_start();
 
-    ///
-    /// exclusion zones
-    ///
-
-    /// returns number of polygon exclusion zones defined
-    uint16_t get_exclusion_polygon_count() const {
-        return _poly_loader.get_exclusion_polygon_count();
-    }
-
-    /// returns pointer to array of exclusion polygon points and num_points is filled in with the number of points in the polygon
-    /// points are offsets from EKF origin in NE frame
-    Vector2f* get_exclusion_polygon(uint16_t index, uint16_t &num_points) const {
-        return _poly_loader.get_exclusion_polygon(index, num_points);
-    }
-
-    /// return system time of last update to the exclusion polygon points
-    uint32_t get_exclusion_polygon_update_ms() const {
-        return _poly_loader.get_exclusion_polygon_update_ms();
-    }
-
-    static const struct AP_Param::GroupInfo var_info[];
-
     // methods for mavlink SYS_STATUS message (send_sys_status)
     bool sys_status_present() const;
     bool sys_status_enabled() const;
     bool sys_status_failed() const;
 
-    // get singleton instance
-    static AC_Fence *get_singleton() { return _singleton; }
-
     class AC_PolyFence_loader &polyfence();
     const class AC_PolyFence_loader &polyfence_const() const;
+
+    static const struct AP_Param::GroupInfo var_info[];
 
 private:
     static AC_Fence *_singleton;
