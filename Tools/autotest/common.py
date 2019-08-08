@@ -16,6 +16,8 @@ import operator
 from MAVProxy.modules.lib import mp_util
 
 from pymavlink import mavwp, mavutil, DFReader
+from pymavlink import mavextra
+
 from pysim import util, vehicleinfo
 
 # a list of pexpect objects to read while waiting for
@@ -2136,7 +2138,8 @@ class AutoTest(ABC):
             self.progress("Handling request for item %u" % m.seq)
             self.progress("Item (%s)" % str(items[m.seq]))
             if m.seq in sent:
-                raise NotAchievedException("received duplicate request for item %u" % m.seq)
+                self.progress("received duplicate request for item %u" % m.seq)
+                continue
 
             if m.seq not in remaining_to_send:
                 raise NotAchievedException("received request for unknown item %u" % m.seq)
@@ -2262,6 +2265,19 @@ class AutoTest(ABC):
     def home_position_as_mav_location(self):
         m = self.poll_home_position()
         return mavutil.location(m.latitude*1.0e-7, m.longitude*1.0e-7, m.altitude*1.0e-3, 0)
+
+    def offset_location_ne(self, location, metres_north, metres_east):
+        '''return a new location offset from passed-in location'''
+        (target_lat, target_lng) = mavextra.gps_offset(location.lat,
+                                                       location.lng,
+                                                       metres_north,
+                                                       metres_east)
+        print("In: %f %f out: %f %f" % (location.lat, location.lng,
+                                        target_lat, target_lng))
+        return mavutil.location(target_lat,
+                                target_lng,
+                                location.alt,
+                                location.heading)
 
     def monitor_groundspeed(self, want, tolerance=0.5, timeout=5):
         tstart = self.get_sim_time()
@@ -3008,6 +3024,38 @@ class AutoTest(ABC):
     def initial_mode_switch_mode(self):
         '''return mode vehicle should start in with default RC inputs set'''
         return None
+
+    def upload_exclusion_fences_from_locations(self,
+                                               list_of_list_of_locs,
+                                               target_system=1,
+                                               target_component=1):
+        seq = 0
+        items = []
+        for locs in list_of_list_of_locs:
+            count = len(locs)
+            for loc in locs:
+                item = self.mav.mav.mission_item_int_encode(
+                    target_system,
+                    target_component,
+                    seq, # seq
+                    mavutil.mavlink.MAV_FRAME_GLOBAL,
+                    mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION,
+                    0, # current
+                    0, # autocontinue
+                    count, # p1
+                    0, # p2
+                    0, # p3
+                    0, # p4
+                    loc.lat *1e7, # latitude
+                    loc.lng *1e7, # longitude
+                    33.0000, # altitude
+                    mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+                seq += 1
+                items.append(item)
+
+        self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                           items)
+        sys.exit(0)
 
     def wait_for_initial_mode(self):
         '''wait until we get a heartbeat with an expected initial mode (the
