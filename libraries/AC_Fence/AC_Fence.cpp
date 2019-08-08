@@ -91,6 +91,7 @@ AC_Fence::AC_Fence()
     AP_Param::setup_object_defaults(this, var_info);
 }
 
+/// enable the Fence code generally; a master switch for all fences
 void AC_Fence::enable(bool value)
 {
     _enabled = value;
@@ -188,6 +189,9 @@ bool AC_Fence::pre_arm_check(const char* &fail_msg)
     return true;
 }
 
+/// returns true if we have freshly breached the maximum altitude
+/// fence; also may set up a fallback fence which, if breached, will
+/// cause the altitude fence to be freshly breached
 bool AC_Fence::check_fence_alt_max()
 {
     // altitude fence check
@@ -233,7 +237,9 @@ bool AC_Fence::check_fence_alt_max()
     return false;
 }
 
-// check_fence_polygon - returns true if the polygon fence is freshly breached
+// check_fence_polygon - returns true if the poly fence is freshly
+// breached.  That includes being inside exclusion zones and outside
+// inclusions zones
 bool AC_Fence::check_fence_polygon()
 {
     const bool was_breached = _breached_fences & AC_FENCE_TYPE_POLYGON;
@@ -252,6 +258,10 @@ bool AC_Fence::check_fence_polygon()
     return false;
 }
 
+/// check_fence_circle - returns true if the circle fence (defined via
+/// parameters) has been freshly breached.  May also set up a backup
+/// fence outside the fence and return a fresh breach if that backup
+/// fence is breaced.
 bool AC_Fence::check_fence_circle()
 {
     if (!(_enabled_fences & AC_FENCE_TYPE_CIRCLE)) {
