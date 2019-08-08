@@ -237,7 +237,8 @@ bool AC_Fence::check_fence_alt_max()
 bool AC_Fence::check_fence_polygon()
 {
     const bool was_breached = _breached_fences & AC_FENCE_TYPE_POLYGON;
-    const bool breached = polygon_fence_is_breached();
+    const bool breached = ((_enabled_fences & AC_FENCE_TYPE_POLYGON) &&
+                           _poly_loader.breached());
     if (breached) {
         if (!was_breached) {
             record_breach(AC_FENCE_TYPE_POLYGON);
@@ -250,17 +251,6 @@ bool AC_Fence::check_fence_polygon()
     }
     return false;
 }
-
-bool AC_Fence::polygon_fence_is_breached()
-{
-    if (!(_enabled_fences & AC_FENCE_TYPE_POLYGON)) {
-        // not enabled; no breach
-        return false;
-    }
-
-    return _poly_loader.breached();
-}
-
 
 bool AC_Fence::check_fence_circle()
 {

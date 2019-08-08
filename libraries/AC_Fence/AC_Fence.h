@@ -132,9 +132,6 @@ private:
     bool pre_arm_check_circle(const char* &fail_msg) const;
     bool pre_arm_check_alt(const char* &fail_msg) const;
 
-    // returns true if we have breached the fence:
-    bool polygon_fence_is_breached();
-
     // parameters
     AP_Int8         _enabled;               // top level enable/disable control
     AP_Int8         _enabled_fences;        // bit mask holding which fences are enabled
