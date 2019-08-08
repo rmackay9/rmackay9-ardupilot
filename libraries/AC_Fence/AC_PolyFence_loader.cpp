@@ -684,7 +684,6 @@ bool AC_PolyFence_loader::load_from_eeprom()
         return false;
     }
 
-    _num_fences = 0;
     _num_loaded_exclusion_boundaries = 0;
     loaded_inclusion_boundary = nullptr;
     loaded_inclusion_point_count = 0;
