@@ -346,11 +346,10 @@ bool AC_PolyFence_loader::breached(const Vector2f& location)
 
     // check circular excludes
     for (uint8_t i=0; i<_num_loaded_circle_exclusion_boundaries; i++) {
-        const Vector2f loc = _loaded_circle_exclusion_boundary[i]->loc();
-        const float radius_cm = _loaded_circle_exclusion_boundary[i]->radius() * 100.0f;
-        const Vector2f diff_cm = location - loc;
+        const ExclusionCircle &circle = _loaded_circle_exclusion_boundary[i];
+        const Vector2f diff_cm = location - circle.loc;
         const float diff_cm_squared = diff_cm.length_squared();
-        if (diff_cm_squared < sq(radius_cm)) {
+        if (diff_cm_squared < sq(circle.radius*100.0f)) {
             return true;
         }
     }
@@ -669,6 +668,10 @@ void AC_PolyFence_loader::unload()
     _loaded_circle_inclusion_boundary = nullptr;
     _num_loaded_circle_inclusion_boundaries = 0;
 
+    free(_loaded_circle_exclusion_boundary);
+    _loaded_circle_exclusion_boundary = nullptr;
+    _num_loaded_circle_exclusion_boundaries = 0;
+
     loaded_inclusion_boundary = nullptr;
     loaded_inclusion_point_count = 0;
     _inclusion_fence_valid = false;
@@ -744,6 +747,16 @@ bool AC_PolyFence_loader::load_from_eeprom()
         }
     }
 
+    { // allocate storage for circular exclusion fences:
+        const uint32_t allocation_size = index_fence_count(AC_PolyFenceType::CIRCLE_EXCLUSION) * sizeof(ExclusionCircle);
+        gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for circ. exc. fences", allocation_size);
+        _loaded_circle_exclusion_boundary = (ExclusionCircle*)malloc(allocation_size);
+        if (_loaded_circle_exclusion_boundary == nullptr) {
+            unload();
+            return false;
+        }
+    }
+
     Vector2f *next_storage_point = _boundary;
 
     // use index to load fences from eeprom
@@ -791,18 +804,15 @@ bool AC_PolyFence_loader::load_from_eeprom()
             break;
         }
         case AC_PolyFenceType::CIRCLE_EXCLUSION: {
-            _loaded_circle_exclusion_boundary[_num_loaded_circle_exclusion_boundaries] = (ExclusionCircle*)next_storage_point;
-            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, *next_storage_point)) {
+            ExclusionCircle &circle = _loaded_circle_exclusion_boundary[_num_loaded_circle_exclusion_boundaries];
+            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, circle.loc)) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "AC_Fence: latlon read failed");
                 storage_valid = false;
                 break;
             }
-            next_storage_point++;
-            _num_loaded_circle_exclusion_boundaries++;
             // now read the radius
-            // FIXME: keep a separate array for this
-            next_storage_point->x = fence_storage.read_uint32(storage_offset);
-            next_storage_point++;
+            fence_storage.read_uint32(storage_offset);
+            _num_loaded_circle_exclusion_boundaries++;
             break;
         }
         case AC_PolyFenceType::CIRCLE_INCLUSION: {
