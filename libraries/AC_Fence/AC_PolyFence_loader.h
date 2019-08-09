@@ -138,6 +138,7 @@ private:
         uint16_t count;
         uint16_t storage_offset;
     };
+    uint16_t index_fence_count(const AC_PolyFenceType type);
 
     Vector2f *_boundary;          // array of boundary points.  Note: point 0 is the return point
     // FIXME:
@@ -186,6 +187,7 @@ private:
 
     // pointer into the boundary point array where the inclusion fence
     // can be found, and the number of points in that boundary:
+    // FIXME: allow any number of these to be uploaded
     Vector2f *loaded_inclusion_boundary;
     uint8_t loaded_inclusion_point_count;
 
@@ -212,12 +214,8 @@ private:
     };
     class InclusionCircle {
     public:
-        float lat() const { return float(((float*)this)[0]); }
-        float lon() const { return float(((float*)this)[1]); }
-        float radius() const { return float(((float*)this)[2]); }
-        Vector2f loc() const {
-            return Vector2f(((float*)this)[0], ((float*)this)[1]);
-        }
+        Vector2f loc;
+        float radius;
     };
 
     bool _load_attempted;
@@ -226,12 +224,11 @@ private:
     ExclusionCircle *_loaded_circle_exclusion_boundary[MAX_CIRCLE_EXCLUSION_BOUNDARIES];
     uint8_t _num_loaded_circle_exclusion_boundaries;
 
-    static const uint8_t MAX_CIRCLE_INCLUSION_BOUNDARIES = 2;
-    InclusionCircle *_loaded_circle_inclusion_boundary[MAX_CIRCLE_INCLUSION_BOUNDARIES];
+    InclusionCircle *_loaded_circle_inclusion_boundary;
     uint8_t _num_loaded_circle_inclusion_boundaries;
 
     bool convert_to_new_storage() WARN_IF_UNUSED;
-    bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f *&next_storage_point) WARN_IF_UNUSED;
+    bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f &dest) WARN_IF_UNUSED;
     bool read_polygon_from_storage(const Location &origin,
                                    uint16_t &read_offset,
                                    const uint8_t vertex_count,
