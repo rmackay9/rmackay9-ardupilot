@@ -343,10 +343,10 @@ bool AC_PolyFence_loader::breached(const Vector2f& location)
     // check circular excludes
     for (uint8_t i=0; i<_num_loaded_circle_exclusion_boundaries; i++) {
         const Vector2f loc = _loaded_circle_exclusion_boundary[i]->loc();
-        const float radius = _loaded_circle_exclusion_boundary[i]->radius();
-        Vector2f diff = location - loc;
-        const float dist_squared = diff.length_squared();
-        if (dist_squared < radius*radius) {
+        const float radius_cm = _loaded_circle_exclusion_boundary[i]->radius() * 100.0f;
+        const Vector2f diff_cm = location - loc;
+        const float diff_cm_squared = diff_cm.length_squared();
+        if (diff_cm_squared < sq(radius_cm)) {
             return true;
         }
     }
@@ -750,6 +750,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
                 storage_valid = false;
                 break;
             }
+            _num_loaded_circle_exclusion_boundaries++;
             // now read the radius
             // FIXME: keep a separate array for this
             next_storage_point->x = fence_storage.read_uint32(storage_offset);
@@ -771,8 +772,6 @@ bool AC_PolyFence_loader::load_from_eeprom()
             break;
         }
     }
-
-    gcs().send_text(MAV_SEVERITY_WARNING, "_num_loaded_exclusion_boundaries=%u\n", _num_loaded_exclusion_boundaries);
 
     if (!storage_valid) {
         unload();
