@@ -811,7 +811,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
                 break;
             }
             // now read the radius
-            fence_storage.read_uint32(storage_offset);
+            circle.radius = fence_storage.read_uint32(storage_offset);
             _num_loaded_circle_exclusion_boundaries++;
             break;
         }
@@ -823,7 +823,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
                 break;
             }
             // now read the radius
-            fence_storage.read_uint32(storage_offset);
+            circle.radius = fence_storage.read_uint32(storage_offset);
             _num_loaded_circle_inclusion_boundaries++;
             break;
         }
