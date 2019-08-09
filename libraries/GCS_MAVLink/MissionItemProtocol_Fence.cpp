@@ -36,6 +36,10 @@ MAV_MISSION_RESULT MissionItemProtocol_Fence::get_item(const GCS_MAVLINK &_link,
         ret_cmd = MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION;
         p1 = fenceitem.radius;
         break;
+    case AC_PolyFenceType::CIRCLE_INCLUSION:
+        ret_cmd = MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION;
+        p1 = fenceitem.radius;
+        break;
     case AC_PolyFenceType::END_OF_STORAGE:
         return MAV_MISSION_ERROR;
     }
@@ -79,6 +83,10 @@ static MAV_MISSION_RESULT convert_MISSION_ITEM_INT_to_AC_PolyFenceItem(const mav
         break;
     case MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION:
         ret.type = AC_PolyFenceType::CIRCLE_EXCLUSION;
+        ret.radius = mission_item_int.param1;
+        break;
+    case MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION:
+        ret.type = AC_PolyFenceType::CIRCLE_INCLUSION;
         ret.radius = mission_item_int.param1;
         break;
     default:
