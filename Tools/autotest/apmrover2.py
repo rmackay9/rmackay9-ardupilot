@@ -2400,10 +2400,11 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.set_parameter("SIM_SPEEDUP", 1)
         self.arm_vehicle()
 
-        self.test_poly_fence_exclusion(here, target_system=target_system, target_component=target_component)
-#        self.test_poly_fence_inclusion(here, target_system=target_system, target_component=target_component)
+#        self.test_poly_fence_exclusion(here, target_system=target_system, target_component=target_component)
+        self.test_poly_fence_inclusion(here, target_system=target_system, target_component=target_component)
 
     def test_poly_fence_inclusion(self, here, target_system=1, target_component=1):
+        self.progress("Circle and Polygon inclusion")
         self.upload_fences_from_locations(
             mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
             [
@@ -2429,6 +2430,39 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
         self.delay_sim_time(5)
         self.progress("Drive outside circle")
+        fence_middle = self.offset_location_ne(here, 150, 0)
+        self.drive_somewhere_breach_boundary_and_rtl(
+            fence_middle,
+            target_system=target_system,
+            target_component=target_component)
+
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+            [
+                [
+                    self.offset_location_ne(here, -20, -25), # tl
+                    self.offset_location_ne(here, 50, -25), # tr
+                    self.offset_location_ne(here, 50, 15), # br
+                    self.offset_location_ne(here, -20, 15), # bl,
+                ],
+                [
+                    self.offset_location_ne(here, 20, -20), # tl
+                    self.offset_location_ne(here, -50, -20), # tr
+                    self.offset_location_ne(here, -50, 20), # br
+                    self.offset_location_ne(here, 20, 20), # bl,
+                ],
+            ])
+
+        self.delay_sim_time(5)
+        self.progress("Drive outside top polygon")
+        fence_middle = self.offset_location_ne(here, -150, 0)
+        self.drive_somewhere_breach_boundary_and_rtl(
+            fence_middle,
+            target_system=target_system,
+            target_component=target_component)
+
+        self.delay_sim_time(5)
+        self.progress("Drive outside bottom polygon")
         fence_middle = self.offset_location_ne(here, 150, 0)
         self.drive_somewhere_breach_boundary_and_rtl(
             fence_middle,
