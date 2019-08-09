@@ -2437,8 +2437,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.set_parameter("SIM_SPEEDUP", 1)
         self.arm_vehicle()
 
-#        self.test_poly_fence_exclusion(here, target_system=target_system, target_component=target_component)
+        self.test_poly_fence_exclusion(here, target_system=target_system, target_component=target_component)
         self.test_poly_fence_inclusion(here, target_system=target_system, target_component=target_component)
+
+        self.disarm_vehicle()
 
     def test_poly_fence_inclusion(self, here, target_system=1, target_component=1):
         self.progress("Circle and Polygon inclusion")
