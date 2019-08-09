@@ -197,9 +197,12 @@ private:
 
     // pointers into the boundary point array where exclusion polygons
     // can be found:
-    static const uint8_t MAX_EXCLUSION_BOUNDARIES = 10;
-    Vector2f *_loaded_exclusion_boundary[MAX_EXCLUSION_BOUNDARIES];
-    uint8_t _loaded_exclusion_point_count[MAX_EXCLUSION_BOUNDARIES];
+    class ExclusionBoundary {
+    public:
+        Vector2f *points; // pointer into the _boundary array
+        uint8_t count; // count of points in the boundary
+    };
+    ExclusionBoundary *_loaded_exclusion_boundary;
     uint8_t _num_loaded_exclusion_boundaries;
 
     class ExclusionCircle {
@@ -207,19 +210,19 @@ private:
         Vector2f loc;
         float radius;
     };
+    ExclusionCircle *_loaded_circle_exclusion_boundary;
+    uint8_t _num_loaded_circle_exclusion_boundaries;
+
     class InclusionCircle {
     public:
         Vector2f loc;
         float radius;
     };
+    InclusionCircle *_loaded_circle_inclusion_boundary;
+    uint8_t _num_loaded_circle_inclusion_boundaries;
 
     bool _load_attempted;
 
-    ExclusionCircle *_loaded_circle_exclusion_boundary;
-    uint8_t _num_loaded_circle_exclusion_boundaries;
-
-    InclusionCircle *_loaded_circle_inclusion_boundary;
-    uint8_t _num_loaded_circle_inclusion_boundaries;
 
     bool convert_to_new_storage() WARN_IF_UNUSED;
     bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f &dest) WARN_IF_UNUSED;
