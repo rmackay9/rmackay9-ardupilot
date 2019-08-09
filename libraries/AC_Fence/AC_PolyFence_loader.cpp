@@ -52,6 +52,7 @@ bool AC_PolyFence_loader::find_storage_offset_for_seq(const uint16_t seq, uint16
     type = entry->type;
     offset++; // type
     switch (type) {
+    case AC_PolyFenceType::CIRCLE_INCLUSION:
     case AC_PolyFenceType::CIRCLE_EXCLUSION:
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
         if (delta != 0) {
@@ -94,6 +95,7 @@ bool AC_PolyFence_loader::get_item(const uint16_t seq, AC_PolyFenceItem &item)
     item.type = type;
 
     switch (type) {
+    case AC_PolyFenceType::CIRCLE_INCLUSION:
     case AC_PolyFenceType::CIRCLE_EXCLUSION:
         if (!read_latlon_from_storage(offset, item.loc)) {
             return false;
@@ -151,6 +153,7 @@ bool AC_PolyFence_loader::read_latlon_from_storage(uint16_t &read_offset, Vector
 bool AC_PolyFence_loader::write_fenceitem_to_storage(uint16_t &offset, const AC_PolyFenceItem &item)
 {
     switch(item.type) {
+    case AC_PolyFenceType::CIRCLE_INCLUSION:
     case AC_PolyFenceType::CIRCLE_EXCLUSION:
     case AC_PolyFenceType::END_OF_STORAGE:
     case AC_PolyFenceType::RETURN_POINT:
@@ -165,6 +168,7 @@ bool AC_PolyFence_loader::write_fenceitem_to_storage(uint16_t &offset, const AC_
     switch(item.type) {
     case AC_PolyFenceType::END_OF_STORAGE:
         break;
+    case AC_PolyFenceType::CIRCLE_INCLUSION:
     case AC_PolyFenceType::CIRCLE_EXCLUSION:
         if (!write_latlon_to_storage(offset, item.loc)) {
             return false;
@@ -351,6 +355,17 @@ bool AC_PolyFence_loader::breached(const Vector2f& location)
         }
     }
 
+    // check circular includes
+    for (uint8_t i=0; i<_num_loaded_circle_inclusion_boundaries; i++) {
+        const Vector2f loc = _loaded_circle_inclusion_boundary[i]->loc();
+        const float radius_cm = _loaded_circle_inclusion_boundary[i]->radius() * 100.0f;
+        const Vector2f diff_cm = location - loc;
+        const float diff_cm_squared = diff_cm.length_squared();
+        if (diff_cm_squared > sq(radius_cm)) {
+            return true;
+        }
+    }
+
     // no fence breached
     return false;
 }
@@ -494,6 +509,7 @@ bool AC_PolyFence_loader::scan_eeprom(void (*callback)(AC_PolyFenceType type, ui
         case AC_PolyFenceType::END_OF_STORAGE:
         case AC_PolyFenceType::POLYGON_INCLUSION:
         case AC_PolyFenceType::POLYGON_EXCLUSION:
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
         case AC_PolyFenceType::CIRCLE_EXCLUSION:
         case AC_PolyFenceType::RETURN_POINT:
             break;
@@ -518,6 +534,7 @@ bool AC_PolyFence_loader::scan_eeprom(void (*callback)(AC_PolyFenceType type, ui
             read_offset += vertex_count*8;
             break;
         }
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
         case AC_PolyFenceType::CIRCLE_EXCLUSION: {
             read_offset += 8; // for latlon
             read_offset += 4; // for radius
@@ -547,6 +564,7 @@ void AC_PolyFence_loader::scan_eeprom_count_fences(const AC_PolyFenceType type, 
         _eeprom_item_count += vertex_count;
         break;
     }
+    case AC_PolyFenceType::CIRCLE_INCLUSION:
     case AC_PolyFenceType::CIRCLE_EXCLUSION:
     case AC_PolyFenceType::RETURN_POINT:
         _eeprom_item_count++;
@@ -579,6 +597,7 @@ void AC_PolyFence_loader::scan_eeprom_index_fences(const AC_PolyFenceType type, 
         index.count = vertex_count;
         break;
     }
+    case AC_PolyFenceType::CIRCLE_INCLUSION:
     case AC_PolyFenceType::CIRCLE_EXCLUSION:
         index.count = 1;
         break;
@@ -757,6 +776,20 @@ bool AC_PolyFence_loader::load_from_eeprom()
             next_storage_point++;
             break;
         }
+        case AC_PolyFenceType::CIRCLE_INCLUSION: {
+            _loaded_circle_inclusion_boundary[_num_loaded_circle_inclusion_boundaries] = (InclusionCircle*)next_storage_point;
+            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, next_storage_point)) {
+                gcs().send_text(MAV_SEVERITY_WARNING, "AC_Fence: latlon read failed");
+                storage_valid = false;
+                break;
+            }
+            _num_loaded_circle_inclusion_boundaries++;
+            // now read the radius
+            // FIXME: keep a separate array for this
+            next_storage_point->x = fence_storage.read_uint32(storage_offset);
+            next_storage_point++;
+            break;
+        }
         case AC_PolyFenceType::RETURN_POINT:
             if (_loaded_return_point != nullptr) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "PolyFence: Multiple return points found");
@@ -841,6 +874,7 @@ bool AC_PolyFence_loader::validate_fence(const AC_PolyFenceItem *new_items, uint
         case AC_PolyFenceType::POLYGON_EXCLUSION:
             validate_latlon = true;
             break;
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
         case AC_PolyFenceType::CIRCLE_EXCLUSION:
             if (new_items[i].radius <= 0) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "Non-positive circle radius");
@@ -962,11 +996,11 @@ bool AC_PolyFence_loader::contains_compatible_fence() const
             seen_poly_inclusion = true;
             break;
         case AC_PolyFenceType::POLYGON_EXCLUSION:
-            return false;
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
         case AC_PolyFenceType::CIRCLE_EXCLUSION:
             return false;
         case AC_PolyFenceType::RETURN_POINT:
-            // ignore multiple return points
+            // ignore multiple return points FIXME - don't ignore
             break;
         }
     }
@@ -995,7 +1029,7 @@ bool AC_PolyFence_loader::get_return_point(Vector2l &ret) const
             inclusion_fence_i = i;
             break;
         case AC_PolyFenceType::POLYGON_EXCLUSION:
-            break;
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
         case AC_PolyFenceType::CIRCLE_EXCLUSION:
             break;
         case AC_PolyFenceType::RETURN_POINT: {
