@@ -2400,6 +2400,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.set_parameter("SIM_SPEEDUP", 1)
         self.arm_vehicle()
 
+        self.test_poly_fence_exclusion()
+#        self.test_poly_fence_inclusion()
+
+    def test_poly_fence_inclusion(self):
         self.upload_fences_from_locations(
             mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
             [
@@ -2430,6 +2434,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             fence_middle,
             target_system=target_system,
             target_component=target_component)
+
+    def test_poly_fence_exclusion(self):
 
         self.upload_fences_from_locations(
             mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION,
