@@ -357,11 +357,10 @@ bool AC_PolyFence_loader::breached(const Vector2f& location)
 
     // check circular includes
     for (uint8_t i=0; i<_num_loaded_circle_inclusion_boundaries; i++) {
-        const Vector2f loc = _loaded_circle_inclusion_boundary[i]->loc();
-        const float radius_cm = _loaded_circle_inclusion_boundary[i]->radius() * 100.0f;
-        const Vector2f diff_cm = location - loc;
+        const InclusionCircle &circle = _loaded_circle_inclusion_boundary[i];
+        const Vector2f diff_cm = location - circle.loc;
         const float diff_cm_squared = diff_cm.length_squared();
-        if (diff_cm_squared > sq(radius_cm)) {
+        if (diff_cm_squared > sq(circle.radius*100.0f)) {
             return true;
         }
     }
@@ -463,15 +462,14 @@ out:
     return ret;
 }
 
-bool AC_PolyFence_loader::read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f *&next_storage_point)
+bool AC_PolyFence_loader::read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f &dest)
 {
     Location tmp_loc;
     tmp_loc.lat = fence_storage.read_uint32(read_offset);
     read_offset += 4;
     tmp_loc.lng = fence_storage.read_uint32(read_offset);
     read_offset += 4;
-    *next_storage_point = origin.get_distance_NE(tmp_loc) * 100.0f;
-    next_storage_point++;
+    dest = origin.get_distance_NE(tmp_loc) * 100.0f;
     return true;
 }
 
@@ -479,9 +477,10 @@ bool AC_PolyFence_loader::read_polygon_from_storage(const Location &origin, uint
 {
     for (uint8_t i=0; i<vertex_count; i++) {
         // read and convert to lat/lon
-        if (!read_scaled_latlon_from_storage(origin, read_offset, next_storage_point)) {
+        if (!read_scaled_latlon_from_storage(origin, read_offset, *next_storage_point)) {
             return false;
         }
+        next_storage_point++;
     }
     return true;
 }
@@ -662,17 +661,33 @@ bool AC_PolyFence_loader::check_indexed()
 
 void AC_PolyFence_loader::unload()
 {
-    if (_boundary != nullptr) {
-        free(_boundary);
-        _boundary = nullptr;
-    }
-
+    free(_boundary);
+    _boundary = nullptr;
     _num_loaded_exclusion_boundaries = 0;
+
+    free(_loaded_circle_inclusion_boundary);
+    _loaded_circle_inclusion_boundary = nullptr;
+    _num_loaded_circle_inclusion_boundaries = 0;
+
     loaded_inclusion_boundary = nullptr;
     loaded_inclusion_point_count = 0;
-    _loaded_return_point = nullptr;
     _inclusion_fence_valid = false;
+
+    _loaded_return_point = nullptr;
     // FIXME: other loaded artificacts?
+}
+
+// return the number of fences of type type in the index:
+uint16_t AC_PolyFence_loader::index_fence_count(const AC_PolyFenceType type)
+{
+    uint16_t ret = 0;
+    for (uint8_t i=0; i<_eeprom_fence_count; i++) {
+        const FenceIndex &index = _boundary_index[i];
+        if (index.type == type) {
+            ret++;
+        }
+    }
+    return ret;
 }
 
 bool AC_PolyFence_loader::load_from_eeprom()
@@ -709,11 +724,24 @@ bool AC_PolyFence_loader::load_from_eeprom()
         return true;
     }
 
-    const uint32_t allocation_size = _eeprom_item_count * sizeof(Vector2f);
-    _boundary = (Vector2f*)malloc(allocation_size);
-    gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for points", allocation_size);
-    if (_boundary == nullptr) {
-        return false;
+    { // allocate general boundary point array:
+        const uint32_t allocation_size = _eeprom_item_count * sizeof(Vector2f);
+        _boundary = (Vector2f*)malloc(allocation_size);
+        gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for points", allocation_size);
+        if (_boundary == nullptr) {
+            unload();
+            return false;
+        }
+    }
+
+    { // allocate storage for circular inclusion fences:
+        const uint32_t allocation_size = index_fence_count(AC_PolyFenceType::CIRCLE_INCLUSION) * sizeof(InclusionCircle);
+        gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for circ. inc. fences", allocation_size);
+        _loaded_circle_inclusion_boundary = (InclusionCircle*)malloc(allocation_size);
+        if (_loaded_circle_inclusion_boundary == nullptr) {
+            unload();
+            return false;
+        }
     }
 
     Vector2f *next_storage_point = _boundary;
@@ -764,11 +792,12 @@ bool AC_PolyFence_loader::load_from_eeprom()
         }
         case AC_PolyFenceType::CIRCLE_EXCLUSION: {
             _loaded_circle_exclusion_boundary[_num_loaded_circle_exclusion_boundaries] = (ExclusionCircle*)next_storage_point;
-            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, next_storage_point)) {
+            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, *next_storage_point)) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "AC_Fence: latlon read failed");
                 storage_valid = false;
                 break;
             }
+            next_storage_point++;
             _num_loaded_circle_exclusion_boundaries++;
             // now read the radius
             // FIXME: keep a separate array for this
@@ -777,17 +806,15 @@ bool AC_PolyFence_loader::load_from_eeprom()
             break;
         }
         case AC_PolyFenceType::CIRCLE_INCLUSION: {
-            _loaded_circle_inclusion_boundary[_num_loaded_circle_inclusion_boundaries] = (InclusionCircle*)next_storage_point;
-            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, next_storage_point)) {
+            InclusionCircle &circle = _loaded_circle_inclusion_boundary[_num_loaded_circle_inclusion_boundaries];
+            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, circle.loc)) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "AC_Fence: latlon read failed");
                 storage_valid = false;
                 break;
             }
-            _num_loaded_circle_inclusion_boundaries++;
             // now read the radius
-            // FIXME: keep a separate array for this
-            next_storage_point->x = fence_storage.read_uint32(storage_offset);
-            next_storage_point++;
+            fence_storage.read_uint32(storage_offset);
+            _num_loaded_circle_inclusion_boundaries++;
             break;
         }
         case AC_PolyFenceType::RETURN_POINT:
@@ -797,11 +824,12 @@ bool AC_PolyFence_loader::load_from_eeprom()
                 break;
             }
             _loaded_return_point = next_storage_point;
-            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, next_storage_point)) {
+            if (!read_scaled_latlon_from_storage(ekf_origin, storage_offset, *next_storage_point)) {
                 storage_valid = false;
                 gcs().send_text(MAV_SEVERITY_WARNING, "PolyFence: latlon read failed");
                 break;
             }
+            next_storage_point++;
             break;
         }
     }
