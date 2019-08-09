@@ -179,6 +179,8 @@ bool MissionItemProtocol_Fence::clear_all_items()
 MAV_MISSION_RESULT MissionItemProtocol_Fence::allocate_receive_resources(const uint16_t count)
 {
     if (_new_items != nullptr) {
+        // this is an error - the base class should have called
+        // free_upload_resources first
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
         abort();
 #endif

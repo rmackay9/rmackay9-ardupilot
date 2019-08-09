@@ -63,6 +63,7 @@ void MissionItemProtocol::handle_mission_count(
             send_mission_ack(_link, msg, MAV_MISSION_DENIED);
             return;
         }
+        free_upload_resources();
     }
 
     if (packet.count > max_items()) {
