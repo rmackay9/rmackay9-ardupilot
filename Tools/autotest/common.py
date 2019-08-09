@@ -2826,7 +2826,7 @@ class AutoTest(ABC):
         '''
         if mission_type == mavutil.mavlink.MAV_MISSION_TYPE_ALL:
             # recurse
-            if not self.is_tracker():
+            if not self.is_tracker() and not self.is_plane():
                 self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
             self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_MISSION)
             if not self.is_sub() and not self.is_tracker():
