@@ -11,6 +11,7 @@ enum class AC_PolyFenceType {
     POLYGON_EXCLUSION = 97,
     CIRCLE_EXCLUSION  = 96,
     RETURN_POINT = 95,
+    CIRCLE_INCLUSION  = 94,
 };
 
 // a FenceItem is just a means of passing data about an item into
@@ -209,12 +210,25 @@ private:
             return Vector2f(((float*)this)[0], ((float*)this)[1]);
         }
     };
+    class InclusionCircle {
+    public:
+        float lat() const { return float(((float*)this)[0]); }
+        float lon() const { return float(((float*)this)[1]); }
+        float radius() const { return float(((float*)this)[2]); }
+        Vector2f loc() const {
+            return Vector2f(((float*)this)[0], ((float*)this)[1]);
+        }
+    };
 
     bool _load_attempted;
 
     static const uint8_t MAX_CIRCLE_EXCLUSION_BOUNDARIES = 2;
     ExclusionCircle *_loaded_circle_exclusion_boundary[MAX_CIRCLE_EXCLUSION_BOUNDARIES];
     uint8_t _num_loaded_circle_exclusion_boundaries;
+
+    static const uint8_t MAX_CIRCLE_INCLUSION_BOUNDARIES = 2;
+    InclusionCircle *_loaded_circle_inclusion_boundary[MAX_CIRCLE_INCLUSION_BOUNDARIES];
+    uint8_t _num_loaded_circle_inclusion_boundaries;
 
     bool convert_to_new_storage() WARN_IF_UNUSED;
     bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f *&next_storage_point) WARN_IF_UNUSED;
