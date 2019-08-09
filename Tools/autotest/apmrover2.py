@@ -1190,12 +1190,49 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                 mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
         ]
 
+    def fence_with_multiple_return_points_with_bad_sequence_numbers(self, target_system=1, target_component=1):
+        return [
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                1.0 * 1e7, # latitude
+                1.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+            self.mav.mav.mission_item_int_encode(
+                target_system,
+                target_component,
+                0, # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_RETURN_POINT,
+                0, # current
+                0, # autocontinue
+                0, # p1
+                0, # p2
+                0, # p3
+                0, # p4
+                2.0 * 1e7, # latitude
+                2.0017 *1e7, # longitude
+                31.0000, # altitude
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
+        ]
+
     def fences_which_should_not_upload(self, target_system=1, target_component=1):
         return [ ("Bad Frame", self.fence_with_bad_frame(target_system=target_system, target_component=target_component)),
                  ("Zero Vertex Count", self.fence_with_zero_vertex_count(target_system=target_system, target_component=target_component)),
                  ("Wrong Vertex Count", self.fence_with_wrong_vertex_count(target_system=target_system, target_component=target_component)),
                  ("Multiple return points", self.fence_with_multiple_return_points(target_system=target_system, target_component=target_component)),
                  ("Invalid lat/lon", self.fence_with_invalid_latlon(target_system=target_system, target_component=target_component)),
+                 ("Multiple Return points with bad sequence numbers", self.fence_with_multiple_return_points_with_bad_sequence_numbers(target_system=target_system, target_component=target_component)),
                  ]
 
 
