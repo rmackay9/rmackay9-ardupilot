@@ -213,5 +213,6 @@ MAV_MISSION_RESULT MissionItemProtocol_Fence::allocate_update_resources()
         _updated_mask = nullptr;
         return ret;
     }
+    _new_items_count = _item_count;
     return MAV_MISSION_ACCEPTED;
 }
