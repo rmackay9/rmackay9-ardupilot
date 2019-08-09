@@ -202,15 +202,10 @@ private:
     uint8_t _loaded_exclusion_point_count[MAX_EXCLUSION_BOUNDARIES];
     uint8_t _num_loaded_exclusion_boundaries;
 
-    // FIXME?  this is getting nasty; consider just having two arrays
     class ExclusionCircle {
     public:
-        float lat() const { return float(((float*)this)[0]); }
-        float lon() const { return float(((float*)this)[1]); }
-        float radius() const { return float(((float*)this)[2]); }
-        Vector2f loc() const {
-            return Vector2f(((float*)this)[0], ((float*)this)[1]);
-        }
+        Vector2f loc;
+        float radius;
     };
     class InclusionCircle {
     public:
@@ -220,8 +215,7 @@ private:
 
     bool _load_attempted;
 
-    static const uint8_t MAX_CIRCLE_EXCLUSION_BOUNDARIES = 2;
-    ExclusionCircle *_loaded_circle_exclusion_boundary[MAX_CIRCLE_EXCLUSION_BOUNDARIES];
+    ExclusionCircle *_loaded_circle_exclusion_boundary;
     uint8_t _num_loaded_circle_exclusion_boundaries;
 
     InclusionCircle *_loaded_circle_inclusion_boundary;
