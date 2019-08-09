@@ -339,7 +339,8 @@ bool AC_PolyFence_loader::breached(const Vector2f& location)
 
     // check we are outside each exclusion zone:
     for (uint8_t i=0; i<_num_loaded_exclusion_boundaries; i++) {
-        if (!Polygon_outside(location, _loaded_exclusion_boundary[i], _loaded_exclusion_point_count[i])) {
+        const ExclusionBoundary &boundary = _loaded_exclusion_boundary[i];
+        if (!Polygon_outside(location, boundary.points, boundary.count)) {
             return true;
         }
     }
@@ -662,6 +663,9 @@ void AC_PolyFence_loader::unload()
 {
     free(_boundary);
     _boundary = nullptr;
+
+    free(_loaded_exclusion_boundary);
+    _loaded_exclusion_boundary = nullptr;
     _num_loaded_exclusion_boundaries = 0;
 
     free(_loaded_circle_inclusion_boundary);
@@ -728,10 +732,21 @@ bool AC_PolyFence_loader::load_from_eeprom()
     }
 
     { // allocate general boundary point array:
+        // FIXME: should not be _eeprom_item_count, should be the sum of the number of points in the return point, inclusion fences and exclusion fences
         const uint32_t allocation_size = _eeprom_item_count * sizeof(Vector2f);
         _boundary = (Vector2f*)malloc(allocation_size);
         gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for points", allocation_size);
         if (_boundary == nullptr) {
+            unload();
+            return false;
+        }
+    }
+
+    { // allocate storage for circular exclusion polyfences:
+        const uint32_t allocation_size = index_fence_count(AC_PolyFenceType::POLYGON_EXCLUSION) * sizeof(ExclusionBoundary);
+        gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for exc. fences", allocation_size);
+        _loaded_exclusion_boundary = (ExclusionBoundary*)malloc(allocation_size);
+        if (_loaded_exclusion_boundary == nullptr) {
             unload();
             return false;
         }
@@ -792,8 +807,9 @@ bool AC_PolyFence_loader::load_from_eeprom()
             break;
         }
         case AC_PolyFenceType::POLYGON_EXCLUSION: {
-            _loaded_exclusion_boundary[_num_loaded_exclusion_boundaries] = next_storage_point;
-            _loaded_exclusion_point_count[_num_loaded_exclusion_boundaries] = index.count;
+            ExclusionBoundary &boundary = _loaded_exclusion_boundary[_num_loaded_exclusion_boundaries];
+            boundary.points = next_storage_point;
+            boundary.count = index.count;
             storage_offset += 1; // skip vertex count
             if (!read_polygon_from_storage(ekf_origin, storage_offset, index.count, next_storage_point)) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "AC_Fence: polygon read failed");
@@ -861,9 +877,10 @@ Vector2f* AC_PolyFence_loader::get_exclusion_polygon(uint16_t index, uint16_t &n
     if (index > _num_loaded_exclusion_boundaries) {
         return nullptr;
     }
+    const ExclusionBoundary &boundary = _loaded_exclusion_boundary[index];
+    num_points = boundary.count;
 
-    num_points = _loaded_exclusion_point_count[index];
-    return _loaded_exclusion_boundary[index];
+    return boundary.points;
 }
 
 bool AC_PolyFence_loader::validate_fence(const AC_PolyFenceItem *new_items, uint16_t count) const
