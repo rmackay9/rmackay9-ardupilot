@@ -2328,6 +2328,63 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             if abs(distance-self.distance_to_home(use_cached_home=True)) <= accuracy:
                 break
 
+    def drive_somewhere_breach_boundary_and_rtl(self, loc, target_system=1, target_component=1):
+        tstart = self.get_sim_time()
+        last_sent = 0
+        seen_fence_breach = False
+
+        type_mask = (mavutil.mavlink.POSITION_TARGET_TYPEMASK_VX_IGNORE +
+                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_VY_IGNORE +
+                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_VZ_IGNORE +
+                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_AX_IGNORE +
+                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_AY_IGNORE +
+                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_AZ_IGNORE +
+                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_IGNORE +
+                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE)
+
+        self.change_mode('GUIDED')
+        while True:
+            now = self.get_sim_time_cached()
+            if now - last_sent > 1:
+                last_sent = now
+                self.mav.mav.set_position_target_global_int_send(
+                    0,
+                    target_system,
+                    target_component,
+                    mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+                    type_mask,
+                    loc.lat*1.0e7,
+                    loc.lng*1.0e7,
+                    0, # alt
+                    0, # x-ve
+                    0, # y-vel
+                    0, # z-vel
+                    0, # afx
+                    0, # afy
+                    0, # afz
+                    0, # yaw,
+                    0, # yaw-rate
+                )
+            m = self.mav.recv_match(blocking=True,
+                                    timeout=1)
+            if m is None:
+                continue
+            t = m.get_type()
+            if t == "POSITION_TARGET_GLOBAL_INT":
+                print("Target: (%s)" % str(m))
+            elif t == "GLOBAL_POSITION_INT":
+                print("Position: (%s)" % str(m))
+            elif t == "FENCE_STATUS":
+                print("Fence: %s" % str(m))
+                if m.breach_status != 0:
+                    seen_fence_breach = True
+                    self.progress("Fence breach detected!")
+                    if m.breach_type != mavutil.mavlink.FENCE_BREACH_BOUNDARY:
+                        raise NotAchievedException("Breach of unexpected type")
+            if self.mode_is("RTL", cached=True) and seen_fence_breach:
+                break
+        self.wait_distance_to_home(5, accuracy=2)
+
     def test_poly_fence(self):
         '''test fence-related functions'''
         target_system = 1
@@ -2353,62 +2410,28 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             ],
         ])
 
-        fence_middle = self.offset_location_ne(here, 0, 30)
-
-        type_mask = (mavutil.mavlink.POSITION_TARGET_TYPEMASK_VX_IGNORE +
-                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_VY_IGNORE +
-                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_VZ_IGNORE +
-                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_AX_IGNORE +
-                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_AY_IGNORE +
-                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_AZ_IGNORE +
-                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_IGNORE +
-                     mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE)
-
         self.set_parameter("SIM_SPEEDUP", 1)
         self.arm_vehicle()
-        self.change_mode('GUIDED')
-        tstart = self.get_sim_time()
-        last_sent = 0
-        seen_fence_breach = False
-        while True:
-            now = self.get_sim_time_cached()
-            if now - last_sent > 1:
-                last_sent = now
-                self.mav.mav.set_position_target_global_int_send(
-                    0,
-                    target_system,
-                    target_component,
-                    mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
-                    type_mask,
-                    fence_middle.lat*1.0e7,
-                    fence_middle.lng*1.0e7,
-                    0, # alt
-                    0, # x-ve
-                    0, # y-vel
-                    0, # z-vel
-                    0, # afx
-                    0, # afy
-                    0, # afz
-                    0, # yaw,
-                    0, # yaw-rate
-                )
-            m = self.mav.recv_match(blocking=True,
-                                    timeout=1)
-            if m is None:
-                continue
-            t = m.get_type()
-            if t == "POSITION_TARGET_GLOBAL_INT":
-                print("Target: (%s)" % str(m))
-            elif t == "GLOBAL_POSITION_INT":
-                print("Position: (%s)" % str(m))
-            elif t == "FENCE_STATUS":
-                if m.breach_count != 0:
-                    self.progress("Fence breach detected!")
-                if self.breach_type != mavutil.mavlink.FENCE_BREACH_BOUNDARY:
-                    raise NotAchievedException("Breach of unexpected type")
-                seen_fence_breach = True
-            if self.mode_is("RTL") and seen_fence_breach:
-                break
+
+        self.progress("Breach eastern boundary")
+        fence_middle = self.offset_location_ne(here, 0, 30)
+        self.drive_somewhere_breach_boundary_and_rtl(fence_middle,
+                                                     target_system=target_system,
+                                                     target_component=target_component)
+
+        self.delay_sim_time(10) # hack to work around manual recovery bug
+
+        self.progress("Breach western boundary")
+        fence_middle = self.offset_location_ne(here, 0, -30)
+        self.drive_somewhere_breach_boundary_and_rtl(fence_middle,
+                                                     target_system=target_system,
+                                                     target_component=target_component)
+
+        # FIXME: add test that we can't arm inside a circular exclusion zone
+        # FIXME: add test that we can't arm inside a polygonal exclusion zone
+        # FIXME: add test that we can't arm outside an polygonal inclusion zone
+        # FIXME: add test that we can't arm outside an circular inclusion zone
+        # FIXME: add test for consecutive breaches within the manual recovery period
 
     def drive_smartrtl(self):
         self.change_mode("STEERING")
