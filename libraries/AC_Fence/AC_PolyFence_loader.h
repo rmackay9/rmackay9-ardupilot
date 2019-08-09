@@ -127,11 +127,6 @@ private:
     // load boundary point from eeprom, returns true on successful load
     bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
 
-    // update the validity flag:
-    bool calculate_boundary_valid() const WARN_IF_UNUSED;
-
-    bool _inclusion_fence_valid;
-
     class FenceIndex {
     public:
         AC_PolyFenceType type;
@@ -183,15 +178,20 @@ private:
 
     static const uint8_t new_fence_storage_magic = 235; // FIXME: ensure this is out-of-band for old lat/lon point storage
 
-    // pointer into the boundary point array where the inclusion fence
-    // can be found, and the number of points in that boundary:
-    // FIXME: allow any number of these to be uploaded
-    Vector2f *loaded_inclusion_boundary;
-    uint8_t loaded_inclusion_point_count;
 
     // pointer into the boundary point array where the return point
     // can be found:
     Vector2f *_loaded_return_point;
+
+    // pointers into the boundary point array where inclusion polygons
+    // can be found:
+    class InclusionBoundary {
+    public:
+        Vector2f *points; // pointer into the _boundary array
+        uint8_t count; // count of points in the boundary
+    };
+    InclusionBoundary *_loaded_inclusion_boundary;
+    uint8_t _num_loaded_inclusion_boundaries;
 
     // pointers into the boundary point array where exclusion polygons
     // can be found:
