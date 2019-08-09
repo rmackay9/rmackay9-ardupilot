@@ -3030,6 +3030,27 @@ class AutoTest(ABC):
         seq = 0
         items = []
         for locs in list_of_list_of_locs:
+            if type(locs) == dict:
+                # circular fence
+                item = self.mav.mav.mission_item_int_encode(
+                    target_system,
+                    target_component,
+                    seq, # seq
+                    mavutil.mavlink.MAV_FRAME_GLOBAL,
+                    mavutil.mavlink.MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
+                    0, # current
+                    0, # autocontinue
+                    locs["radius"], # p1
+                    0, # p2
+                    0, # p3
+                    0, # p4
+                    locs["loc"].lat *1e7, # latitude
+                    locs["loc"].lng *1e7, # longitude
+                    33.0000, # altitude
+                    mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+                seq += 1
+                items.append(item)
+                continue
             count = len(locs)
             for loc in locs:
                 item = self.mav.mav.mission_item_int_encode(
