@@ -152,8 +152,6 @@ private:
     void void_index() {
         free(_boundary_index);
         _boundary_index = nullptr;
-        free(_boundary);
-        _boundary = nullptr;
     }
 
     bool check_indexed() WARN_IF_UNUSED;
