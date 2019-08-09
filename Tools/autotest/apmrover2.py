@@ -2397,17 +2397,20 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.set_parameter("FENCE_ENABLE", 1)
 
         self.upload_exclusion_fences_from_locations([
-            [ # above
+            [ # east
                 self.offset_location_ne(here, -50, 20), # bl
                 self.offset_location_ne(here, 50, 20), # br
                 self.offset_location_ne(here, 50, 40), # tr
                 self.offset_location_ne(here, -50, 40), # tl,
-            ], [ # below
+            ], [ # west
                 self.offset_location_ne(here, -50, -20), # tl
                 self.offset_location_ne(here, 50, -20), # tr
                 self.offset_location_ne(here, 50, -40), # br
                 self.offset_location_ne(here, -50, -40), # bl,
-            ],
+            ], {
+                "radius": 30,
+                "loc": self.offset_location_ne(here, -60, 0),
+            },
         ])
 
         self.set_parameter("SIM_SPEEDUP", 1)
@@ -2419,10 +2422,20 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                                                      target_system=target_system,
                                                      target_component=target_component)
 
-        self.delay_sim_time(10) # hack to work around manual recovery bug
+        self.progress("delaying - hack to work around manual recovery bug")
+        self.delay_sim_time(5)
 
         self.progress("Breach western boundary")
         fence_middle = self.offset_location_ne(here, 0, -30)
+        self.drive_somewhere_breach_boundary_and_rtl(fence_middle,
+                                                     target_system=target_system,
+                                                     target_component=target_component)
+
+        self.progress("delaying - hack to work around manual recovery bug")
+        self.delay_sim_time(5)
+
+        self.progress("Breach southern circle")
+        fence_middle = self.offset_location_ne(here, -150, 0)
         self.drive_somewhere_breach_boundary_and_rtl(fence_middle,
                                                      target_system=target_system,
                                                      target_component=target_component)
@@ -2432,6 +2445,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         # FIXME: add test that we can't arm outside an polygonal inclusion zone
         # FIXME: add test that we can't arm outside an circular inclusion zone
         # FIXME: add test for consecutive breaches within the manual recovery period
+        # FIXME: change loaded excusion zone radius to be in cm?
 
     def drive_smartrtl(self):
         self.change_mode("STEERING")
