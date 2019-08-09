@@ -225,33 +225,13 @@ bool AC_PolyFence_loader::load_point_from_eeprom(uint16_t i, Vector2l& point)
     return true;
 }
 
-// validate array of inclusion fence boundary points
-//   returns true if boundary is valid
+// returns true if a polygonal include fence could be returned
 bool AC_PolyFence_loader::valid()
 {
     if (!load_from_eeprom()) {
         return false;
     }
-    return _inclusion_fence_valid;
-}
-
-// validate array of inclusion fence boundary points
-//   returns true if boundary is valid
-bool AC_PolyFence_loader::calculate_boundary_valid() const
-{
-    if (loaded_inclusion_boundary == nullptr) {
-        return false;
-    }
-    if (loaded_inclusion_point_count < 3) {
-        return false;
-    }
-
-    // TODO: check return point is within the fence - or make it a separate call?
-    // if (Polygon_outside(return_point, inclusion_boundary, inclusion_point_count)) {
-    //     return false;
-    // }
-
-    return true;
+    return _num_loaded_inclusion_boundaries != 0;
 }
 
 bool AC_PolyFence_loader::breached()
@@ -327,12 +307,10 @@ bool AC_PolyFence_loader::breached(const Vector2f& location)
         return false;
     }
 
-    // FIXME: consider updating a _breached flag as part of update and
-    // slowly iterate across the fences as part of update.
-    if (loaded_inclusion_boundary != nullptr &&
-        loaded_inclusion_point_count >= 3) {
-        // make sure we are within the inclusion fence:
-        if (Polygon_outside(location, loaded_inclusion_boundary, loaded_inclusion_point_count)) {
+    // check we are inside each inclusion zone:
+    for (uint8_t i=0; i<_num_loaded_inclusion_boundaries; i++) {
+        const InclusionBoundary &boundary = _loaded_inclusion_boundary[i];
+        if (Polygon_outside(location, boundary.points, boundary.count)) {
             return true;
         }
     }
@@ -664,6 +642,10 @@ void AC_PolyFence_loader::unload()
     free(_boundary);
     _boundary = nullptr;
 
+    free(_loaded_inclusion_boundary);
+    _loaded_inclusion_boundary = nullptr;
+    _num_loaded_inclusion_boundaries = 0;
+
     free(_loaded_exclusion_boundary);
     _loaded_exclusion_boundary = nullptr;
     _num_loaded_exclusion_boundaries = 0;
@@ -675,10 +657,6 @@ void AC_PolyFence_loader::unload()
     free(_loaded_circle_exclusion_boundary);
     _loaded_circle_exclusion_boundary = nullptr;
     _num_loaded_circle_exclusion_boundaries = 0;
-
-    loaded_inclusion_boundary = nullptr;
-    loaded_inclusion_point_count = 0;
-    _inclusion_fence_valid = false;
 
     _loaded_return_point = nullptr;
     // FIXME: other loaded artificacts?
@@ -742,7 +720,19 @@ bool AC_PolyFence_loader::load_from_eeprom()
         }
     }
 
-    { // allocate storage for circular exclusion polyfences:
+    // FIXME: find some way of factoring out all of these allocation routines.
+
+    { // allocate storage for inclusion polyfences:
+        const uint32_t allocation_size = index_fence_count(AC_PolyFenceType::POLYGON_INCLUSION) * sizeof(InclusionBoundary);
+        gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for inc. fences", allocation_size);
+        _loaded_inclusion_boundary = (InclusionBoundary*)malloc(allocation_size);
+        if (_loaded_inclusion_boundary == nullptr) {
+            unload();
+            return false;
+        }
+    }
+
+    { // allocate storage for exclusion polyfences:
         const uint32_t allocation_size = index_fence_count(AC_PolyFenceType::POLYGON_EXCLUSION) * sizeof(ExclusionBoundary);
         gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for exc. fences", allocation_size);
         _loaded_exclusion_boundary = (ExclusionBoundary*)malloc(allocation_size);
@@ -791,19 +781,17 @@ bool AC_PolyFence_loader::load_from_eeprom()
             storage_valid = false;
             break;
         case AC_PolyFenceType::POLYGON_INCLUSION: {
-            if (loaded_inclusion_boundary != nullptr) {
-                gcs().send_text(MAV_SEVERITY_WARNING, "AC_Fence: Multiple inclusion boundaries found");
-                storage_valid = false;
-                break;
-            }
-            loaded_inclusion_boundary = next_storage_point;
-            loaded_inclusion_point_count = index.count;
+            // FIXME: consider factoring this with the EXCLUSION case
+            InclusionBoundary &boundary = _loaded_inclusion_boundary[_num_loaded_inclusion_boundaries];
+            boundary.points = next_storage_point;
+            boundary.count = index.count;
             storage_offset += 1; // skip vertex count
             if (!read_polygon_from_storage(ekf_origin, storage_offset, index.count, next_storage_point)) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "AC_Fence: polygon read failed");
                 storage_valid = false;
                 break;
             }
+            _num_loaded_inclusion_boundaries++;
             break;
         }
         case AC_PolyFenceType::POLYGON_EXCLUSION: {
@@ -864,8 +852,6 @@ bool AC_PolyFence_loader::load_from_eeprom()
         unload();
         return false;
     }
-
-    _inclusion_fence_valid = calculate_boundary_valid();
 
     _load_time_ms = AP_HAL::millis();
 

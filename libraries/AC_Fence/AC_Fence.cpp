@@ -427,14 +427,16 @@ void AC_Fence::manual_recovery_start()
 }
 
 /// returns pointer to array of inclusion fence comprised of polygon
-/// points and num_points is filled in with the total number
+/// points and num_points is filled in with the total number.  This is
+/// the *first* inclusion fence!
 Vector2f* AC_PolyFence_loader::get_boundary_points(uint16_t& num_points) const
 {
-    if (loaded_inclusion_boundary == nullptr) {
+    if (_num_loaded_inclusion_boundaries == 0) {
         return nullptr;
     }
-    num_points = loaded_inclusion_point_count;
-    return loaded_inclusion_boundary;
+    const InclusionBoundary &boundary = _loaded_inclusion_boundary[0];
+    num_points = boundary.count;
+    return boundary.points;
 }
 
 // methods for mavlink SYS_STATUS message (send_sys_status)
