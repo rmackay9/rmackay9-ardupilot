@@ -1022,6 +1022,7 @@ bool AC_PolyFence_loader::contains_compatible_fence() const
         // this indicates no boundary points present
         return true;
     }
+    bool seen_return_point = false;
     bool seen_poly_inclusion = false;
     for (uint16_t i=0; i<_num_fences; i++) {
         switch (_boundary_index[i].type) {
@@ -1041,7 +1042,10 @@ bool AC_PolyFence_loader::contains_compatible_fence() const
         case AC_PolyFenceType::CIRCLE_EXCLUSION:
             return false;
         case AC_PolyFenceType::RETURN_POINT:
-            // ignore multiple return points FIXME - don't ignore
+            if (seen_return_point) {
+                return false;
+            }
+            seen_return_point = true;
             break;
         }
     }
