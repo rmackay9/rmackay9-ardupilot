@@ -2422,11 +2422,56 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                 break
         self.wait_distance_to_home(5, accuracy=2)
 
+    def assert_fence_breached(self):
+        m = self.mav.recv_match(type='FENCE_STATUS',
+                                blocking=True,
+                                timeout=10)
+        if m is None:
+            raise NotAchievedException("Nor receiving fence notifications?")
+        if m.breach_status != 1:
+            raise NotAchievedException("Expected to be breached")
+
+    def test_poly_fence_noarms(self, target_system=1, target_component=1):
+        '''various tests to ensure we can't arm when in breach of a polyfence'''
+        self.progress("Ensure we can arm to start with")
+        self.change_mode("GUIDED")
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+        self.disarm_vehicle()
+
+        self.start_subtest("Ensure not armable when within an exclusion circle")
+        here = self.mav.location()
+        item = self.mav.mav.mission_item_int_encode(
+            target_system,
+            target_component,
+            0, # seq
+            mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
+            0, # current
+            0, # autocontinue
+            5, # p1 - radius
+            0, # p2
+            0, # p3
+            0, # p4
+            here.lat*1e7, # latitude
+            here.lng*1e7, # longitude
+            33.0000, # altitude
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                           [item])
+        self.delay_sim_time(5) # ArduPilot only checks for breaches @1Hz
+        self.drain_mav()
+        self.assert_fence_breached()
+        if self.arm_motors_with_rc_input():
+            raise NotAchievedException(
+                "Armed when within exclusion zone")
+
+
     def test_poly_fence(self):
         '''test fence-related functions'''
         target_system = 1
         target_component = 1
-        self.start_subtest("Two exclusion zones, one ahead, one behind")
+
         self.change_mode("LOITER")
         self.wait_ready_to_arm()
         here = self.mav.location()
@@ -2435,6 +2480,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.set_parameter("AVOID_ENABLE", 0)
 
         self.set_parameter("SIM_SPEEDUP", 1)
+
+        self.test_poly_fence_noarms(target_system=target_system, target_component=target_component)
+        return
+
         self.arm_vehicle()
 
         self.test_poly_fence_exclusion(here, target_system=target_system, target_component=target_component)
@@ -2443,6 +2492,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.disarm_vehicle()
 
     def test_poly_fence_inclusion(self, here, target_system=1, target_component=1):
+
         self.progress("Circle and Polygon inclusion")
         self.upload_fences_from_locations(
             mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
