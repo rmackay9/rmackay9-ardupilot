@@ -2458,9 +2458,20 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.arm_vehicle()
         self.disarm_vehicle()
 
+        self.test_poly_fence_noarms_exclusion_circle(target_system=target_system,
+                                                     target_component=target_component)
+        self.test_poly_fence_noarms_inclusion_circle(target_system=target_system,
+                                                     target_component=target_component)
+        self.test_poly_fence_noarms_exclusion_polyfence(target_system=target_system,
+                                                        target_component=target_component)
+        self.test_poly_fence_noarms_inclusion_polyfence(target_system=target_system,
+                                                        target_component=target_component)
+
+    def test_poly_fence_noarms_exclusion_circle(self, target_system=1, target_component=1):
+        self.start_subtest("Ensure not armable when within an exclusion circle")
+
         here = self.mav.location()
 
-        self.start_subtest("Ensure not armable when within an exclusion circle")
         items = [
             self.mav.mav.mission_item_int_encode(
                 target_system,
@@ -2508,7 +2519,11 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                                            [])
         self.wait_fence_not_breached()
 
+    def test_poly_fence_noarms_inclusion_circle(self, target_system=1, target_component=1):
         self.start_subtest("Ensure not armable when outside an inclusion circle (but within another")
+
+        here = self.mav.location()
+
         items = [
             self.mav.mav.mission_item_int_encode(
                 target_system,
@@ -2551,6 +2566,74 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         if self.arm_motors_with_rc_input():
             raise NotAchievedException(
                 "Armed when outside an inclusion zone")
+
+        self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                           [])
+        self.wait_fence_not_breached()
+
+    def test_poly_fence_noarms_exclusion_polyfence(self, target_system=1, target_component=1):
+        self.start_subtest("Ensure not armable when inside an exclusion polyfence (but outside another")
+
+        here = self.mav.location()
+
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION,
+            [
+                [ # east
+                    self.offset_location_ne(here, -50, 20), # bl
+                    self.offset_location_ne(here, 50, 20), # br
+                    self.offset_location_ne(here, 50, 40), # tr
+                    self.offset_location_ne(here, -50, 40), # tl,
+                ], [ # over the top of the vehicle
+                    self.offset_location_ne(here, -50, -50), # bl
+                    self.offset_location_ne(here, -50, 50), # br
+                    self.offset_location_ne(here, 50, 50), # tr
+                    self.offset_location_ne(here, 50, -50), # tl,
+                ]
+            ]
+        )
+        self.delay_sim_time(5) # ArduPilot only checks for breaches @1Hz
+        self.drain_mav()
+        self.assert_fence_breached()
+        if self.arm_motors_with_rc_input():
+            raise NotAchievedException(
+                "Armed when within polygon exclusion zone")
+
+        self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                           [])
+        self.wait_fence_not_breached()
+
+    def test_poly_fence_noarms_inclusion_polyfence(self, target_system=1, target_component=1):
+        self.start_subtest("Ensure not armable when outside an inclusion polyfence (but within another")
+
+        here = self.mav.location()
+
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+            [
+                [ # east
+                    self.offset_location_ne(here, -50, 20), # bl
+                    self.offset_location_ne(here, 50, 20), # br
+                    self.offset_location_ne(here, 50, 40), # tr
+                    self.offset_location_ne(here, -50, 40), # tl,
+                ], [ # over the top of the vehicle
+                    self.offset_location_ne(here, -50, -50), # bl
+                    self.offset_location_ne(here, -50, 50), # br
+                    self.offset_location_ne(here, 50, 50), # tr
+                    self.offset_location_ne(here, 50, -50), # tl,
+                ]
+            ]
+        )
+        self.delay_sim_time(5) # ArduPilot only checks for breaches @1Hz
+        self.drain_mav()
+        self.assert_fence_breached()
+        if self.arm_motors_with_rc_input():
+            raise NotAchievedException(
+                "Armed when outside polygon inclusion zone")
+
+        self.upload_using_mission_protocol(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                                           [])
+        self.wait_fence_not_breached()
 
     def test_fence_upload_timeouts_1(self, target_system=1, target_component=1):
         self.progress("Telling victim there will be one item coming")
@@ -2717,7 +2800,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.set_parameter("SIM_SPEEDUP", 1)
 
         self.test_fence_upload_timeouts()
-        return
 
         self.test_poly_fence_noarms(target_system=target_system, target_component=target_component)
 
@@ -2841,8 +2923,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                                                      target_component=target_component)
 
 
-        # FIXME: add test that we can't arm inside a polygonal exclusion zone
-        # FIXME: add test that we can't arm outside an polygonal inclusion zone
         # FIXME: add test for consecutive breaches within the manual recovery period
 
     def drive_smartrtl(self):
