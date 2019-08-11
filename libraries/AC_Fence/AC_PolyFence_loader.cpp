@@ -596,6 +596,7 @@ bool AC_PolyFence_loader::index_eeprom()
         return false;
     }
     if (_eeprom_fence_count == 0) {
+        _load_attempted = false;
         return true;
     }
 
@@ -704,8 +705,8 @@ bool AC_PolyFence_loader::load_from_eeprom()
 
     unload();
 
-    // FIXME: how many do we really need to allocate here?
     if (_eeprom_item_count == 0) {
+        _load_time_ms = AP_HAL::millis();
         return true;
     }
 
