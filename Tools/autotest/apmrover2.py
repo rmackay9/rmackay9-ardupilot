@@ -1771,6 +1771,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     raise NotAchievedException("Expected MISSION_COUNT, got (%s)" % m)
             if m.get_type() == "MISSION_COUNT":
                 break
+        if m.target_system != mav.mav.srcSystem:
+            raise NotAchievedException("Incorrect target system in MISSION_COUNT")
+        if m.target_component != mav.mav.srcComponent:
+            raise NotAchievedException("Incorrect target component in MISSION_COUNT")
         if m.mission_type != mission_type:
             raise NotAchievedException("Did not get expected mission type (want=%u got=%u)" % (mission_type, m.mission_type))
         if m.count != expected_count:
@@ -2548,6 +2552,155 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             raise NotAchievedException(
                 "Armed when outside an inclusion zone")
 
+    def test_fence_upload_timeouts_1(self, target_system=1, target_component=1):
+        self.progress("Telling victim there will be one item coming")
+        self.mav.mav.mission_count_send(target_system,
+                                        target_component,
+                                        1,
+                                        mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        m = self.mav.recv_match(type=['MISSION_REQUEST', 'MISSION_ACK'],
+                                blocking=True,
+                                timeout=1)
+        self.progress("Got (%s)" % str(m))
+        if m is None:
+            raise NotAchievedException("Did not get ACK or mission request")
+
+        if m.get_type() == "MISSION_ACK":
+            raise NotAchievedException("Expected MISSION_REQUEST")
+
+        if m.seq != 0:
+            raise NotAchievedException("Expected request for seq=0")
+
+        if m.target_system != self.mav.mav.srcSystem:
+            raise NotAchievedException("Incorrect target system in MISSION_REQUEST")
+        if m.target_component != self.mav.mav.srcComponent:
+            raise NotAchievedException("Incorrect target component in MISSION_REQUEST")
+        tstart = self.get_sim_time()
+        rerequest_count = 0
+        while True:
+            m = self.mav.recv_match(type=['MISSION_REQUEST', 'MISSION_ACK', 'STATUSTEXT'],
+                                    blocking=True,
+                                    timeout=1)
+            self.progress("Got (%s)" % str(m))
+            if m is None:
+                raise NotAchievedException("Did not receive any messages")
+            if m.get_type() == "MISSION_REQUEST":
+                if m.seq != 0:
+                    raise NotAchievedException("Received request for invalid seq")
+                if m.target_system != self.mav.mav.srcSystem:
+                    raise NotAchievedException("Incorrect target system in MISSION_REQUEST")
+                if m.target_component != self.mav.mav.srcComponent:
+                    raise NotAchievedException("Incorrect target component in MISSION_REQUEST")
+                rerequest_count += 1
+                self.progress("Valid re-request received.")
+                continue
+            if m.get_type() == "MISSION_ACK":
+                raise NotAchievedException("Received unexpected MISSION_ACK")
+            if m.get_type() == "STATUSTEXT":
+                if "upload time" in m.text:
+                    break
+        if rerequest_count < 3:
+            raise NotAchievedException("Expected several re-requests of mission item")
+
+    def expect_request_for_item(self, item):
+        m = self.mav.recv_match(type=['MISSION_REQUEST', 'MISSION_ACK'],
+                                blocking=True,
+                                timeout=1)
+        self.progress("Got (%s)" % str(m))
+        if m is None:
+            raise NotAchievedException("Did not get ACK or mission request")
+
+        if m.get_type() == "MISSION_ACK":
+            raise NotAchievedException("Expected MISSION_REQUEST")
+
+        if m.seq != item.seq:
+            raise NotAchievedException("Expected request for seq=%u" % item.seq)
+
+        if m.target_system != self.mav.mav.srcSystem:
+            raise NotAchievedException("Incorrect target system in MISSION_REQUEST")
+        if m.target_component != self.mav.mav.srcComponent:
+            raise NotAchievedException("Incorrect target component in MISSION_REQUEST")
+
+
+    def test_fence_upload_timeouts_2(self, target_system=1, target_component=1):
+        self.progress("Telling victim there will be one item coming")
+        self.mav.mav.mission_count_send(target_system,
+                                        target_component,
+                                        2,
+                                        mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        self.progress("Sending item with seq=0")
+        item = self.mav.mav.mission_item_int_encode(
+            target_system,
+            target_component,
+            0, # seq
+            mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
+            0, # current
+            0, # autocontinue
+            1, # p1 radius
+            0, # p2
+            0, # p3
+            0, # p4
+            1.1 *1e7, # latitude
+            1.2 *1e7, # longitude
+            33.0000, # altitude
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        self.expect_request_for_item(item)
+        item.pack(self.mav.mav)
+        self.mav.mav.send(item)
+
+        item = self.mav.mav.mission_item_int_encode(
+            target_system,
+            target_component,
+            1, # seq
+            mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
+            0, # current
+            0, # autocontinue
+            1, # p1 radius
+            0, # p2
+            0, # p3
+            0, # p4
+            1.1 *1e7, # latitude
+            1.2 *1e7, # longitude
+            33.0000, # altitude
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+
+        self.expect_request_for_item(item)
+
+        self.progress("Now waiting for a timeout")
+        tstart = self.get_sim_time()
+        rerequest_count = 0
+        while True:
+            m = self.mav.recv_match(type=['MISSION_REQUEST', 'MISSION_ACK', 'STATUSTEXT'],
+                                    blocking=True,
+                                    timeout=1)
+            self.progress("Got (%s)" % str(m))
+            if m is None:
+                raise NotAchievedException("Did not receive any messages")
+            if m.get_type() == "MISSION_REQUEST":
+                if m.seq != 1:
+                    raise NotAchievedException("Received request for invalid seq")
+                if m.target_system != self.mav.mav.srcSystem:
+                    raise NotAchievedException("Incorrect target system in MISSION_REQUEST")
+                if m.target_component != self.mav.mav.srcComponent:
+                    raise NotAchievedException("Incorrect target component in MISSION_REQUEST")
+                rerequest_count += 1
+                self.progress("Valid re-request received.")
+                continue
+            if m.get_type() == "MISSION_ACK":
+                raise NotAchievedException("Received unexpected MISSION_ACK")
+            if m.get_type() == "STATUSTEXT":
+                if "upload time" in m.text:
+                    break
+        if rerequest_count < 3:
+            raise NotAchievedException("Expected several re-requests of mission item")
+
+    def test_fence_upload_timeouts(self, target_system=1, target_component=1):
+        self.test_fence_upload_timeouts_1(target_system=target_system,
+                                          target_component=target_component)
+        self.test_fence_upload_timeouts_2(target_system=target_system,
+                                          target_component=target_component)
 
     def test_poly_fence(self):
         '''test fence-related functions'''
@@ -2563,8 +2716,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
         self.set_parameter("SIM_SPEEDUP", 1)
 
-        self.test_poly_fence_noarms(target_system=target_system, target_component=target_component)
+        self.test_fence_upload_timeouts()
         return
+
+        self.test_poly_fence_noarms(target_system=target_system, target_component=target_component)
 
         self.arm_vehicle()
 
@@ -2686,13 +2841,9 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                                                      target_component=target_component)
 
 
-        # FIXME: add test that we can't arm inside a circular exclusion zone
         # FIXME: add test that we can't arm inside a polygonal exclusion zone
         # FIXME: add test that we can't arm outside an polygonal inclusion zone
-        # FIXME: add test that we can't arm outside an circular inclusion zone
         # FIXME: add test for consecutive breaches within the manual recovery period
-        # FIXME: change loaded excusion zone radius to be in cm?
-        # FIXME: add test that uploading multiple fence return points gets bounces
 
     def drive_smartrtl(self):
         self.change_mode("STEERING")
