@@ -271,6 +271,13 @@ void MissionItemProtocol::transfer_is_complete(const GCS_MAVLINK &_link, const m
     free_upload_resources();
     receiving = false;
     link = nullptr;
+
+    // broadcast our new mission count to let GCSs download it if they wish
+    mavlink_msg_mission_count_send(_link.get_chan(),
+                                   0,
+                                   0,
+                                   item_count(),
+                                   mission_type());
 }
 
 void MissionItemProtocol::send_mission_ack(const mavlink_message_t &msg,
