@@ -121,7 +121,7 @@ private:
     // transfer_is_complete - tidy up after a transfer is complete;
     // this method will call complete() so the backends can do their
     // bit.
-    void transfer_is_complete(const GCS_MAVLINK &_link);
+    void transfer_is_complete(const GCS_MAVLINK &_link, const mavlink_message_t &msg);
 
     // timeout - called if the GCS fails to continue to supply items
     // in a transfer.  Backends are expected to tidy themselves up in

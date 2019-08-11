@@ -84,7 +84,7 @@ void MissionItemProtocol::handle_mission_count(
 
     if (packet.count == 0) {
         // no requests to send...
-        transfer_is_complete(_link);
+        transfer_is_complete(_link, msg);
         return;
     }
 
@@ -253,7 +253,7 @@ void MissionItemProtocol::handle_mission_item(const mavlink_message_t &msg, cons
     request_i++;
 
     if (request_i > request_last) {
-        transfer_is_complete(*link);
+        transfer_is_complete(*link, msg);
         return;
     }
     // if we have enough space, then send the next WP request immediately
@@ -264,7 +264,7 @@ void MissionItemProtocol::handle_mission_item(const mavlink_message_t &msg, cons
     }
 }
 
-void MissionItemProtocol::transfer_is_complete(const GCS_MAVLINK &_link)
+void MissionItemProtocol::transfer_is_complete(const GCS_MAVLINK &_link, const mavlink_message_t &msg)
 {
     const MAV_MISSION_RESULT result = complete(_link);
     send_mission_ack(_link, msg, result);
