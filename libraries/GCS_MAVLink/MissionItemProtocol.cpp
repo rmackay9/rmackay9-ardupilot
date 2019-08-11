@@ -63,6 +63,8 @@ void MissionItemProtocol::handle_mission_count(
             send_mission_ack(_link, msg, MAV_MISSION_DENIED);
             return;
         }
+        // the upload count may have changed; free resources and
+        // allocate them again:
         free_upload_resources();
     }
 
@@ -82,9 +84,7 @@ void MissionItemProtocol::handle_mission_count(
 
     if (packet.count == 0) {
         // no requests to send...
-        const MAV_MISSION_RESULT result = complete(_link);
-        send_mission_ack(_link, msg, result);
-        free_upload_resources();
+        transfer_is_complete(_link);
         return;
     }
 
@@ -253,11 +253,7 @@ void MissionItemProtocol::handle_mission_item(const mavlink_message_t &msg, cons
     request_i++;
 
     if (request_i > request_last) {
-        const MAV_MISSION_RESULT complete_result = complete(*link);
-        send_mission_ack(msg, complete_result);
-        receiving = false;
-        link = nullptr;
-        free_upload_resources();
+        transfer_is_complete(*link);
         return;
     }
     // if we have enough space, then send the next WP request immediately
@@ -266,6 +262,15 @@ void MissionItemProtocol::handle_mission_item(const mavlink_message_t &msg, cons
     } else {
         link->send_message(next_item_ap_message_id());
     }
+}
+
+void MissionItemProtocol::transfer_is_complete(const GCS_MAVLINK &_link)
+{
+    const MAV_MISSION_RESULT result = complete(_link);
+    send_mission_ack(_link, msg, result);
+    free_upload_resources();
+    receiving = false;
+    link = nullptr;
 }
 
 void MissionItemProtocol::send_mission_ack(const mavlink_message_t &msg,
