@@ -2666,7 +2666,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                                     timeout=1)
             self.progress("Got (%s)" % str(m))
             if m is None:
-                raise NotAchievedException("Did not receive any messages")
+                self.progress("Did not receive any messages")
+                continue
             if m.get_type() == "MISSION_REQUEST":
                 if m.seq != 0:
                     raise NotAchievedException("Received request for invalid seq")
@@ -2757,10 +2758,11 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         while True:
             m = self.mav.recv_match(type=['MISSION_REQUEST', 'MISSION_ACK', 'STATUSTEXT'],
                                     blocking=True,
-                                    timeout=1)
+                                    timeout=0.1)
             self.progress("Got (%s)" % str(m))
             if m is None:
-                raise NotAchievedException("Did not receive any messages")
+                self.progress("Did not receive any messages")
+                continue
             if m.get_type() == "MISSION_REQUEST":
                 if m.seq != 1:
                     raise NotAchievedException("Received request for invalid seq")
