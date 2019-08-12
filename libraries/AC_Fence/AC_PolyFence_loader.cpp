@@ -439,11 +439,7 @@ bool AC_PolyFence_loader::convert_to_new_storage()
     }
     {
         uint16_t offset = 4; // skip magic
-        const AC_PolyFenceItem item {
-            type: AC_PolyFenceType::RETURN_POINT,
-            loc: _tmp_boundary[0]
-        };
-        if (!write_fenceitem_to_storage(offset, item)) {
+        if (!write_returnpoint_to_storage(offset, _tmp_boundary[0])) {
             goto out;
         }
         fence_storage.write_uint8(offset, (uint8_t)AC_PolyFenceType::POLYGON_INCLUSION);
@@ -1236,6 +1232,17 @@ void AC_PolyFence_loader::handle_msg_fetch_fence_point(GCS_MAVLINK &link, const 
     }
 
     link.send_message(MAVLINK_MSG_ID_FENCE_POINT, (const char*)&ret_packet);
+}
+
+bool AC_PolyFence_loader::write_returnpoint_to_storage(uint16_t &offset, const Vector2l &loc)
+{
+    if (!write_type_to_storage(offset, AC_PolyFenceType::RETURN_POINT)) {
+        return false;
+    }
+    if (!write_latlon_to_storage(offset, loc)) {
+        return false;
+    }
+    return true;
 }
 
 bool AC_PolyFence_loader::write_eos_to_storage(uint16_t &offset)

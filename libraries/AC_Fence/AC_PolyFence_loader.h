@@ -182,8 +182,6 @@ private:
     // can be found:
     Vector2f *_loaded_return_point;
 
-    // pointers into the boundary point array where inclusion polygons
-    // can be found:
     class InclusionBoundary {
     public:
         Vector2f *points; // pointer into the _boundary array
@@ -192,8 +190,6 @@ private:
     InclusionBoundary *_loaded_inclusion_boundary;
     uint8_t _num_loaded_inclusion_boundaries;
 
-    // pointers into the boundary point array where exclusion polygons
-    // can be found:
     class ExclusionBoundary {
     public:
         Vector2f *points; // pointer into the _boundary array
@@ -220,7 +216,9 @@ private:
 
     bool _load_attempted;
 
-
+    // will attempt to change a pre-existing stored fence to the new
+    // storage format (so people don't lose their fences when
+    // upgrading)
     bool convert_to_new_storage() WARN_IF_UNUSED;
     bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f &dest) WARN_IF_UNUSED;
     bool read_polygon_from_storage(const Location &origin,
@@ -228,11 +226,15 @@ private:
                                    const uint8_t vertex_count,
                                    Vector2f *&next_storage_point) WARN_IF_UNUSED;
 
-    bool write_eos_to_storage(uint16_t &offset);
+    // primitives to write parts of fencepoints out:
     bool write_type_to_storage(uint16_t &offset, AC_PolyFenceType type) WARN_IF_UNUSED;
     bool write_latlon_to_storage(uint16_t &offset, const Vector2l &latlon) WARN_IF_UNUSED;
     bool write_fenceitem_to_storage(uint16_t &offset, const AC_PolyFenceItem &item) WARN_IF_UNUSED;
     bool read_latlon_from_storage(uint16_t &read_offset, Vector2l &latlon) const WARN_IF_UNUSED;
+
+    // methods to write specific types of fencepoint out:
+    bool write_returnpoint_to_storage(uint16_t &offset, const Vector2l &loc);
+    bool write_eos_to_storage(uint16_t &offset);
 
     bool scan_eeprom(void (*callback)(AC_PolyFenceType type, uint16_t offset)) WARN_IF_UNUSED;
     static void scan_eeprom_count_fences(const AC_PolyFenceType type, uint16_t read_offset);
