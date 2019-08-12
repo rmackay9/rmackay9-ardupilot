@@ -40,7 +40,8 @@ public:
 
     /// returns pointer to array of polygon points and num_points is
     /// filled in with the total number.  This does not include the
-    /// return point or the closing point.  This is the inclusion fence
+    /// return point or the closing point.  These points come from the
+    /// *first* inclusion fence
     Vector2f* get_boundary_points(uint16_t& num_points) const;
 
     // methods primarily for MissionItemProtocol_Fence to use:
@@ -105,14 +106,6 @@ public:
 
 private:
 
-    /// load polygon points stored in eeprom into boundary array and
-    /// perform validation.  returns true if load successfully
-    /// completed
-    bool load_from_eeprom() WARN_IF_UNUSED;
-    void unload();
-
-    bool get_return_point(Vector2l &ret) WARN_IF_UNUSED;
-
     // breached(Vector2f&) - returns true of location breaches any fence
     bool breached(const Vector2f& location)  WARN_IF_UNUSED;
 
@@ -131,14 +124,6 @@ private:
     // currently in the index
     uint16_t index_fence_count(const AC_PolyFenceType type);
 
-    Vector2f *_loaded_offsets_from_origin;
-    // FIXME:
-    uint8_t _boundary_num_points; // number of points in the boundary array (should equal _total parameter after load has completed)
-    static uint16_t _num_fences;
-
-    uint32_t        _update_ms;   // system time of last update to the boundary in storage
-    uint32_t _load_time_ms;
-
     void void_index() {
         free(_index);
         _index = nullptr;
@@ -146,17 +131,32 @@ private:
 
     bool check_indexed() WARN_IF_UNUSED;
 
-    AP_Int8 &_total;
+    // find_first_fence - return first fence in index of specific type
+    FenceIndex *find_first_fence(const AC_PolyFenceType type) const;
+
+    // find_index_for_seq - returns true if seq is contained within a
+    // fence.  If it is, entry will be the relevant FenceIndex.  i
+    // will be the offset within _loaded_offsets_from_origin where the
+    // first point in the fence is found CHECKME
+    bool find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const WARN_IF_UNUSED;
+    // find_storage_offset_for_seq - uses the index to return an
+    // offset into storage for an item
+    bool find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const WARN_IF_UNUSED;
+
+
+    /*
+     * storage-related methods - dealing with fence_storage
+     */
+
+    // new_fence_storage_magic - magic number indicating fence storage
+    // has been formatted for use by polygon fence storage code.
+    // FIXME: ensure this is out-of-band for old lat/lon point storage
+    static const uint8_t new_fence_storage_magic = 235;
+
+    uint32_t        _update_ms;   // system time of last update to the boundary in storage
 
     template<typename T>
     bool calculate_centroid(T *points, uint16_t count, T &centroid) WARN_IF_UNUSED;
-    // if no return point is present, and the boundary is complete,
-    // fill the return point with the centroid of the boundary both
-    // within eeprom and in points
-
-    FenceIndex *find_first_fence(const AC_PolyFenceType type) const;
-    FenceIndex *get_or_create_include_fence();
-    FenceIndex *get_or_create_return_point();
 
     // eos_offset - stores the offset in storage of the end-of-storage
     // marker.  Used by low-level manipulation code to extend storage
@@ -169,16 +169,19 @@ private:
     // the new polyfence code
     bool format() WARN_IF_UNUSED;
 
-    // find_index_for_seq - returns true if seq is contained within a
-    // fence.  If it is, entry will be the relevant FenceIndex.  i
-    // will be the offset within _loaded_offsets_from_origin where the
-    // first point in the fence is found
-    bool find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const WARN_IF_UNUSED;
-    // find_storage_offset_for_seq
-    bool find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const WARN_IF_UNUSED;
 
-    static const uint8_t new_fence_storage_magic = 235; // FIXME: ensure this is out-of-band for old lat/lon point storage
+    /*
+     * Loaded Fence functionality
+     *
+     * methods and members to do with fences stored in memory.  The
+     * locations are translated into offset-from-origin-in-metres
+     */
 
+    // load polygon points stored in eeprom into boundary array and
+    // perform validation.  returns true if load successfully
+    // completed
+    bool load_from_eeprom() WARN_IF_UNUSED;
+    void unload();
 
     // pointer into the boundary point array where the return point
     // can be found:
@@ -200,6 +203,12 @@ private:
     ExclusionBoundary *_loaded_exclusion_boundary;
     uint8_t _num_loaded_exclusion_boundaries;
 
+    // _loaded_offsets_from_origin - stores x/y offset-from-origin
+    // coordinate pairs.  Various items store their locations in this
+    // allocation - the polygon boundaries and the return point, for
+    // example.
+    Vector2f *_loaded_offsets_from_origin;
+
     class ExclusionCircle {
     public:
         Vector2f loc;
@@ -216,31 +225,14 @@ private:
     InclusionCircle *_loaded_circle_inclusion_boundary;
     uint8_t _num_loaded_circle_inclusion_boundaries;
 
+    // _load_attempted - true if we have attempted to load the fences
+    // from storage into _loaded_circle_exclusion_boundary,
+    // _loaded_offsets_from_origin etc etc
     bool _load_attempted;
 
-    /*
-     * Upgrade functions
-     */
-    // convert_to_new_storage - will attempt to change a pre-existing
-    // stored fence to the new storage format (so people don't lose
-    // their fences when upgrading)
-    bool convert_to_new_storage() WARN_IF_UNUSED;
-    // load boundary point from eeprom, returns true on successful load
-    bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
-
-    /*
-     * FENCE_POINT protocol compatability
-     */
-    void handle_msg_fetch_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
-    void handle_msg_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
-    // contains_compatible_fence - returns true if the permanent fence
-    // storage contains fences that are compatible with the old
-    // FENCE_POINT protocol.
-    bool contains_compatible_fence() const WARN_IF_UNUSED;
-    // create_compatible_fence - erases the current fences and
-    // installs a fence suitable for storing a fence supplied with the
-    // FENCE_POINT protocol
-    bool create_compatible_fence() WARN_IF_UNUSED;
+    // _load_time_ms - from millis(), system time when fence load last
+    // attempted
+    uint32_t _load_time_ms;
 
     // read_scaled_latlon_from_storage - reads a latitude/longitude
     // from offset in permanent storage, transforms them into an
@@ -259,6 +251,41 @@ private:
                                    const uint8_t vertex_count,
                                    Vector2f *&next_storage_point) WARN_IF_UNUSED;
 
+
+    /*
+     * Upgrade functions
+     */
+    // convert_to_new_storage - will attempt to change a pre-existing
+    // stored fence to the new storage format (so people don't lose
+    // their fences when upgrading)
+    bool convert_to_new_storage() WARN_IF_UNUSED;
+    // load boundary point from eeprom, returns true on successful load
+    bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
+
+
+    /*
+     * FENCE_POINT protocol compatability
+     */
+    void handle_msg_fetch_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
+    void handle_msg_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
+    // contains_compatible_fence - returns true if the permanent fence
+    // storage contains fences that are compatible with the old
+    // FENCE_POINT protocol.
+    bool contains_compatible_fence() const WARN_IF_UNUSED;
+    // create_compatible_fence - erases the current fences and
+    // installs a fence suitable for storing a fence supplied with the
+    // FENCE_POINT protocol
+    bool create_compatible_fence() WARN_IF_UNUSED;
+
+    // get_or_create_include_fence - returns a point to an include
+    // fence to be used for the FENCE_POINT-supplied polygon.  May
+    // format the storage appropriately.
+    FenceIndex *get_or_create_include_fence();
+    // get_or_create_include_fence - returns a point to a return point
+    // to be used for the FENCE_POINT-supplied return point.  May
+    // format the storage appropriately.
+    FenceIndex *get_or_create_return_point();
+
     // primitives to write parts of fencepoints out:
     bool write_type_to_storage(uint16_t &offset, AC_PolyFenceType type) WARN_IF_UNUSED;
     bool write_latlon_to_storage(uint16_t &offset, const Vector2l &latlon) WARN_IF_UNUSED;
@@ -267,6 +294,14 @@ private:
     // methods to write specific types of fencepoint out:
     bool write_returnpoint_to_storage(uint16_t &offset, const Vector2l &loc);
     bool write_eos_to_storage(uint16_t &offset);
+
+    // get_return_point - returns latitude/longitude of return point
+    bool get_return_point(Vector2l &ret) WARN_IF_UNUSED;
+
+    // _total - reference to FENCE_TOTAL parameter.  This is used
+    // solely for compatability with the FENCE_POINT protocol
+    AP_Int8 &_total;
+
 
     // scan_eeprom - a method that traverses the fence storage area,
     // calling the supplied callback for each fence found.  If the
@@ -292,6 +327,9 @@ private:
     // array specifying type of each fence in storage (and a count of
     // items in that fence)
     static FenceIndex *_index;
+    // _num_fences - count of the number of fences in _index.  This
+    // should be equal to _eeprom_fence_count
+    static uint16_t _num_fences;
 
     // count_eeprom_fences - refresh the count of fences in permanent storage
     bool count_eeprom_fences() WARN_IF_UNUSED;
