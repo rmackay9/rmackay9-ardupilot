@@ -1279,7 +1279,7 @@ AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::get_or_create_return_point
     } else {
         if (fence_storage.read_uint8(eos_offset) != (uint8_t)AC_PolyFenceType::END_OF_STORAGE) {
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-            AP_HAL::panic("Expected end-of-storage marker at offset=%u", offset);
+            AP_HAL::panic("Expected end-of-storage marker at offset=%u", eos_offset);
 #endif
             return nullptr;
         }
