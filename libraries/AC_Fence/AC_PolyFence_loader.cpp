@@ -5,6 +5,14 @@
 
 #include <stdio.h>
 
+#define POLYFENCE_LOADER_DEBUGGING 1
+
+#if POLYFENCE_LOADER_DEBUGGING
+#define debug(fmt, args ...)  do {::fprintf(stderr,"%s:%d: " fmt "\n", __FUNCTION__, __LINE__, ## args); gcs().send_text(MAV_SEVERITY_WARNING, fmt, ## args); } while(0)
+#else
+#define debug(fmt, args ...)
+#endif
+
 uint16_t AC_PolyFence_loader::_eeprom_fence_count;
 uint16_t AC_PolyFence_loader::_eeprom_item_count;
 AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::_boundary_index;
@@ -16,6 +24,13 @@ static const StorageAccess fence_storage(StorageManager::StorageFence);
 
 bool AC_PolyFence_loader::find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const
 {
+    if (_boundary_index == nullptr) {
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+        AP_HAL::panic("Should not have been called");
+#endif
+        return false;
+    }
+
     if (seq > _eeprom_item_count) {
         return false;
     }
@@ -33,6 +48,13 @@ bool AC_PolyFence_loader::find_index_for_seq(const uint16_t seq, const FenceInde
 
 bool AC_PolyFence_loader::find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const
 {
+    if (_boundary_index == nullptr) {
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+        AP_HAL::panic("Should not have been called");
+#endif
+        return false;
+    }
+
     uint16_t i=0;
     const FenceIndex *entry = nullptr;
     if (!find_index_for_seq(seq, entry, i)) {
@@ -82,6 +104,10 @@ bool AC_PolyFence_loader::find_storage_offset_for_seq(const uint16_t seq, uint16
 bool AC_PolyFence_loader::get_item(const uint16_t seq, AC_PolyFenceItem &item)
 {
     if (!check_indexed()) {
+        return false;
+    }
+    if (_boundary_index == nullptr) {
+        // no fences
         return false;
     }
 
@@ -153,9 +179,13 @@ bool AC_PolyFence_loader::read_latlon_from_storage(uint16_t &read_offset, Vector
 bool AC_PolyFence_loader::write_fenceitem_to_storage(uint16_t &offset, const AC_PolyFenceItem &item)
 {
     switch(item.type) {
+    case AC_PolyFenceType::END_OF_STORAGE:
+        if (!write_eos_to_storage(offset)) {
+            return false;
+        }
+        break;
     case AC_PolyFenceType::CIRCLE_INCLUSION:
     case AC_PolyFenceType::CIRCLE_EXCLUSION:
-    case AC_PolyFenceType::END_OF_STORAGE:
     case AC_PolyFenceType::RETURN_POINT:
         if (!write_type_to_storage(offset, item.type)) {
             return false;
@@ -194,6 +224,13 @@ bool AC_PolyFence_loader::write_fenceitem_to_storage(uint16_t &offset, const AC_
 
 bool AC_PolyFence_loader::truncate(uint8_t num)
 {
+    if (!check_indexed()) {
+        return false;
+    }
+    if (_boundary_index == nullptr) {
+        return num == 0;
+    }
+
     uint16_t i=0;
     const FenceIndex *entry = nullptr;
     if (!find_index_for_seq(num, entry, i)) {
@@ -206,6 +243,7 @@ bool AC_PolyFence_loader::truncate(uint8_t num)
         })) {
         return false;
     }
+    _total.set_and_save(num+2); // FIXME
     void_index();
     return true;
 }
@@ -492,7 +530,7 @@ bool AC_PolyFence_loader::scan_eeprom(void (*callback)(AC_PolyFenceType type, ui
             break;
         default:
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-            AP_HAL::panic("Fence corrupt");
+            AP_HAL::panic("Fence corrupt (offset=%u)", read_offset);
 #endif
             gcs().send_text(MAV_SEVERITY_WARNING, "Fence corrupt");
             return false;
@@ -507,7 +545,8 @@ bool AC_PolyFence_loader::scan_eeprom(void (*callback)(AC_PolyFenceType type, ui
             break;
         case AC_PolyFenceType::POLYGON_INCLUSION:
         case AC_PolyFenceType::POLYGON_EXCLUSION: {
-            const uint8_t vertex_count = fence_storage.read_uint8(read_offset++);
+            const uint8_t vertex_count = fence_storage.read_uint8(read_offset);
+            read_offset += 1; // for the count we just read
             read_offset += vertex_count*8;
             break;
         }
@@ -1137,6 +1176,9 @@ bool AC_PolyFence_loader::get_return_point(Vector2l &ret) const
 
 AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::find_first_fence(const AC_PolyFenceType type) const
 {
+    if (_boundary_index == nullptr) {
+        return nullptr;
+    }
     for (uint8_t i=0; i<_num_fences; i++) {
         if (_boundary_index[i].type == type) {
             return &_boundary_index[i];
@@ -1223,6 +1265,15 @@ void AC_PolyFence_loader::handle_msg_fetch_fence_point(GCS_MAVLINK &link, const 
     link.send_message(MAVLINK_MSG_ID_FENCE_POINT, (const char*)&ret_packet);
 }
 
+bool AC_PolyFence_loader::write_eos_to_storage(uint16_t &offset)
+{
+    if (!write_type_to_storage(offset, AC_PolyFenceType::END_OF_STORAGE)) {
+        return false;
+    }
+    eos_offset = offset - 1; // should point to the marker
+    return true;
+}
+
 AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::get_or_create_return_point()
 {
     if (!check_indexed()) {
@@ -1232,17 +1283,61 @@ AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::get_or_create_return_point
     if (return_point != nullptr) {
         return return_point;
     }
-    if (!write_type_to_storage(eos_offset, AC_PolyFenceType::RETURN_POINT)) {
-        return nullptr;
-    }
-    if (!write_latlon_to_storage(eos_offset, Vector2l{0, 0})) {
-        return nullptr;
-    }
-    if (!write_type_to_storage(eos_offset, AC_PolyFenceType::END_OF_STORAGE)) {
-        return nullptr;
+
+    // if the inclusion fence exists we will move it forward in
+    // storage to avoid having to continually shift the return point
+    // forward as we receive fence points
+    uint16_t offset;
+    const FenceIndex *inclusion_fence = find_first_fence(AC_PolyFenceType::POLYGON_INCLUSION);
+    if (inclusion_fence != nullptr) {
+        offset = inclusion_fence->storage_offset;
+        // the "9"s below represent the size of a return point in storage
+        for (uint8_t i=0; i<inclusion_fence->count; i++) {
+            const uint16_t point_storage_offset = offset + 2 + (inclusion_fence->count-1-i) * 8;
+            Vector2l latlon;
+            uint16_t tmp_read_offs = point_storage_offset;
+            if (!read_latlon_from_storage(tmp_read_offs, latlon)) {
+                return nullptr;
+            }
+            uint16_t write_offset = point_storage_offset + 9;
+            if (!write_latlon_to_storage(write_offset, latlon)) {
+                return nullptr;
+            }
+        }
+        // read/write the count:
+        const uint8_t count = fence_storage.read_uint8(inclusion_fence->storage_offset+1);
+        fence_storage.write_uint8(inclusion_fence->storage_offset + 1 + 9, count);
+        // read/write the type:
+        const uint8_t t = fence_storage.read_uint8(inclusion_fence->storage_offset);
+        fence_storage.write_uint8(inclusion_fence->storage_offset + 9, t);
+
+        uint16_t write_offset = offset + 2 + 8*inclusion_fence->count + 9;
+        if (!write_eos_to_storage(write_offset)) {
+            return nullptr;
+        }
+    } else {
+        if (fence_storage.read_uint8(eos_offset) != (uint8_t)AC_PolyFenceType::END_OF_STORAGE) {
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+            AP_HAL::panic("Expected end-of-storage marker at offset=%u", offset);
+#endif
+            return nullptr;
+        }
+        offset = eos_offset;
     }
 
-    if (!index_eeprom()) {
+    if (!write_type_to_storage(offset, AC_PolyFenceType::RETURN_POINT)) {
+        return nullptr;
+    }
+    if (!write_latlon_to_storage(offset, Vector2l{0, 0})) {
+        return nullptr;
+    }
+    if (inclusion_fence == nullptr) {
+        if (!write_eos_to_storage(offset)) {
+            return nullptr;
+        }
+    }
+
+    if (!index_eeprom()) { // FIXME: should only void index if != SITL
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
         AP_HAL::panic("Failed to index eeprom after moving inclusion fence for return point");
 #endif
@@ -1275,7 +1370,7 @@ AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::get_or_create_include_fenc
     }
     fence_storage.write_uint8(eos_offset, 0);
     eos_offset++;
-    if (!write_type_to_storage(eos_offset, AC_PolyFenceType::END_OF_STORAGE)) {
+    if (!write_eos_to_storage(eos_offset)) {
         return nullptr;
     }
 
@@ -1348,7 +1443,9 @@ void AC_PolyFence_loader::handle_msg_fence_point(GCS_MAVLINK &link, const mavlin
     } else if (packet.idx == _total-1) {
         // this is the fence closing point; don't store it, and don't
         // check it against the first point in the fence as we may be
-        // receiving the fence points out of order.
+        // receiving the fence points out of order.  Note that ifthe
+        // GCS attempts to read this back before sendng the first
+        // point they will get 0s.
     } else {
         const FenceIndex *inclusion_fence = get_or_create_include_fence();
         if (inclusion_fence == nullptr) {
@@ -1370,7 +1467,7 @@ void AC_PolyFence_loader::handle_msg_fence_point(GCS_MAVLINK &link, const mavlin
             return;
         }
         if (eos_offset < offset) {
-            if (!write_type_to_storage(offset, AC_PolyFenceType::END_OF_STORAGE)) {
+            if (!write_eos_to_storage(offset)) {
                 return;
             }
         }

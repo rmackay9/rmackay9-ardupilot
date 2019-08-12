@@ -10,7 +10,7 @@ enum class AC_PolyFenceType {
     POLYGON_INCLUSION = 98,
     POLYGON_EXCLUSION = 97,
     CIRCLE_EXCLUSION  = 96,
-    RETURN_POINT = 95,
+    RETURN_POINT      = 95,
     CIRCLE_INCLUSION  = 94,
 };
 
@@ -229,6 +229,7 @@ private:
                                    const uint8_t vertex_count,
                                    Vector2f *&next_storage_point) WARN_IF_UNUSED;
 
+    bool write_eos_to_storage(uint16_t &offset);
     bool write_type_to_storage(uint16_t &offset, AC_PolyFenceType type) WARN_IF_UNUSED;
     bool write_latlon_to_storage(uint16_t &offset, const Vector2l &latlon) WARN_IF_UNUSED;
     bool write_fenceitem_to_storage(uint16_t &offset, const AC_PolyFenceItem &item) WARN_IF_UNUSED;
