@@ -136,7 +136,6 @@ private:
 
     Vector2f *_boundary;          // array of boundary points.  Note: point 0 is the return point
     // FIXME:
-    static FenceIndex *_boundary_index;   // array specifying type of each boundary point
     uint8_t _boundary_num_points; // number of points in the boundary array (should equal _total parameter after load has completed)
     static uint16_t _num_fences;
 
@@ -236,13 +235,23 @@ private:
     bool write_returnpoint_to_storage(uint16_t &offset, const Vector2l &loc);
     bool write_eos_to_storage(uint16_t &offset);
 
+    // scan_eeprom - a method that traverses the fence storage area,
+    // calling the supplied callback for each fence found.  If the
+    // scan fails (for example, the storage is corrupt), then this
+    // method will return false.
     bool scan_eeprom(void (*callback)(AC_PolyFenceType type, uint16_t offset)) WARN_IF_UNUSED;
+    // scan_eeprom_count_fences - a static function designed to be
+    // massed to scan_eeprom which counts the number of fences and
+    // fence items present.  The results of this counting appear in _eeprom_fence_count and _eeprom_item_count
     static void scan_eeprom_count_fences(const AC_PolyFenceType type, uint16_t read_offset);
+    static uint16_t _eeprom_fence_count;
+    static uint16_t _eeprom_item_count;
+
     static void scan_eeprom_index_fences(const AC_PolyFenceType type, uint16_t read_offset);
+    static FenceIndex *_boundary_index;   // array specifying type of each boundary point
+
+
     bool count_eeprom_fences() WARN_IF_UNUSED;
     bool index_eeprom() WARN_IF_UNUSED;
     bool create_compatible_fence() WARN_IF_UNUSED;
-
-    static uint16_t _eeprom_fence_count;
-    static uint16_t _eeprom_item_count;
 };
