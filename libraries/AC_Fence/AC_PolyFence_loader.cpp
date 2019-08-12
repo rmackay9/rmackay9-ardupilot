@@ -15,7 +15,7 @@
 
 uint16_t AC_PolyFence_loader::_eeprom_fence_count;
 uint16_t AC_PolyFence_loader::_eeprom_item_count;
-AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::_boundary_index;
+AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::_index;
 uint16_t AC_PolyFence_loader::_num_fences;
 
 extern const AP_HAL::HAL& hal;
@@ -24,7 +24,7 @@ static const StorageAccess fence_storage(StorageManager::StorageFence);
 
 bool AC_PolyFence_loader::find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const
 {
-    if (_boundary_index == nullptr) {
+    if (_index == nullptr) {
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
         AP_HAL::panic("Should not have been called");
 #endif
@@ -37,7 +37,7 @@ bool AC_PolyFence_loader::find_index_for_seq(const uint16_t seq, const FenceInde
 
     i = 0;
     for (uint16_t j=0; j<_num_fences; j++) {
-        entry = &_boundary_index[j];
+        entry = &_index[j];
         if (seq < i + entry->count) {
             return true;
         }
@@ -48,7 +48,7 @@ bool AC_PolyFence_loader::find_index_for_seq(const uint16_t seq, const FenceInde
 
 bool AC_PolyFence_loader::find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const
 {
-    if (_boundary_index == nullptr) {
+    if (_index == nullptr) {
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
         AP_HAL::panic("Should not have been called");
 #endif
@@ -106,7 +106,7 @@ bool AC_PolyFence_loader::get_item(const uint16_t seq, AC_PolyFenceItem &item)
     if (!check_indexed()) {
         return false;
     }
-    if (_boundary_index == nullptr) {
+    if (_index == nullptr) {
         // no fences
         return false;
     }
@@ -180,7 +180,7 @@ bool AC_PolyFence_loader::truncate(uint8_t num)
     if (!check_indexed()) {
         return false;
     }
-    if (_boundary_index == nullptr) {
+    if (_index == nullptr) {
         return num == 0;
     }
 
@@ -276,7 +276,7 @@ bool AC_PolyFence_loader::calculate_centroid(T *points, uint16_t count, T &centr
         if (lon < min_lon) {
             min_lon = lon;
         }
-        if (_boundary[i][1] > max_lon) {
+        if (_loaded_offsets_from_origin[i][1] > max_lon) {
             max_lon = lon;
         }
     }
@@ -540,7 +540,7 @@ void AC_PolyFence_loader::scan_eeprom_index_fences(const AC_PolyFenceType type, 
     if (type == AC_PolyFenceType::END_OF_STORAGE) {
         return;
     }
-    FenceIndex &index = _boundary_index[_num_fences++];
+    FenceIndex &index = _index[_num_fences++];
     index.type = type;
     index.storage_offset = read_offset;
     switch (type) {
@@ -578,21 +578,21 @@ bool AC_PolyFence_loader::index_eeprom()
         return true;
     }
 
-    free(_boundary_index);
-    _boundary_index = nullptr;
+    free(_index);
+    _index = nullptr;
     if (_eeprom_fence_count) {
         const uint32_t index_allocation_size = _eeprom_fence_count*sizeof(FenceIndex);
         gcs().send_text(MAV_SEVERITY_INFO, "Fence: Allocating %u bytes for index", index_allocation_size);
-        _boundary_index = (FenceIndex*)malloc(index_allocation_size);
-        if (_boundary_index == nullptr) {
+        _index = (FenceIndex*)malloc(index_allocation_size);
+        if (_index == nullptr) {
             return false;
         }
     }
 
     _num_fences = 0;
     if (!scan_eeprom(scan_eeprom_index_fences)) {
-        free(_boundary_index);
-        _boundary_index = nullptr;
+        free(_index);
+        _index = nullptr;
         return false;
     }
 
@@ -609,7 +609,7 @@ bool AC_PolyFence_loader::index_eeprom()
 
 bool AC_PolyFence_loader::check_indexed()
 {
-   if (_boundary_index != nullptr) {
+   if (_index != nullptr) {
        return true;
    }
 
@@ -618,8 +618,8 @@ bool AC_PolyFence_loader::check_indexed()
 
 void AC_PolyFence_loader::unload()
 {
-    free(_boundary);
-    _boundary = nullptr;
+    free(_loaded_offsets_from_origin);
+    _loaded_offsets_from_origin = nullptr;
 
     free(_loaded_inclusion_boundary);
     _loaded_inclusion_boundary = nullptr;
@@ -646,7 +646,7 @@ uint16_t AC_PolyFence_loader::index_fence_count(const AC_PolyFenceType type)
 {
     uint16_t ret = 0;
     for (uint8_t i=0; i<_eeprom_fence_count; i++) {
-        const FenceIndex &index = _boundary_index[i];
+        const FenceIndex &index = _index[i];
         if (index.type == type) {
             ret++;
         }
@@ -661,7 +661,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
     }
 
     if (_load_attempted) {
-        return _boundary != nullptr;
+        return _loaded_offsets_from_origin != nullptr;
     }
     _load_time_ms = 0;
 
@@ -691,9 +691,9 @@ bool AC_PolyFence_loader::load_from_eeprom()
     { // allocate general boundary point array:
         // FIXME: should not be _eeprom_item_count, should be the sum of the number of points in the return point, inclusion fences and exclusion fences
         const uint32_t allocation_size = _eeprom_item_count * sizeof(Vector2f);
-        _boundary = (Vector2f*)malloc(allocation_size);
+        _loaded_offsets_from_origin = (Vector2f*)malloc(allocation_size);
         gcs().send_text(MAV_SEVERITY_WARNING, "Fence: Allocating %u bytes for points", allocation_size);
-        if (_boundary == nullptr) {
+        if (_loaded_offsets_from_origin == nullptr) {
             unload();
             return false;
         }
@@ -741,7 +741,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
         }
     }
 
-    Vector2f *next_storage_point = _boundary;
+    Vector2f *next_storage_point = _loaded_offsets_from_origin;
 
     // use index to load fences from eeprom
     bool storage_valid = true;
@@ -749,7 +749,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
         if (!storage_valid) {
             break;
         }
-        const FenceIndex &index = _boundary_index[i];
+        const FenceIndex &index = _index[i];
         uint16_t storage_offset = index.storage_offset;
         storage_offset += 1; // skip type
         switch (index.type) {
@@ -1025,14 +1025,14 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
 bool AC_PolyFence_loader::contains_compatible_fence() const
 {
     // must contain a single inclusion fence with an optional return point
-    if (_boundary_index == nullptr) {
+    if (_index == nullptr) {
         // this indicates no boundary points present
         return true;
     }
     bool seen_return_point = false;
     bool seen_poly_inclusion = false;
     for (uint16_t i=0; i<_num_fences; i++) {
-        switch (_boundary_index[i].type) {
+        switch (_index[i].type) {
         case AC_PolyFenceType::END_OF_STORAGE:
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
             AP_HAL::panic("end-of-storage marker found in loaded list");
@@ -1126,12 +1126,12 @@ bool AC_PolyFence_loader::get_return_point(Vector2l &ret)
 
 AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::find_first_fence(const AC_PolyFenceType type) const
 {
-    if (_boundary_index == nullptr) {
+    if (_index == nullptr) {
         return nullptr;
     }
     for (uint8_t i=0; i<_num_fences; i++) {
-        if (_boundary_index[i].type == type) {
-            return &_boundary_index[i];
+        if (_index[i].type == type) {
+            return &_index[i];
         }
     }
     return nullptr;

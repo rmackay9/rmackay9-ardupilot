@@ -79,7 +79,7 @@ public:
     bool breached(const Location& loc) WARN_IF_UNUSED;
 
     //   returns true if boundary is valid
-    bool valid_const() const WARN_IF_UNUSED { return _boundary != nullptr; }
+    bool valid_const() const WARN_IF_UNUSED { return _loaded_offsets_from_origin != nullptr; }
 
     //   returns true if boundary is valid
     bool valid() WARN_IF_UNUSED;
@@ -116,6 +116,9 @@ private:
     // breached(Vector2f&) - returns true of location breaches any fence
     bool breached(const Vector2f& location)  WARN_IF_UNUSED;
 
+    /*
+     * Fence storage Index related functions
+     */
     // FenceIndex - a class used to store information about a fence in
     // fence storage.
     class FenceIndex {
@@ -128,7 +131,7 @@ private:
     // currently in the index
     uint16_t index_fence_count(const AC_PolyFenceType type);
 
-    Vector2f *_boundary;          // array of boundary points.  Note: point 0 is the return point
+    Vector2f *_loaded_offsets_from_origin;
     // FIXME:
     uint8_t _boundary_num_points; // number of points in the boundary array (should equal _total parameter after load has completed)
     static uint16_t _num_fences;
@@ -137,8 +140,8 @@ private:
     uint32_t _load_time_ms;
 
     void void_index() {
-        free(_boundary_index);
-        _boundary_index = nullptr;
+        free(_index);
+        _index = nullptr;
     }
 
     bool check_indexed() WARN_IF_UNUSED;
@@ -168,8 +171,8 @@ private:
 
     // find_index_for_seq - returns true if seq is contained within a
     // fence.  If it is, entry will be the relevant FenceIndex.  i
-    // will be the offset within _boundary where the first point in
-    // the fence is found
+    // will be the offset within _loaded_offsets_from_origin where the
+    // first point in the fence is found
     bool find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const WARN_IF_UNUSED;
     // find_storage_offset_for_seq
     bool find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const WARN_IF_UNUSED;
@@ -183,7 +186,7 @@ private:
 
     class InclusionBoundary {
     public:
-        Vector2f *points; // pointer into the _boundary array
+        Vector2f *points; // pointer into the _loaded_offsets_from_origin array
         uint8_t count; // count of points in the boundary
     };
     InclusionBoundary *_loaded_inclusion_boundary;
@@ -191,7 +194,7 @@ private:
 
     class ExclusionBoundary {
     public:
-        Vector2f *points; // pointer into the _boundary array
+        Vector2f *points; // pointer into the _loaded_offsets_from_origin array
         uint8_t count; // count of points in the boundary
     };
     ExclusionBoundary *_loaded_exclusion_boundary;
@@ -278,20 +281,20 @@ private:
     static uint16_t _eeprom_item_count;
 
     // scan_eeprom_index_fences - a static function designed to be
-    // passed to scan_eeprom.  _boundary_index must be a pointer to
+    // passed to scan_eeprom.  _index must be a pointer to
     // memory sufficient to hold information about all fences present
     // in storage - so it is expected that scan_eeprom_count_fences
     // has been used to count those fences and the allocation already
-    // made.  After this method has been called _boundary_index will
+    // made.  After this method has been called _index will
     // be filled with information about the fences in the fence
     // storage - type, item counts and storage offset.
     static void scan_eeprom_index_fences(const AC_PolyFenceType type, uint16_t read_offset);
-    // _boundary_array specifying type of each fence in storage (and a
-    // count of items in that fence)
-    static FenceIndex *_boundary_index;
+    // array specifying type of each fence in storage (and a count of
+    // items in that fence)
+    static FenceIndex *_index;
 
     // count_eeprom_fences - refresh the count of fences in permanent storage
     bool count_eeprom_fences() WARN_IF_UNUSED;
-    // index_eeprom - (re)allocate and fill in _boundary_index
+    // index_eeprom - (re)allocate and fill in _index
     bool index_eeprom() WARN_IF_UNUSED;
 };
