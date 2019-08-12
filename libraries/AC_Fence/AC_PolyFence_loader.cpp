@@ -175,53 +175,6 @@ bool AC_PolyFence_loader::read_latlon_from_storage(uint16_t &read_offset, Vector
     return true;
 }
 
-// TODO: collapse this function
-bool AC_PolyFence_loader::write_fenceitem_to_storage(uint16_t &offset, const AC_PolyFenceItem &item)
-{
-    switch(item.type) {
-    case AC_PolyFenceType::END_OF_STORAGE:
-        if (!write_eos_to_storage(offset)) {
-            return false;
-        }
-        break;
-    case AC_PolyFenceType::CIRCLE_INCLUSION:
-    case AC_PolyFenceType::CIRCLE_EXCLUSION:
-    case AC_PolyFenceType::RETURN_POINT:
-        if (!write_type_to_storage(offset, item.type)) {
-            return false;
-        }
-        break;
-    case AC_PolyFenceType::POLYGON_INCLUSION:
-    case AC_PolyFenceType::POLYGON_EXCLUSION:
-        break;
-    }
-    switch(item.type) {
-    case AC_PolyFenceType::END_OF_STORAGE:
-        break;
-    case AC_PolyFenceType::CIRCLE_INCLUSION:
-    case AC_PolyFenceType::CIRCLE_EXCLUSION:
-        if (!write_latlon_to_storage(offset, item.loc)) {
-            return false;
-        }
-        fence_storage.write_uint32(offset, item.radius);
-        offset += 4;
-        break;
-    case AC_PolyFenceType::POLYGON_INCLUSION:
-    case AC_PolyFenceType::POLYGON_EXCLUSION:
-        // type for this is written out by caller
-        if (!write_latlon_to_storage(offset, item.loc)) {
-            return false;
-        }
-        break;
-    case AC_PolyFenceType::RETURN_POINT:
-        if (!write_latlon_to_storage(offset, item.loc)) {
-            return false;
-        }
-        break;
-    }
-    return true;
-}
-
 bool AC_PolyFence_loader::truncate(uint8_t num)
 {
     if (!check_indexed()) {
@@ -991,14 +944,15 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
     uint16_t offset = 4; // skipping magic
     uint8_t vertex_count = 0;
     for (uint16_t i=0; i<count; i++) {
-        switch (new_items[i].type) {
+        const AC_PolyFenceItem new_item = new_items[i];
+        switch (new_item.type) {
         case AC_PolyFenceType::POLYGON_INCLUSION:
         case AC_PolyFenceType::POLYGON_EXCLUSION:
             if (vertex_count == 0) {
                 // write out new polygon count
-                vertex_count = new_items[i].vertex_count;
+                vertex_count = new_item.vertex_count;
                 total_vertex_count += vertex_count;
-                fence_storage.write_uint8(offset++, (uint8_t)new_items[i].type);
+                fence_storage.write_uint8(offset++, (uint8_t)new_item.type);
                 fence_storage.write_uint8(offset, vertex_count);
                 offset++;
             }
@@ -1006,8 +960,49 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
         default:
             break;
         }
-        if (!write_fenceitem_to_storage(offset, new_items[i])) {
+        switch(new_item.type) {
+        case AC_PolyFenceType::END_OF_STORAGE:
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+            AP_HAL::panic("asked to store end-of-storage marker");
+#endif
             return false;
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
+        case AC_PolyFenceType::CIRCLE_EXCLUSION:
+        case AC_PolyFenceType::RETURN_POINT:
+            if (!write_type_to_storage(offset, new_item.type)) {
+                return false;
+            }
+            break;
+        case AC_PolyFenceType::POLYGON_INCLUSION:
+        case AC_PolyFenceType::POLYGON_EXCLUSION:
+            break;
+        }
+        switch(new_item.type) {
+        case AC_PolyFenceType::END_OF_STORAGE:
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+            AP_HAL::panic("asked to store end-of-storage marker");
+#endif
+            return false;
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
+        case AC_PolyFenceType::CIRCLE_EXCLUSION:
+            if (!write_latlon_to_storage(offset, new_item.loc)) {
+                return false;
+            }
+            fence_storage.write_uint32(offset, new_item.radius);
+            offset += 4;
+            break;
+        case AC_PolyFenceType::POLYGON_INCLUSION:
+        case AC_PolyFenceType::POLYGON_EXCLUSION:
+            // type for this is written out by caller
+            if (!write_latlon_to_storage(offset, new_item.loc)) {
+                return false;
+            }
+            break;
+        case AC_PolyFenceType::RETURN_POINT:
+            if (!write_latlon_to_storage(offset, new_item.loc)) {
+                return false;
+            }
+            break;
         }
     }
     if (!write_eos_to_storage(offset)) {

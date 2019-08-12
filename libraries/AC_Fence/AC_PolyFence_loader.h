@@ -168,7 +168,6 @@ private:
 
     bool formatted_for_new_storage() const WARN_IF_UNUSED;
     bool format_for_new_storage() WARN_IF_UNUSED;
-    bool contains_compatible_fence() const WARN_IF_UNUSED;
 
     bool find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const WARN_IF_UNUSED;
     bool find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const WARN_IF_UNUSED;
@@ -221,6 +220,9 @@ private:
     // storage format (so people don't lose their fences when
     // upgrading)
     bool convert_to_new_storage() WARN_IF_UNUSED;
+    bool contains_compatible_fence() const WARN_IF_UNUSED;
+    bool create_compatible_fence() WARN_IF_UNUSED;
+
     bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f &dest) WARN_IF_UNUSED;
     bool read_polygon_from_storage(const Location &origin,
                                    uint16_t &read_offset,
@@ -230,7 +232,6 @@ private:
     // primitives to write parts of fencepoints out:
     bool write_type_to_storage(uint16_t &offset, AC_PolyFenceType type) WARN_IF_UNUSED;
     bool write_latlon_to_storage(uint16_t &offset, const Vector2l &latlon) WARN_IF_UNUSED;
-    bool write_fenceitem_to_storage(uint16_t &offset, const AC_PolyFenceItem &item) WARN_IF_UNUSED;
     bool read_latlon_from_storage(uint16_t &read_offset, Vector2l &latlon) const WARN_IF_UNUSED;
 
     // methods to write specific types of fencepoint out:
@@ -266,5 +267,4 @@ private:
     bool count_eeprom_fences() WARN_IF_UNUSED;
     // index_eeprom - (re)allocate and fill in _boundary_index
     bool index_eeprom() WARN_IF_UNUSED;
-    bool create_compatible_fence() WARN_IF_UNUSED;
 };
