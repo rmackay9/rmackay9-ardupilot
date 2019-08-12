@@ -216,14 +216,27 @@ private:
 
     bool _load_attempted;
 
-    // will attempt to change a pre-existing stored fence to the new
-    // storage format (so people don't lose their fences when
-    // upgrading)
+    // convert_to_new_storage - will attempt to change a pre-existing
+    // stored fence to the new storage format (so people don't lose
+    // their fences when upgrading)
     bool convert_to_new_storage() WARN_IF_UNUSED;
+    // contains_compatible_fence - returns true if the permanent fence
+    // storage contains fences that are compatible with the old
+    // FENCE_POINT protocol.
     bool contains_compatible_fence() const WARN_IF_UNUSED;
+    // create_compatible_fence - erases the current fences and
+    // installs a fence suitable for storing a fence supplied with the
+    // FENCE_POINT protocol
     bool create_compatible_fence() WARN_IF_UNUSED;
 
-    bool read_scaled_latlon_from_storage(const Location &origin, uint16_t &read_offset, Vector2f &dest) WARN_IF_UNUSED;
+    // read_scaled_latlon_from_storage - reads a latitude/longitude
+    // from offset in permanent storage, transforms them into an
+    // offset-from-origin and deposits the result into dest.
+    // read_offset is increased by the storage space used by the
+    // latitude/longitude
+    bool read_scaled_latlon_from_storage(const Location &origin,
+                                         uint16_t &read_offset,
+                                         Vector2f &dest) WARN_IF_UNUSED;
     bool read_polygon_from_storage(const Location &origin,
                                    uint16_t &read_offset,
                                    const uint8_t vertex_count,
