@@ -1429,3 +1429,16 @@ void AC_PolyFence_loader::handle_msg(GCS_MAVLINK &link, const mavlink_message_t&
         break;
     }
 }
+
+/// returns pointer to array of inclusion fence comprised of polygon
+/// points and num_points is filled in with the total number.  This is
+/// the *first* inclusion fence!
+Vector2f* AC_PolyFence_loader::get_boundary_points(uint16_t& num_points) const
+{
+    if (_num_loaded_inclusion_boundaries == 0) {
+        return nullptr;
+    }
+    const InclusionBoundary &boundary = _loaded_inclusion_boundary[0];
+    num_points = boundary.count;
+    return boundary.points;
+}
