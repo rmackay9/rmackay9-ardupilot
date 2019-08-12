@@ -238,9 +238,7 @@ bool AC_PolyFence_loader::truncate(uint8_t num)
     }
  
     uint16_t offset = entry->storage_offset;
-    if (!write_fenceitem_to_storage(offset, {
-            type: AC_PolyFenceType::END_OF_STORAGE,
-        })) {
+    if (!write_eos_to_storage(offset)) {
         return false;
     }
     _total.set_and_save(num+2); // FIXME
@@ -403,12 +401,7 @@ bool AC_PolyFence_loader::format()
     fence_storage.write_uint8(offset, new_fence_storage_magic);
     offset += 4;
     void_index();
-    if (!write_fenceitem_to_storage(offset, {
-            type: AC_PolyFenceType::END_OF_STORAGE,
-                    })) {
-        return false;
-    }
-    return true;
+    return write_eos_to_storage(offset);
 }
 
 bool AC_PolyFence_loader::convert_to_new_storage()
@@ -463,10 +456,7 @@ bool AC_PolyFence_loader::convert_to_new_storage()
             }
         }
 
-        // write out END_OF_STORAGE marker
-        if (!write_fenceitem_to_storage(offset, {
-                type: AC_PolyFenceType::END_OF_STORAGE,
-                        })) {
+        if (!write_eos_to_storage(offset)) {
             goto out;
         }
     }
