@@ -18,7 +18,7 @@ enum class AC_PolyFenceType {
 // and out of the polyfence loader.  It uses a AC_PolyFenceType to
 // indicate the item type, assuming each fence type is made up of
 // only one sort of item.
-// FIXME: make this a union to save space (or a sublcass thing)
+// TODO: make this a union to save space (or a sublcass thing)
 class AC_PolyFenceItem {
 public:
     AC_PolyFenceType type;
@@ -72,21 +72,27 @@ public:
     /// handler for polygon fence messages with GCS
     void handle_msg(class GCS_MAVLINK &link, const mavlink_message_t& msg);
 
+    //  breached() - returns true if the vehicle has breached any fence
     bool breached() WARN_IF_UNUSED;
-    //   returns true if location is outside the boundary
+    //  breached(Location&) - returns true if location is outside the boundary
     bool breached(const Location& loc) WARN_IF_UNUSED;
 
-    //   returns true if boundary is valid
-    bool valid_const() const WARN_IF_UNUSED { return _loaded_offsets_from_origin != nullptr; }
+    //  valid_const - returns true if boundary is valid
+    bool valid_const() const WARN_IF_UNUSED {
+        return _loaded_offsets_from_origin != nullptr; // FIXME
+    }
 
-    //   returns true if boundary is valid
-    bool valid() WARN_IF_UNUSED;
+    //  valid - returns true if boundary is valid
+    bool valid() WARN_IF_UNUSED; // FIXME
 
-    // returns the system in in millis when the boundary was last updated
+    // update_ms - returns the system in in millis when the boundary
+    // was last updated
     uint32_t update_ms() const {
         return _update_ms;
     }
 
+    // loaded - returns true if the fences have been loaded from
+    // storage and are available for use
     bool loaded() const WARN_IF_UNUSED;
 
     // eeprom_item_count - returns the number of items currently
@@ -98,7 +104,7 @@ public:
     // maximum number of fence points we can store in eeprom
     uint16_t max_items() const;
 
-    bool validate_fence(const AC_PolyFenceItem *new_items, uint16_t count) const WARN_IF_UNUSED;
+    // write_fence - validate and write count new_items to permanent storage
     bool write_fence(const AC_PolyFenceItem *new_items, uint16_t count)  WARN_IF_UNUSED;
 
 private:
@@ -121,11 +127,16 @@ private:
     // currently in the index
     uint16_t index_fence_count(const AC_PolyFenceType type);
 
+    // void_index - free resources for the index, forcing a reindex
+    // (typically via check_index)
     void void_index() {
         free(_index);
         _index = nullptr;
     }
 
+    // check_indexed - ensure that the index is up-to-date with what
+    // has been written to permanent storage.  May re-read storage and
+    // create a new index
     bool check_indexed() WARN_IF_UNUSED;
 
     // find_first_fence - return first fence in index of specific type
@@ -150,10 +161,11 @@ private:
     // FIXME: ensure this is out-of-band for old lat/lon point storage
     static const uint8_t new_fence_storage_magic = 235;
 
-    uint32_t        _update_ms;   // system time of last update to the boundary in storage
+    // validate_fence - returns true if new_items look completely valid
+    bool validate_fence(const AC_PolyFenceItem *new_items, uint16_t count) const WARN_IF_UNUSED;
 
-    template<typename T>
-    bool calculate_centroid(T *points, uint16_t count, T &centroid) WARN_IF_UNUSED;
+    // _update_ms - system time of last update to the boundary in storage
+    uint32_t        _update_ms;
 
     // eos_offset - stores the offset in storage of the end-of-storage
     // marker.  Used by low-level manipulation code to extend storage
@@ -248,9 +260,17 @@ private:
                                    const uint8_t vertex_count,
                                    Vector2f *&next_storage_point) WARN_IF_UNUSED;
 
+    // calculate_centroid - returns true if a geometric centre could
+    // be calculate from count points from points.  The centroid will
+    // be returned in the third parameter.  This works with the loaded
+    // fence - so points is in metres-from-origin
+    template<typename T>
+    bool calculate_centroid(T *points, uint16_t count, T &centroid) WARN_IF_UNUSED;
+
 
     /*
-     * Upgrade functions
+     * Upgrade functions - attempt to keep user's fences when
+     * upgrading to new firmware
      */
     // convert_to_new_storage - will attempt to change a pre-existing
     // stored fence to the new storage format (so people don't lose
@@ -292,7 +312,9 @@ private:
     bool write_returnpoint_to_storage(uint16_t &offset, const Vector2l &loc);
     bool write_eos_to_storage(uint16_t &offset);
 
-    // get_return_point - returns latitude/longitude of return point
+    // get_return_point - returns latitude/longitude of return point.
+    // This works with storage - the returned vector is absolute
+    // lat/lon.
     bool get_return_point(Vector2l &ret) WARN_IF_UNUSED;
 
     // _total - reference to FENCE_TOTAL parameter.  This is used
