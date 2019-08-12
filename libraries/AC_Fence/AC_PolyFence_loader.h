@@ -117,14 +117,11 @@ private:
     /// completed
     bool load_from_eeprom() WARN_IF_UNUSED;
     void unload();
-    bool format() WARN_IF_UNUSED;
 
     bool get_return_point(Vector2l &ret) WARN_IF_UNUSED;
 
+    // breached(Vector2f&) - returns true of location breaches any fence
     bool breached(const Vector2f& location)  WARN_IF_UNUSED;
-
-    // load boundary point from eeprom, returns true on successful load
-    bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
 
     // FenceIndex - a class used to store information about a fence in
     // fence storage.
@@ -134,6 +131,8 @@ private:
         uint16_t count;
         uint16_t storage_offset;
     };
+    // index_fence_count - returns the number of fences of type
+    // currently in the index
     uint16_t index_fence_count(const AC_PolyFenceType type);
 
     Vector2f *_boundary;          // array of boundary points.  Note: point 0 is the return point
@@ -162,13 +161,22 @@ private:
     FenceIndex *find_first_fence(const AC_PolyFenceType type) const;
     FenceIndex *get_or_create_include_fence();
     FenceIndex *get_or_create_return_point();
-    void create_return_point();
 
+    // eos_offset - stores the offset in storage of the end-of-storage
+    // marker.  Used by low-level manipulation code to extend storage
     uint16_t eos_offset;
 
-    bool formatted_for_new_storage() const WARN_IF_UNUSED;
-    bool format_for_new_storage() WARN_IF_UNUSED;
+    // formatted - returns true if the fence storage space seems to be
+    // formatted for new-style fence storage
+    bool formatted() const WARN_IF_UNUSED;
+    // format - format the storage space for use by
+    // the new polyfence code
+    bool format() WARN_IF_UNUSED;
 
+    // find_index_for_seq - returns true if seq is contained within a
+    // fence.  If it is, entry will be the relevant FenceIndex.  If
+    // the fence is multi-item (e.g. a polygon fence), then i will be
+    // the offset within that fence's item list where seq is found.
     bool find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const WARN_IF_UNUSED;
     bool find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const WARN_IF_UNUSED;
 
@@ -216,10 +224,19 @@ private:
 
     bool _load_attempted;
 
+    /*
+     * Upgrade functions
+     */
     // convert_to_new_storage - will attempt to change a pre-existing
     // stored fence to the new storage format (so people don't lose
     // their fences when upgrading)
     bool convert_to_new_storage() WARN_IF_UNUSED;
+    // load boundary point from eeprom, returns true on successful load
+    bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
+
+    /*
+     * FENCE_POINT protocol compatability
+     */
     // contains_compatible_fence - returns true if the permanent fence
     // storage contains fences that are compatible with the old
     // FENCE_POINT protocol.

@@ -336,7 +336,7 @@ bool AC_PolyFence_loader::breached(const Vector2f& location)
     return false;
 }
 
-bool AC_PolyFence_loader::formatted_for_new_storage() const
+bool AC_PolyFence_loader::formatted() const
 {
     return (fence_storage.read_uint8(0) == new_fence_storage_magic);
 }
@@ -564,7 +564,7 @@ void AC_PolyFence_loader::scan_eeprom_index_fences(const AC_PolyFenceType type, 
 
 bool AC_PolyFence_loader::index_eeprom()
 {
-    if (!formatted_for_new_storage()) {
+    if (!formatted()) {
         if (!convert_to_new_storage()) {
             return false;
         }
