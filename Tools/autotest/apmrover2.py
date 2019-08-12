@@ -1433,8 +1433,11 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             raise NotAchievedException("Uploaded fence when should not be possible")
         self.progress("Fence rightfully bounced")
 
+    def fencepoint_protocol_epsilon(self):
+        return 0.00002
+
     def roundtrip_fencepoint_protocol(self, offset, count, lat, lng, target_system=1, target_component=1):
-        self.progress("Sending FENCE_POINT")
+        self.progress("Sending FENCE_POINT offs=%u count=%u" % (offset, count))
         self.mav.mav.fence_point_send(target_system,
                                       target_component,
                                       offset,
@@ -1444,11 +1447,47 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
         self.progress("Requesting fence point")
         m = self.get_fence_point(offset, target_system=target_system, target_component=target_component)
-        if abs(m.lat - lat) > 0.000001:
+        if abs(m.lat - lat) > self.fencepoint_protocol_epsilon():
             raise NotAchievedException("Did not get correct lat in fencepoint: got=%f want=%f" % (m.lat, lat))
-        if abs(m.lng - lng) > 0.000001:
+        if abs(m.lng - lng) > self.fencepoint_protocol_epsilon():
             raise NotAchievedException("Did not get correct lng in fencepoint: got=%f want=%f" % (m.lng, lng))
         self.progress("Roundtrip OK")
+
+    def roundtrip_fence_using_fencepoint_protocol(self, loc_list, target_system=1, target_component=1, ordering=None):
+        count = len(loc_list)
+        offset = 0
+        self.set_parameter("FENCE_TOTAL", count)
+        if ordering is None:
+            ordering = range(count)
+        elif len(ordering) != len(loc_list):
+            raise ValueError("ordering list length mismatch")
+
+        for offset in ordering:
+            loc = loc_list[offset]
+            self.roundtrip_fencepoint_protocol(offset,
+                                               count,
+                                               loc.lat,
+                                               loc.lng,
+                                               target_system,
+                                               target_component)
+
+        self.progress("Validating uploaded fence")
+        returned_count = self.get_parameter("FENCE_TOTAL")
+        if returned_count != count:
+            raise NotAchievedException("Returned count mismatch (want=%u got=%u)" %
+                                       (count, returned_count))
+        for i in range(count):
+            self.progress("Requesting fence point")
+            m = self.get_fence_point(offset, target_system=target_system, target_component=target_component)
+            if abs(m.lat-loc.lat) > self.fencepoint_protocol_epsilon():
+                raise NotAchievedException("Returned lat mismatch (want=%f got=%f" %
+                                           (loc.lat, m.lat))
+            if abs(m.lng-loc.lng) > self.fencepoint_protocol_epsilon():
+                raise NotAchievedException("Returned lng mismatch (want=%f got=%f" %
+                                           (loc.lng, m.lng))
+            if m.count != count:
+                raise NotAchievedException("Count mismatch (want=%u got=%u)" %
+                                           (count, m.count))
 
     def assert_parameter_value(self, parameter, required):
         got = self.get_parameter(parameter)
@@ -1682,12 +1721,12 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.check_fence_upload_download(items)
             self.progress("(%s) uploaded just fine" % (name,))
 
-    # FIXME: ensure we can upload the return point before any other point, after any other pint, or right in the middle
+    # explode the write_type_to_storage method
     # FIXME: test converting invalid fences / minimally valid fences / normal fences
     # FIXME: show that uploading smaller items take up less space
-    # FIXME: ensure we can't upload multiple zones for the time being
-    # FIXME: write a fence using old protocol containing 3 items, then
-    # go to 4 items then back to 3 items.
+    # FIXME: add test for consecutive breaches within the manual recovery period
+    # FIXME: ensure truncation does the right thing by fence_total
+    # FIXME: create_compatible_fence works
 
     def test_offboard(self, timeout=90):
         self.load_mission("rover-guided-mission.txt")
@@ -2452,6 +2491,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
     def test_poly_fence_noarms(self, target_system=1, target_component=1):
         '''various tests to ensure we can't arm when in breach of a polyfence'''
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+        self.delay_sim_time(5) # let breaches clear
         self.progress("Ensure we can arm to start with")
         self.change_mode("GUIDED")
         self.wait_ready_to_arm()
@@ -2787,6 +2830,121 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.test_fence_upload_timeouts_2(target_system=target_system,
                                           target_component=target_component)
 
+    def test_poly_fence_compatability_ordering(self, target_system=1, target_component=1):
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+        here = self.mav.location()
+        self.progress("try uploading return point last")
+        self.roundtrip_fence_using_fencepoint_protocol([
+            self.offset_location_ne(here, 0, 0), # bl // return point
+            self.offset_location_ne(here, -50, 20), # bl
+            self.offset_location_ne(here, 50, 20), # br
+            self.offset_location_ne(here, 50, 40), # tr
+            self.offset_location_ne(here, -50, 40), # tl,
+            self.offset_location_ne(here, -50, 20), # closing point
+        ], ordering=[1, 2, 3, 4, 5, 0])
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+
+        self.progress("try uploading return point in middle")
+        self.roundtrip_fence_using_fencepoint_protocol([
+            self.offset_location_ne(here, 0, 0), # bl // return point
+            self.offset_location_ne(here, -50, 20), # bl
+            self.offset_location_ne(here, 50, 20), # br
+            self.offset_location_ne(here, 50, 40), # tr
+            self.offset_location_ne(here, -50, 40), # tl,
+            self.offset_location_ne(here, -50, 20), # closing point
+        ], ordering=[1, 2, 3, 0, 4, 5])
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+
+        self.progress("try closing point in middle")
+        self.roundtrip_fence_using_fencepoint_protocol([
+            self.offset_location_ne(here, 0, 0), # bl // return point
+            self.offset_location_ne(here, -50, 20), # bl
+            self.offset_location_ne(here, 50, 20), # br
+            self.offset_location_ne(here, 50, 40), # tr
+            self.offset_location_ne(here, -50, 40), # tl,
+            self.offset_location_ne(here, -50, 20), # closing point
+        ], ordering=[0, 1, 2, 5, 3, 4])
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+
+        # this is expected to fail as we don't return the closing
+        # point correctly until the first is uploaded
+        self.progress("try closing point first")
+        failed = False
+        try:
+            self.roundtrip_fence_using_fencepoint_protocol([
+                self.offset_location_ne(here, 0, 0), # bl // return point
+                self.offset_location_ne(here, -50, 20), # bl
+                self.offset_location_ne(here, 50, 20), # br
+                self.offset_location_ne(here, 50, 40), # tr
+                self.offset_location_ne(here, -50, 40), # tl,
+                self.offset_location_ne(here, -50, 20), # closing point
+            ], ordering=[5, 0, 1, 2, 3, 4])
+        except NotAchievedException as e:
+            failed = "got=0.000000 want=" in str(e)
+        if not failed:
+            raise NotAchievedException("Expected failure, did not get it")
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+
+        self.progress("try (almost) reverse order")
+        self.roundtrip_fence_using_fencepoint_protocol([
+            self.offset_location_ne(here, 0, 0), # bl // return point
+            self.offset_location_ne(here, -50, 20), # bl
+            self.offset_location_ne(here, 50, 20), # br
+            self.offset_location_ne(here, 50, 40), # tr
+            self.offset_location_ne(here, -50, 40), # tl,
+            self.offset_location_ne(here, -50, 20), # closing point
+        ], ordering=[4, 3, 2, 1, 0, 5])
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+
+    def test_poly_fence_compatability(self, target_system=1, target_component=1):
+        self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+                           target_system=target_system,
+                           target_component=target_component)
+
+        self.test_poly_fence_compatability_ordering(target_system=target_system, target_component=target_component)
+
+        here = self.mav.location()
+
+        self.progress("Playing with changing point count")
+        self.roundtrip_fence_using_fencepoint_protocol(
+            [
+                self.offset_location_ne(here, 0, 0), # bl // return point
+                self.offset_location_ne(here, -50, 20), # bl
+                self.offset_location_ne(here, 50, 20), # br
+                self.offset_location_ne(here, 50, 40), # tr
+                self.offset_location_ne(here, -50, 40), # tl,
+                self.offset_location_ne(here, -50, 20), # closing point
+                ])
+        self.roundtrip_fence_using_fencepoint_protocol(
+            [
+                self.offset_location_ne(here, 0, 0), # bl // return point
+                self.offset_location_ne(here, -50, 20), # bl
+                self.offset_location_ne(here, 50, 20), # br
+                self.offset_location_ne(here, -50, 40), # tl,
+                self.offset_location_ne(here, -50, 20), # closing point
+                ])
+        self.roundtrip_fence_using_fencepoint_protocol(
+            [
+                self.offset_location_ne(here, 0, 0), # bl // return point
+                self.offset_location_ne(here, -50, 20), # bl
+                self.offset_location_ne(here, 50, 20), # br
+                self.offset_location_ne(here, 50, 40), # tr
+                self.offset_location_ne(here, -50, 40), # tl,
+                self.offset_location_ne(here, -50, 20), # closing point
+                ])
+
     def test_poly_fence(self):
         '''test fence-related functions'''
         target_system = 1
@@ -2800,6 +2958,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.set_parameter("AVOID_ENABLE", 0)
 
         self.set_parameter("SIM_SPEEDUP", 1)
+
+        self.test_poly_fence_compatability()
 
         self.test_fence_upload_timeouts()
 
@@ -2924,8 +3084,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                                                      target_system=target_system,
                                                      target_component=target_component)
 
-
-        # FIXME: add test for consecutive breaches within the manual recovery period
 
     def drive_smartrtl(self):
         self.change_mode("STEERING")
