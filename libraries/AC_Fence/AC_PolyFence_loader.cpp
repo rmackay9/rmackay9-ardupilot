@@ -175,30 +175,6 @@ bool AC_PolyFence_loader::read_latlon_from_storage(uint16_t &read_offset, Vector
     return true;
 }
 
-bool AC_PolyFence_loader::truncate(uint8_t num)
-{
-    if (!check_indexed()) {
-        return false;
-    }
-    if (_index == nullptr) {
-        return num == 0;
-    }
-
-    uint16_t i=0;
-    const FenceIndex *entry = nullptr;
-    if (!find_index_for_seq(num, entry, i)) {
-        return false;
-    }
- 
-    uint16_t offset = entry->storage_offset;
-    if (!write_eos_to_storage(offset)) {
-        return false;
-    }
-    _total.set_and_save(num+2); // FIXME
-    void_index();
-    return true;
-}
-
 // load boundary point from eeprom, returns true on successful load
 // only used for converting from old storage to new storage
 bool AC_PolyFence_loader::load_point_from_eeprom(uint16_t i, Vector2l& point)

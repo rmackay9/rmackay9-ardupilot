@@ -48,9 +48,6 @@ public:
     // return the total number of points stored
     uint16_t num_stored_items() const { return _eeprom_item_count; }
     bool get_item(const uint16_t seq, AC_PolyFenceItem &item) WARN_IF_UNUSED;
-    // bool replace_item(const uint16_t seq, const AC_PolyFenceItem &item) WARN_IF_UNUSED;
-    // bool append_item(const AC_PolyFenceItem &item) WARN_IF_UNUSED;
-    bool truncate(uint8_t num) WARN_IF_UNUSED;
 
     ///
     /// exclusion zones
