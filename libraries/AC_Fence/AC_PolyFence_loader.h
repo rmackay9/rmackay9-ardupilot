@@ -126,6 +126,8 @@ private:
     // load boundary point from eeprom, returns true on successful load
     bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
 
+    // FenceIndex - a class used to store information about a fence in
+    // fence storage.
     class FenceIndex {
     public:
         AC_PolyFenceType type;
@@ -247,11 +249,22 @@ private:
     static uint16_t _eeprom_fence_count;
     static uint16_t _eeprom_item_count;
 
+    // scan_eeprom_index_fences - a static function designed to be
+    // passed to scan_eeprom.  _boundary_index must be a pointer to
+    // memory sufficient to hold information about all fences present
+    // in storage - so it is expected that scan_eeprom_count_fences
+    // has been used to count those fences and the allocation already
+    // made.  After this method has been called _boundary_index will
+    // be filled with information about the fences in the fence
+    // storage - type, item counts and storage offset.
     static void scan_eeprom_index_fences(const AC_PolyFenceType type, uint16_t read_offset);
-    static FenceIndex *_boundary_index;   // array specifying type of each boundary point
+    // _boundary_array specifying type of each fence in storage (and a
+    // count of items in that fence)
+    static FenceIndex *_boundary_index;
 
-
+    // count_eeprom_fences - refresh the count of fences in permanent storage
     bool count_eeprom_fences() WARN_IF_UNUSED;
+    // index_eeprom - (re)allocate and fill in _boundary_index
     bool index_eeprom() WARN_IF_UNUSED;
     bool create_compatible_fence() WARN_IF_UNUSED;
 };
