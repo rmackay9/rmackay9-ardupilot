@@ -71,7 +71,6 @@ public:
     ///
     /// mavlink
     ///
-
     /// handler for polygon fence messages with GCS
     void handle_msg(class GCS_MAVLINK &link, const mavlink_message_t& msg);
 
@@ -90,16 +89,10 @@ public:
         return _update_ms;
     }
 
-    bool get_stored_return_point(Vector2f &ret) const WARN_IF_UNUSED {
-        if (_loaded_return_point == nullptr) {
-            return false;
-        }
-        ret = *_loaded_return_point;
-        return true;
-    }
-
     bool loaded() const WARN_IF_UNUSED;
 
+    // eeprom_item_count - returns the number of items currently
+    // stored in fence storage
     uint16_t eeprom_item_count() {
         return _eeprom_item_count;
     }
@@ -174,14 +167,12 @@ private:
     bool format() WARN_IF_UNUSED;
 
     // find_index_for_seq - returns true if seq is contained within a
-    // fence.  If it is, entry will be the relevant FenceIndex.  If
-    // the fence is multi-item (e.g. a polygon fence), then i will be
-    // the offset within that fence's item list where seq is found.
+    // fence.  If it is, entry will be the relevant FenceIndex.  i
+    // will be the offset within _boundary where the first point in
+    // the fence is found
     bool find_index_for_seq(const uint16_t seq, const FenceIndex *&entry, uint16_t &i) const WARN_IF_UNUSED;
+    // find_storage_offset_for_seq
     bool find_storage_offset_for_seq(const uint16_t seq, uint16_t &offset, AC_PolyFenceType &type, uint16_t &vertex_count_offset) const WARN_IF_UNUSED;
-
-    void handle_msg_fetch_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
-    void handle_msg_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
 
     static const uint8_t new_fence_storage_magic = 235; // FIXME: ensure this is out-of-band for old lat/lon point storage
 
@@ -237,6 +228,8 @@ private:
     /*
      * FENCE_POINT protocol compatability
      */
+    void handle_msg_fetch_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
+    void handle_msg_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg);
     // contains_compatible_fence - returns true if the permanent fence
     // storage contains fences that are compatible with the old
     // FENCE_POINT protocol.
