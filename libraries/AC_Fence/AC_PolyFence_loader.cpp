@@ -1010,9 +1010,7 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
             return false;
         }
     }
-    if (!write_fenceitem_to_storage(offset, {
-            type: AC_PolyFenceType::END_OF_STORAGE,
-        })) {
+    if (!write_eos_to_storage(offset)) {
         return false;
     }
 
