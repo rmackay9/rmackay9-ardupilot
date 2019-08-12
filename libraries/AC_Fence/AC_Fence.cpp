@@ -479,8 +479,12 @@ bool AC_Fence::sys_status_failed() const
     return false;
 }
 
-class AC_PolyFence_loader &AC_Fence::polyfence() { return _poly_loader; }
-const class AC_PolyFence_loader &AC_Fence::polyfence_const() const { return _poly_loader; }
+class AC_PolyFence_loader &AC_Fence::polyfence() {
+    return _poly_loader;
+}
+const class AC_PolyFence_loader &AC_Fence::polyfence_const() const {
+    return _poly_loader;
+}
 
 // singleton instance
 AC_Fence *AC_Fence::_singleton;
