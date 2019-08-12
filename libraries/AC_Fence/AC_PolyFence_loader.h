@@ -22,7 +22,6 @@ enum class AC_PolyFenceType {
 class AC_PolyFenceItem {
 public:
     AC_PolyFenceType type;
-    // FIXME: make this a Vector2l
     Vector2l loc;
     uint8_t vertex_count;
     float radius;
@@ -120,7 +119,7 @@ private:
     void unload();
     bool format() WARN_IF_UNUSED;
 
-    bool get_return_point(Vector2l &ret) const WARN_IF_UNUSED;
+    bool get_return_point(Vector2l &ret) WARN_IF_UNUSED;
 
     bool breached(const Vector2f& location)  WARN_IF_UNUSED;
 

@@ -1093,51 +1093,27 @@ bool AC_PolyFence_loader::contains_compatible_fence() const
 }
 
 
-bool AC_PolyFence_loader::get_return_point(Vector2l &ret) const
+bool AC_PolyFence_loader::get_return_point(Vector2l &ret)
 {
-    uint16_t inclusion_fence_i = 0;
-    bool found_inclusion_fence = false;
-    for (uint16_t i=0; i<_num_fences; i++) {
-        switch (_boundary_index[i].type) {
-        case AC_PolyFenceType::END_OF_STORAGE:
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-            AP_HAL::panic("end-of-storage marker found in loaded list");
-#endif
-            return false;
-        case AC_PolyFenceType::POLYGON_INCLUSION:
-            if (found_inclusion_fence) {
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-                AP_HAL::panic("multiple inclusion fences found");
-#endif
-            }
-            found_inclusion_fence = true;
-            inclusion_fence_i = i;
-            break;
-        case AC_PolyFenceType::POLYGON_EXCLUSION:
-        case AC_PolyFenceType::CIRCLE_INCLUSION:
-        case AC_PolyFenceType::CIRCLE_EXCLUSION:
-            break;
-        case AC_PolyFenceType::RETURN_POINT: {
-            // FIXME: should be able to call a method to do this:
-            uint16_t offset = _boundary_index[i].storage_offset;
-            offset++; // skip type
-            if (!read_latlon_from_storage(offset, ret)) {
-                return false;
-            }
-            return true;
-        }
-        }
+    if (!check_indexed()) {
+        return false;
     }
 
-    if (!found_inclusion_fence) {
-        ret.x = 0;
-        ret.y = 0;
-        return true;
+    const FenceIndex *rp = find_first_fence(AC_PolyFenceType::RETURN_POINT);
+    if (rp != nullptr) {
+        uint16_t read_offset = rp->storage_offset + 1;
+        return read_latlon_from_storage(read_offset, ret);
+    }
+
+    const FenceIndex *inc = find_first_fence(AC_PolyFenceType::POLYGON_INCLUSION);
+    if (inc == nullptr) {
+        return false;
     }
 
     // we found an inclusion fence but not a return point.  Calculate
-    // and return the centroid...
-    uint16_t offset = _boundary_index[inclusion_fence_i].storage_offset;
+    // and return the centroid.  Note that this may not actually be
+    // inside all inclusion fences...
+    uint16_t offset = inc->storage_offset;
     if ((AC_PolyFenceType)fence_storage.read_uint8(offset) != AC_PolyFenceType::POLYGON_INCLUSION) {
         AP_HAL::panic("wrong type at offset");
         return false;
@@ -1150,14 +1126,21 @@ bool AC_PolyFence_loader::get_return_point(Vector2l &ret) const
 #endif
         return false;
     }
+    offset++;
     Vector2l min_loc;
     if (!read_latlon_from_storage(offset, min_loc)) {
+        return false;
+    }
+    if (min_loc.is_zero()) {
         return false;
     }
     Vector2l max_loc = min_loc;
     for (uint8_t i=1; i<count; i++) {
         Vector2l new_loc;
         if (!read_latlon_from_storage(offset, new_loc)) {
+            return false;
+        }
+        if (new_loc.is_zero()) {
             return false;
         }
         if (new_loc.x < min_loc.x) {
