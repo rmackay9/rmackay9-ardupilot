@@ -952,15 +952,17 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
                 // write out new polygon count
                 vertex_count = new_item.vertex_count;
                 total_vertex_count += vertex_count;
-                fence_storage.write_uint8(offset++, (uint8_t)new_item.type);
+                if (!write_type_to_storage(offset, new_item.type)) {
+                    return false;
+                }
                 fence_storage.write_uint8(offset, vertex_count);
                 offset++;
             }
             vertex_count--;
-        default:
+            if (!write_latlon_to_storage(offset, new_item.loc)) {
+                return false;
+            }
             break;
-        }
-        switch(new_item.type) {
         case AC_PolyFenceType::END_OF_STORAGE:
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
             AP_HAL::panic("asked to store end-of-storage marker");
@@ -968,37 +970,20 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
             return false;
         case AC_PolyFenceType::CIRCLE_INCLUSION:
         case AC_PolyFenceType::CIRCLE_EXCLUSION:
+            if (!write_type_to_storage(offset, new_item.type)) {
+                return false;
+            }
+            if (!write_latlon_to_storage(offset, new_item.loc)) {
+                return false;
+            }
+            // store the radius
+            fence_storage.write_uint32(offset, new_item.radius);
+            offset += 4;
+            break;
         case AC_PolyFenceType::RETURN_POINT:
             if (!write_type_to_storage(offset, new_item.type)) {
                 return false;
             }
-            break;
-        case AC_PolyFenceType::POLYGON_INCLUSION:
-        case AC_PolyFenceType::POLYGON_EXCLUSION:
-            break;
-        }
-        switch(new_item.type) {
-        case AC_PolyFenceType::END_OF_STORAGE:
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-            AP_HAL::panic("asked to store end-of-storage marker");
-#endif
-            return false;
-        case AC_PolyFenceType::CIRCLE_INCLUSION:
-        case AC_PolyFenceType::CIRCLE_EXCLUSION:
-            if (!write_latlon_to_storage(offset, new_item.loc)) {
-                return false;
-            }
-            fence_storage.write_uint32(offset, new_item.radius);
-            offset += 4;
-            break;
-        case AC_PolyFenceType::POLYGON_INCLUSION:
-        case AC_PolyFenceType::POLYGON_EXCLUSION:
-            // type for this is written out by caller
-            if (!write_latlon_to_storage(offset, new_item.loc)) {
-                return false;
-            }
-            break;
-        case AC_PolyFenceType::RETURN_POINT:
             if (!write_latlon_to_storage(offset, new_item.loc)) {
                 return false;
             }
@@ -1009,10 +994,13 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
         return false;
     }
 
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     if (!index_eeprom()) {
-        gcs().send_text(MAV_SEVERITY_WARNING, "Failed to index eeprom");
+        AP_HAL::panic("Failed to index eeprom");
     }
     gcs().send_text(MAV_SEVERITY_DEBUG, "Fence Indexed OK");
+#endif
+
     void_index();
 
     // this may be completely bogus total.  If we are storing an
