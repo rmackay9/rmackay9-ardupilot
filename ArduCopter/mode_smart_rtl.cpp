@@ -98,9 +98,6 @@ void ModeSmartRTL::path_follow_run()
             // send target to waypoint controller
             wp_nav->set_wp_destination_NED(next_point);
             wp_nav->set_fast_waypoint(fast_waypoint);
-        } else {
-            // this can only happen if we fail to get the semaphore which should never happen but just in case, land
-            smart_rtl_state = SmartRTL_PreLandPosition;
         }
     }
 
