@@ -5,6 +5,8 @@
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
+#define AC_POLYFENCE_FENCE_POINT_PROTOCOL_SUPPORT 0
+
 enum class AC_PolyFenceType {
     END_OF_STORAGE    = 99,
     POLYGON_INCLUSION = 98,
@@ -280,6 +282,7 @@ private:
     bool load_point_from_eeprom(uint16_t i, Vector2l& point) WARN_IF_UNUSED;
 
 
+#if AC_POLYFENCE_FENCE_POINT_PROTOCOL_SUPPORT
     /*
      * FENCE_POINT protocol compatability
      */
@@ -302,6 +305,7 @@ private:
     // to be used for the FENCE_POINT-supplied return point.  May
     // format the storage appropriately.
     FenceIndex *get_or_create_return_point();
+#endif
 
     // primitives to write parts of fencepoints out:
     bool write_type_to_storage(uint16_t &offset, AC_PolyFenceType type) WARN_IF_UNUSED;

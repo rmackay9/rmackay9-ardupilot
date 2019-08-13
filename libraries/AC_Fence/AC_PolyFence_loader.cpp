@@ -998,44 +998,6 @@ bool AC_PolyFence_loader::write_fence(const AC_PolyFenceItem *new_items, uint16_
 }
 
 
-bool AC_PolyFence_loader::contains_compatible_fence() const
-{
-    // must contain a single inclusion fence with an optional return point
-    if (_index == nullptr) {
-        // this indicates no boundary points present
-        return true;
-    }
-    bool seen_return_point = false;
-    bool seen_poly_inclusion = false;
-    for (uint16_t i=0; i<_num_fences; i++) {
-        switch (_index[i].type) {
-        case AC_PolyFenceType::END_OF_STORAGE:
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-            AP_HAL::panic("end-of-storage marker found in loaded list");
-#endif
-            return false;
-        case AC_PolyFenceType::POLYGON_INCLUSION:
-            if (seen_poly_inclusion) {
-                return false;
-            }
-            seen_poly_inclusion = true;
-            break;
-        case AC_PolyFenceType::POLYGON_EXCLUSION:
-        case AC_PolyFenceType::CIRCLE_INCLUSION:
-        case AC_PolyFenceType::CIRCLE_EXCLUSION:
-            return false;
-        case AC_PolyFenceType::RETURN_POINT:
-            if (seen_return_point) {
-                return false;
-            }
-            seen_return_point = true;
-            break;
-        }
-    }
-    return true;
-}
-
-
 bool AC_PolyFence_loader::get_return_point(Vector2l &ret)
 {
     if (!check_indexed()) {
@@ -1113,6 +1075,7 @@ AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::find_first_fence(const AC_
     return nullptr;
 }
 
+#if AC_POLYFENCE_FENCE_POINT_PROTOCOL_SUPPORT
 void AC_PolyFence_loader::handle_msg_fetch_fence_point(GCS_MAVLINK &link, const mavlink_message_t& msg)
 {
     if (!check_indexed()) {
@@ -1189,26 +1152,6 @@ void AC_PolyFence_loader::handle_msg_fetch_fence_point(GCS_MAVLINK &link, const 
     }
 
     link.send_message(MAVLINK_MSG_ID_FENCE_POINT, (const char*)&ret_packet);
-}
-
-bool AC_PolyFence_loader::write_returnpoint_to_storage(uint16_t &offset, const Vector2l &loc)
-{
-    if (!write_type_to_storage(offset, AC_PolyFenceType::RETURN_POINT)) {
-        return false;
-    }
-    if (!write_latlon_to_storage(offset, loc)) {
-        return false;
-    }
-    return true;
-}
-
-bool AC_PolyFence_loader::write_eos_to_storage(uint16_t &offset)
-{
-    if (!write_type_to_storage(offset, AC_PolyFenceType::END_OF_STORAGE)) {
-        return false;
-    }
-    eos_offset = offset - 1; // should point to the marker
-    return true;
 }
 
 AC_PolyFence_loader::FenceIndex *AC_PolyFence_loader::get_or_create_return_point()
@@ -1412,20 +1355,78 @@ void AC_PolyFence_loader::handle_msg_fence_point(GCS_MAVLINK &link, const mavlin
     }
 }
 
+bool AC_PolyFence_loader::contains_compatible_fence() const
+{
+    // must contain a single inclusion fence with an optional return point
+    if (_index == nullptr) {
+        // this indicates no boundary points present
+        return true;
+    }
+    bool seen_return_point = false;
+    bool seen_poly_inclusion = false;
+    for (uint16_t i=0; i<_num_fences; i++) {
+        switch (_index[i].type) {
+        case AC_PolyFenceType::END_OF_STORAGE:
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+            AP_HAL::panic("end-of-storage marker found in loaded list");
+#endif
+            return false;
+        case AC_PolyFenceType::POLYGON_INCLUSION:
+            if (seen_poly_inclusion) {
+                return false;
+            }
+            seen_poly_inclusion = true;
+            break;
+        case AC_PolyFenceType::POLYGON_EXCLUSION:
+        case AC_PolyFenceType::CIRCLE_INCLUSION:
+        case AC_PolyFenceType::CIRCLE_EXCLUSION:
+            return false;
+        case AC_PolyFenceType::RETURN_POINT:
+            if (seen_return_point) {
+                return false;
+            }
+            seen_return_point = true;
+            break;
+        }
+    }
+    return true;
+}
+
+#endif // AC_POLYFENCE_FENCE_POINT_PROTOCOL_SUPPORT
+
+bool AC_PolyFence_loader::write_returnpoint_to_storage(uint16_t &offset, const Vector2l &loc)
+{
+    if (!write_type_to_storage(offset, AC_PolyFenceType::RETURN_POINT)) {
+        return false;
+    }
+    if (!write_latlon_to_storage(offset, loc)) {
+        return false;
+    }
+    return true;
+}
+
+bool AC_PolyFence_loader::write_eos_to_storage(uint16_t &offset)
+{
+    if (!write_type_to_storage(offset, AC_PolyFenceType::END_OF_STORAGE)) {
+        return false;
+    }
+    eos_offset = offset - 1; // should point to the marker
+    return true;
+}
+
 /// handler for polygon fence messages with GCS
 void AC_PolyFence_loader::handle_msg(GCS_MAVLINK &link, const mavlink_message_t& msg)
 {
     switch (msg.msgid) {
+#if AC_POLYFENCE_FENCE_POINT_PROTOCOL_SUPPORT
     case MAVLINK_MSG_ID_FENCE_POINT:
         handle_msg_fence_point(link, msg);
         break;
     case MAVLINK_MSG_ID_FENCE_FETCH_POINT:
         handle_msg_fetch_fence_point(link, msg);
         break;
-    default:
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-            AP_HAL::panic("should not have been called");
 #endif
+    default:
         break;
     }
 }
