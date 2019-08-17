@@ -183,7 +183,7 @@ bool AP_OADijkstra::create_polygon_fence_with_margin(float margin_cm)
     }
 
     // get polygon boundary
-    uint16_t num_points;
+    uint16_t num_points = 0;
     const Vector2f* boundary = fence->polyfence_const().get_boundary_points(num_points);
     if ((boundary == nullptr) || (num_points < 3)) {
         return false;
@@ -338,7 +338,7 @@ bool AP_OADijkstra::intersects_fence(const Vector2f &seg_start, const Vector2f &
     }
 
     // determine if segment crosses the polygon fence
-    uint16_t num_points;
+    uint16_t num_points = 0;
     const Vector2f* boundary = fence->polyfence_const().get_boundary_points(num_points);
     if ((boundary != nullptr) && (num_points >= 3)) {
         Vector2f intersection;
@@ -379,7 +379,7 @@ bool AP_OADijkstra::create_polygon_fence_visgraph()
     }
 
     // get polygon boundary
-    uint16_t num_points;
+    uint16_t num_points = 0;
     const Vector2f* boundary = fence->polyfence_const().get_boundary_points(num_points);
     if ((boundary == nullptr) || (num_points < 3)) {
         return false;

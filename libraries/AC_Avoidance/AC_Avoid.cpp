@@ -399,7 +399,7 @@ void AC_Avoid::adjust_velocity_polygon_fence(float kP, float accel_cmss, Vector2
     }
 
     // get polygon boundary
-    uint16_t num_points;
+    uint16_t num_points = 0;
     const Vector2f* boundary = _fence.polyfence().get_boundary_points(num_points);
 
     // adjust velocity using polygon
@@ -446,9 +446,9 @@ void AC_Avoid::adjust_velocity_beacon_fence(float kP, float accel_cmss, Vector2f
     }
 
     // get boundary from beacons
-    uint16_t num_points;
+    uint16_t num_points = 0;
     const Vector2f* boundary = _beacon->get_boundary_points(num_points);
-    if (boundary == nullptr || num_points == 0) {
+    if ((boundary == nullptr) || (num_points == 0)) {
         return;
     }
 
@@ -478,7 +478,7 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector2f &d
     }
 
     // get boundary from proximity sensor
-    uint16_t num_points;
+    uint16_t num_points = 0;
     const Vector2f *boundary = _proximity.get_boundary_points(num_points);
     adjust_velocity_polygon(kP, accel_cmss, desired_vel_cms, boundary, num_points, false, _margin, dt, true);
 }

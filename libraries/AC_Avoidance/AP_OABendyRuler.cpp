@@ -216,9 +216,9 @@ bool AP_OABendyRuler::calc_margin_from_polygon_fence(const Location &start, cons
     }
 
     // get polygon boundary
-    uint16_t num_points;
+    uint16_t num_points = 0;
     const Vector2f* boundary = fence->polyfence_const().get_boundary_points(num_points);
-    if (num_points < 3) {
+    if ((boundary == nullptr) || (num_points < 3)) {
         // this should have already been checked by is_polygon_valid() but just in case
         return false;
     }
