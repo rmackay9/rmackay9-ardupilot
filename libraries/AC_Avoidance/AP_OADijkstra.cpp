@@ -155,7 +155,7 @@ bool AP_OADijkstra::polygon_fence_enabled() const
     if (fence == nullptr) {
         return false;
     }
-    if (!fence->polyfence_const().valid_const()) {
+    if (!fence->polyfence_const().valid_const() && (fence->polyfence_const().get_exclusion_polygon_count() == 0)) {
         return false;
     }
     return ((fence->get_enabled_fences() & AC_FENCE_TYPE_POLYGON) > 0);
@@ -185,7 +185,15 @@ bool AP_OADijkstra::create_polygon_fence_with_margin(float margin_cm)
     // get polygon boundary
     uint16_t num_points = 0;
     const Vector2f* boundary = fence->polyfence_const().get_boundary_points(num_points);
-    if ((boundary == nullptr) || (num_points < 3)) {
+    if ((boundary == nullptr) || (num_points == 0)) {
+        // no fence
+        _polyfence_numpoints = 0;
+        _polyfence_update_ms = fence->polyfence_const().update_ms();
+        return true;
+    }
+
+    // fail if too few points defined
+    if (num_points < 3) {
         return false;
     }
 
@@ -364,29 +372,17 @@ bool AP_OADijkstra::intersects_fence(const Vector2f &seg_start, const Vector2f &
 
 // create a visibility graph of the polygon fence
 // returns true on success
-// requires create_polygon_fence_with_margin to have been run
+// requires create_polygon_fence_with_margin and create_exclusion_polygon_with_margin to have been run
 bool AP_OADijkstra::create_polygon_fence_visgraph()
 {
-    // exit immediately if no polygon fence (with margin)
-    if (_polyfence_numpoints == 0) {
-        return false;
-    }
-
-    // exit immediately if polygon fence is not enabled
+    // exit immediately if fence is not enabled
     const AC_Fence *fence = AC_Fence::get_singleton();
     if (fence == nullptr) {
         return false;
     }
 
-    // get polygon boundary
-    uint16_t num_points = 0;
-    const Vector2f* boundary = fence->polyfence_const().get_boundary_points(num_points);
-    if ((boundary == nullptr) || (num_points < 3)) {
-        return false;
-    }
-
-    // fail if more than number of polygon points algorithm can handle
-    if (num_points >= OA_DIJKSTRA_POLYGON_SHORTPATH_NOTSET_IDX) {
+    // fail if more fence points than algorithm can handle
+    if ((_polyfence_numpoints + _exclusion_polygon_numpoints) >= OA_DIJKSTRA_POLYGON_SHORTPATH_NOTSET_IDX) {
         return false;
     }
 
