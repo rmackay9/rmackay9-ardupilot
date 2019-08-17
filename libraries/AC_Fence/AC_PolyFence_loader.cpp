@@ -816,6 +816,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
 Vector2f* AC_PolyFence_loader::get_exclusion_polygon(uint16_t index, uint16_t &num_points) const
 {
     if (index > _num_loaded_exclusion_boundaries) {
+        num_points = 0;
         return nullptr;
     }
     const ExclusionBoundary &boundary = _loaded_exclusion_boundary[index];
@@ -1437,6 +1438,7 @@ void AC_PolyFence_loader::handle_msg(GCS_MAVLINK &link, const mavlink_message_t&
 Vector2f* AC_PolyFence_loader::get_boundary_points(uint16_t& num_points) const
 {
     if (_num_loaded_inclusion_boundaries == 0) {
+        num_points = 0;
         return nullptr;
     }
     const InclusionBoundary &boundary = _loaded_inclusion_boundary[0];
