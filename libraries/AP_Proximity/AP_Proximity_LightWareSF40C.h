@@ -17,7 +17,7 @@ public:
     static bool detect(AP_SerialManager &serial_manager);
 
     // update state
-    void update(void);
+    void update(void) override;
 
     // get maximum and minimum distances (in meters) of sensor
     float distance_max() const override { return 100.0f; }
@@ -101,8 +101,6 @@ private:
     uint32_t _last_reply_ms;                // system time of last valid reply
     uint32_t _last_restart_ms;              // system time we restarted the sensor
     uint32_t _last_distance_received_ms;    // system time of last distance measurement received from sensor
-    int16_t _last_distance_cm;              // last valid distance parsed
-    float _last_angle_deg;                  // angle of last_distance_cm
     uint8_t _last_sector = UINT8_MAX;       // sector of last distance_cm
 
     // state of sensor

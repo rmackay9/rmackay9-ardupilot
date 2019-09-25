@@ -80,15 +80,10 @@ void AP_Proximity_LightWareSF40C::initialise()
 
     // exit immediately if we've sent initialisation requests in the last second
     uint32_t now_ms = AP_HAL::millis();
-    if ((AP_HAL::millis() - _last_request_ms) < 1000) {
+    if ((now_ms - _last_request_ms) < 1000) {
         return;
     }
     _last_request_ms = now_ms;
-
-    // if no replies in last 15 seconds reboot sensor
-    if ((now_ms > 30000) && (now_ms - _last_reply_ms > 15000)) {
-        restart_sensor();
-    }
 
     // re-fetch motor state
     request_motor_state();
@@ -96,6 +91,12 @@ void AP_Proximity_LightWareSF40C::initialise()
     // get token from sensor (required for reseting)
     if (!got_token()) {
         request_token();
+        return;
+    }
+
+    // if no replies in last 15 seconds reboot sensor
+    if ((now_ms > 30000) && (now_ms - _last_reply_ms > 15000)) {
+        restart_sensor();
         return;
     }
 
@@ -115,12 +116,6 @@ void AP_Proximity_LightWareSF40C::initialise()
         request_stream_start();
         return;
     }
-
-    // if we haven't received any distance messages in 15 seconds restart sensor and re-try everything
-    if ((now_ms - _last_distance_received_ms) > 15000) {
-        restart_sensor();
-        return;
-    }
 }
 
 // restart sensor and re-init our state
@@ -135,6 +130,7 @@ void AP_Proximity_LightWareSF40C::restart_sensor()
     // restart sensor and re-initialise sensor state
     request_reset();
     clear_token();
+    _last_restart_ms = now_ms;
     _sensor_state.motor_state = 0;
     _sensor_state.streaming = false;
     _sensor_state.output_rate = 0;
@@ -254,7 +250,7 @@ void AP_Proximity_LightWareSF40C::request_stream_start()
     send_message(MessageID::OUTPUT_RATE, true, &desired_rate, sizeof(desired_rate));
 
     // request streaming to start
-    const uint32_t val = htole32(3);
+    const le32_t val = htole32(3);
     send_message(MessageID::STREAM, true, (const uint8_t*)&val, sizeof(val));
 }
 
@@ -399,31 +395,27 @@ void AP_Proximity_LightWareSF40C::process_message()
         for (uint16_t i = 0; i < point_count; i++) {
             const uint16_t idx = 14 + (i * 2);
             const int16_t dist_cm = (int16_t)buff_to_uint16(_msg.payload[idx], _msg.payload[idx+1]);
-            const float angle_deg = (point_start_index + i) * angle_inc_deg * angle_sign + angle_correction;
+            const float angle_deg = wrap_360((point_start_index + i) * angle_inc_deg * angle_sign + angle_correction);
             uint8_t sector;
             if (convert_angle_to_sector(angle_deg, sector)) {
                 if (sector != _last_sector) {
-                    // data for new sector received
-                    // no more data from previous sector will arrive so fill in with shortest distance
+                    // update boundary used for avoidance
                     if (_last_sector != UINT8_MAX) {
-                        if (_last_distance_cm < INT16_MAX) {
-                            _angle[_last_sector] = _last_angle_deg;
-                            _distance[_last_sector] = _last_distance_cm * 0.01f;
-                            _distance_valid[_last_sector] = true;
-                        } else {
-                            _distance_valid[_last_sector] = false;
-                        }
-                        // update boundary used for avoidance
                         update_boundary_for_sector(_last_sector);
                     }
-                    // initialise for new sector
                     _last_sector = sector;
-                    _last_distance_cm = INT16_MAX;
+                    // init for new sector
+                    _distance[sector] = INT16_MAX;
+                    _distance_valid[sector] = false;
                 }
-                // use shortest valid distance
-                if ((dist_cm < _last_distance_cm) && (dist_cm >= dist_min_cm) && (dist_cm <= dist_max_cm)) {
-                    _last_distance_cm = dist_cm;
-                    _last_angle_deg = angle_deg;
+                if ((dist_cm >= dist_min_cm) && (dist_cm <= dist_max_cm)) {
+                    // use shortest valid distance for this sector's distance
+                    const float dist_m = dist_cm * 0.01f;
+                    if (dist_m < _distance[sector]) {
+                        _angle[sector] = angle_deg;
+                        _distance[sector] = dist_m;
+                        _distance_valid[sector] = true;
+                    }
                 }
             }
         }
@@ -474,11 +466,11 @@ void AP_Proximity_LightWareSF40C::process_message()
 uint32_t AP_Proximity_LightWareSF40C::buff_to_uint32(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) const
 {
     uint32_t leval = (uint32_t)b0 | (uint32_t)b1 << 8 | (uint32_t)b2 << 16 | (uint32_t)b3 << 24;
-    return le32toh(leval);
+    return leval;
 }
 
 uint16_t AP_Proximity_LightWareSF40C::buff_to_uint16(uint8_t b0, uint8_t b1) const
 {
     uint16_t leval = (uint16_t)b0 | (uint16_t)b1 << 8;
-    return le16toh(leval);
+    return leval;
 }
