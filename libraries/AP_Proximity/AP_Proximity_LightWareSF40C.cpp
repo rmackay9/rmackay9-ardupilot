@@ -36,10 +36,10 @@ AP_Proximity_LightWareSF40C::AP_Proximity_LightWareSF40C(AP_Proximity &_frontend
                                                          AP_SerialManager &serial_manager) :
     AP_Proximity_Backend(_frontend, _state)
 {
-    uart = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Lidar360, 0);
-    if (uart != nullptr) {
-        // start uart with larger receive buffer
-        uart->begin(serial_manager.find_baudrate(AP_SerialManager::SerialProtocol_Lidar360, 0), PROXIMITY_SF40C_UART_RX_SPACE, 0);
+    _uart = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Lidar360, 0);
+    if (_uart != nullptr) {
+        // start _uart with larger receive buffer
+        _uart->begin(serial_manager.find_baudrate(AP_SerialManager::SerialProtocol_Lidar360, 0), PROXIMITY_SF40C_UART_RX_SPACE, 0);
     }
 }
 
@@ -52,7 +52,7 @@ bool AP_Proximity_LightWareSF40C::detect(AP_SerialManager &serial_manager)
 // update the state of the sensor
 void AP_Proximity_LightWareSF40C::update(void)
 {
-    if (uart == nullptr) {
+    if (_uart == nullptr) {
         return;
     }
 
@@ -63,7 +63,7 @@ void AP_Proximity_LightWareSF40C::update(void)
     process_replies();
 
     // check for timeout and set health status
-    if ((last_distance_received_ms == 0) || ((AP_HAL::millis() - last_distance_received_ms) > PROXIMITY_SF40C_TIMEOUT_MS)) {
+    if ((_last_distance_received_ms == 0) || ((AP_HAL::millis() - _last_distance_received_ms) > PROXIMITY_SF40C_TIMEOUT_MS)) {
         set_status(AP_Proximity::Proximity_NoData);
     } else {
         set_status(AP_Proximity::Proximity_Good);
@@ -74,19 +74,19 @@ void AP_Proximity_LightWareSF40C::update(void)
 void AP_Proximity_LightWareSF40C::initialise()
 {
     // initialise sectors
-    if (!sector_initialised) {
+    if (!_sector_initialised) {
         init_sectors();
     }
 
     // exit immediately if we've sent initialisation requests in the last second
     uint32_t now_ms = AP_HAL::millis();
-    if ((AP_HAL::millis() - last_request_ms) < 1000) {
+    if ((AP_HAL::millis() - _last_request_ms) < 1000) {
         return;
     }
-    last_request_ms = now_ms;
+    _last_request_ms = now_ms;
 
     // if no replies in last 15 seconds reboot sensor
-    if ((now_ms > 30000) && (now_ms - last_reply_ms > 15000)) {
+    if ((now_ms > 30000) && (now_ms - _last_reply_ms > 15000)) {
         restart_sensor();
     }
 
@@ -100,24 +100,24 @@ void AP_Proximity_LightWareSF40C::initialise()
     }
 
     // if motor is starting up give more time to succeed or fail
-    if (sensor_state.motor_state < 3) {
+    if (_sensor_state.motor_state < 3) {
         return;
     }
 
     // if motor fails, reset sensor and re-try everything
-    if (sensor_state.motor_state >= 4) {
+    if (_sensor_state.motor_state >= 4) {
         restart_sensor();
         return;
     }
 
     // motor is running correctly (motor_state is 3) so request start of streaming
-    if (!sensor_state.streaming || (sensor_state.output_rate != PROXIMITY_SF40C_DESIRED_OUTPUT_RATE)) {
+    if (!_sensor_state.streaming || (_sensor_state.output_rate != PROXIMITY_SF40C_DESIRED_OUTPUT_RATE)) {
         request_stream_start();
         return;
     }
 
     // if we haven't received any distance messages in 15 seconds restart sensor and re-try everything
-    if ((now_ms - last_distance_received_ms) > 15000) {
+    if ((now_ms - _last_distance_received_ms) > 15000) {
         restart_sensor();
         return;
     }
@@ -128,16 +128,16 @@ void AP_Proximity_LightWareSF40C::restart_sensor()
 {
     // return immediately if a restart has been requested within the last 30sec
     uint32_t now_ms = AP_HAL::millis();
-    if ((last_restart_ms != 0) && ((now_ms - last_restart_ms) < 30000)) {
+    if ((_last_restart_ms != 0) && ((now_ms - _last_restart_ms) < 30000)) {
         return;
     }
 
     // restart sensor and re-initialise sensor state
     request_reset();
     clear_token();
-    sensor_state.motor_state = 0;
-    sensor_state.streaming = false;
-    sensor_state.output_rate = 0;
+    _sensor_state.motor_state = 0;
+    _sensor_state.streaming = false;
+    _sensor_state.output_rate = 0;
 }
 
 // initialise sector angles using user defined ignore areas
@@ -146,7 +146,7 @@ void AP_Proximity_LightWareSF40C::init_sectors()
     // use defaults if no ignore areas defined
     uint8_t ignore_area_count = get_ignore_area_count();
     if (ignore_area_count == 0) {
-        sector_initialised = true;
+        _sector_initialised = true;
         return;
     }
 
@@ -197,47 +197,47 @@ void AP_Proximity_LightWareSF40C::init_sectors()
     init_boundary();
 
     // record success
-    sector_initialised = true;
+    _sector_initialised = true;
 }
 
 // send message to sensor
 void AP_Proximity_LightWareSF40C::send_message(MessageID msgid, bool write, const uint8_t *payload, uint16_t payload_len)
 {
-    if ((uart == nullptr) || (payload_len > PROXIMITY_SF40C_PAYLOAD_LEN_MAX)) {
+    if ((_uart == nullptr) || (payload_len > PROXIMITY_SF40C_PAYLOAD_LEN_MAX)) {
         return;
     }
 
     // check for sufficient space in outgoing buffer
-    if (uart->txspace() < payload_len + 6U) {
+    if (_uart->txspace() < payload_len + 6U) {
         return;
     }
 
     // write header
-    uart->write((uint8_t)PROXIMITY_SF40C_HEADER);
+    _uart->write((uint8_t)PROXIMITY_SF40C_HEADER);
     uint16_t crc = crc_xmodem_update(0, PROXIMITY_SF40C_HEADER);
 
     // write flags including payload length
     const uint16_t flags = ((payload_len+1) << 6) | (write ? 0x01 : 0);
-    uart->write(LOWBYTE(flags));
+    _uart->write(LOWBYTE(flags));
     crc = crc_xmodem_update(crc, LOWBYTE(flags));
-    uart->write(HIGHBYTE(flags));
+    _uart->write(HIGHBYTE(flags));
     crc = crc_xmodem_update(crc, HIGHBYTE(flags));
 
     // msgid
-    uart->write((uint8_t)msgid);
+    _uart->write((uint8_t)msgid);
     crc = crc_xmodem_update(crc, (uint8_t)msgid);
 
     // payload
     if ((payload_len > 0) && (payload != nullptr)) {
         for (uint16_t i = 0; i < payload_len; i++) {
-            uart->write(payload[i]);
+            _uart->write(payload[i]);
             crc = crc_xmodem_update(crc, payload[i]);
         }
     }
 
     // checksum
-    uart->write(LOWBYTE(crc));
-    uart->write(HIGHBYTE(crc));
+    _uart->write(LOWBYTE(crc));
+    _uart->write(HIGHBYTE(crc));
 }
 
 // request motor state
@@ -269,19 +269,19 @@ void AP_Proximity_LightWareSF40C::request_token()
 void AP_Proximity_LightWareSF40C::request_reset()
 {
     // send reset request
-    send_message(MessageID::RESET, true, sensor_state.token, ARRAY_SIZE(sensor_state.token));
+    send_message(MessageID::RESET, true, _sensor_state.token, ARRAY_SIZE(_sensor_state.token));
 }
 
 // check for replies from sensor
 void AP_Proximity_LightWareSF40C::process_replies()
 {
-    if (uart == nullptr) {
+    if (_uart == nullptr) {
         return;
     }
 
-    int16_t nbytes = uart->available();
+    int16_t nbytes = _uart->available();
     while (nbytes-- > 0) {
-        const int16_t r = uart->read();
+        const int16_t r = _uart->read();
         if ((r < 0) || (r > 0xFF)) {
             continue;
         }
@@ -295,70 +295,70 @@ void AP_Proximity_LightWareSF40C::process_replies()
 void AP_Proximity_LightWareSF40C::parse_byte(uint8_t b)
 {
     // check that payload buffer is large enough
-    static_assert(ARRAY_SIZE(msg.payload) == PROXIMITY_SF40C_PAYLOAD_LEN_MAX, "AP_Proximity_LightwareSF40C: check msg payload array size ");
+    static_assert(ARRAY_SIZE(_msg.payload) == PROXIMITY_SF40C_PAYLOAD_LEN_MAX, "AP_Proximity_LightwareSF40C: check msg payload array size ");
 
     // process byte depending upon current state
-    switch (msg.state) {
+    switch (_msg.state) {
 
     case ParseState::HEADER:
         if (b == PROXIMITY_SF40C_HEADER) {
-            msg.crc_expected = crc_xmodem_update(0, b);
-            msg.state = ParseState::FLAGS_L;
+            _msg.crc_expected = crc_xmodem_update(0, b);
+            _msg.state = ParseState::FLAGS_L;
         }
         break;
 
     case ParseState::FLAGS_L:
-        msg.flags_low = b;
-        msg.crc_expected = crc_xmodem_update(msg.crc_expected, b);
-        msg.state = ParseState::FLAGS_H;
+        _msg.flags_low = b;
+        _msg.crc_expected = crc_xmodem_update(_msg.crc_expected, b);
+        _msg.state = ParseState::FLAGS_H;
         break;
 
     case ParseState::FLAGS_H:
-        msg.flags_high = b;
-        msg.crc_expected = crc_xmodem_update(msg.crc_expected, b);
-        msg.payload_len = UINT16_VALUE(msg.flags_high, msg.flags_low) >> 6;
-        if ((msg.payload_len == 0) || (msg.payload_len > PROXIMITY_SF40C_PAYLOAD_LEN_MAX)) {
+        _msg.flags_high = b;
+        _msg.crc_expected = crc_xmodem_update(_msg.crc_expected, b);
+        _msg.payload_len = UINT16_VALUE(_msg.flags_high, _msg.flags_low) >> 6;
+        if ((_msg.payload_len == 0) || (_msg.payload_len > PROXIMITY_SF40C_PAYLOAD_LEN_MAX)) {
             // invalid payload length, abandon message
-            msg.state = ParseState::HEADER;
+            _msg.state = ParseState::HEADER;
         } else {
-            msg.state = ParseState::MSG_ID;
+            _msg.state = ParseState::MSG_ID;
         }
         break;
 
     case ParseState::MSG_ID:
-        msg.msgid = (MessageID)b;
-        msg.crc_expected = crc_xmodem_update(msg.crc_expected, b);
-        if (msg.payload_len > 1) {
-            msg.state = ParseState::PAYLOAD;
+        _msg.msgid = (MessageID)b;
+        _msg.crc_expected = crc_xmodem_update(_msg.crc_expected, b);
+        if (_msg.payload_len > 1) {
+            _msg.state = ParseState::PAYLOAD;
         } else {
-            msg.state = ParseState::CRC_L;
+            _msg.state = ParseState::CRC_L;
         }
-        msg.payload_recv = 0;
+        _msg.payload_recv = 0;
         break;
 
     case ParseState::PAYLOAD:
-        if (msg.payload_recv < (msg.payload_len - 1)) {
-            msg.payload[msg.payload_recv] = b;
-            msg.payload_recv++;
-            msg.crc_expected = crc_xmodem_update(msg.crc_expected, b);
+        if (_msg.payload_recv < (_msg.payload_len - 1)) {
+            _msg.payload[_msg.payload_recv] = b;
+            _msg.payload_recv++;
+            _msg.crc_expected = crc_xmodem_update(_msg.crc_expected, b);
         }
-        if (msg.payload_recv >= (msg.payload_len - 1)) {
-            msg.state = ParseState::CRC_L;
+        if (_msg.payload_recv >= (_msg.payload_len - 1)) {
+            _msg.state = ParseState::CRC_L;
         }
         break;
 
     case ParseState::CRC_L:
-        msg.crc_low = b;
-        msg.state = ParseState::CRC_H;
+        _msg.crc_low = b;
+        _msg.state = ParseState::CRC_H;
         break;
 
     case ParseState::CRC_H:
-        msg.crc_high = b;
-        if (msg.crc_expected == UINT16_VALUE(msg.crc_high, msg.crc_low)) {
+        _msg.crc_high = b;
+        if (_msg.crc_expected == UINT16_VALUE(_msg.crc_high, _msg.crc_low)) {
             process_message();
-            last_reply_ms = AP_HAL::millis();
+            _last_reply_ms = AP_HAL::millis();
         }
-        msg.state = ParseState::HEADER;
+        _msg.state = ParseState::HEADER;
         break;
     }
 }
@@ -367,26 +367,26 @@ void AP_Proximity_LightWareSF40C::parse_byte(uint8_t b)
 void AP_Proximity_LightWareSF40C::process_message()
 {
     // process payload
-    switch (msg.msgid) {
+    switch (_msg.msgid) {
     case MessageID::TOKEN:
-        // copy token into sensor_state.token variable
-        if (msg.payload_recv == ARRAY_SIZE(sensor_state.token)) {
-            memcpy(sensor_state.token, msg.payload, ARRAY_SIZE(sensor_state.token));
+        // copy token into _sensor_state.token variable
+        if (_msg.payload_recv == ARRAY_SIZE(_sensor_state.token)) {
+            memcpy(_sensor_state.token, _msg.payload, ARRAY_SIZE(_sensor_state.token));
         }
         break;
     case MessageID::RESET:
         // no need to do anything
         break;
     case MessageID::STREAM:
-        if (msg.payload_recv == sizeof(uint32_t)) {
-            sensor_state.streaming = (buff_to_uint32(msg.payload[0], msg.payload[1], msg.payload[2], msg.payload[3]) == 3);
+        if (_msg.payload_recv == sizeof(uint32_t)) {
+            _sensor_state.streaming = (buff_to_uint32(_msg.payload[0], _msg.payload[1], _msg.payload[2], _msg.payload[3]) == 3);
         }
         break;
     case MessageID::DISTANCE_OUTPUT: {
-        last_distance_received_ms = AP_HAL::millis();
-        const uint16_t point_total = buff_to_uint16(msg.payload[8], msg.payload[9]);
-        const uint16_t point_count = buff_to_uint16(msg.payload[10], msg.payload[11]);
-        const uint16_t point_start_index = buff_to_uint16(msg.payload[12], msg.payload[13]);
+        _last_distance_received_ms = AP_HAL::millis();
+        const uint16_t point_total = buff_to_uint16(_msg.payload[8], _msg.payload[9]);
+        const uint16_t point_count = buff_to_uint16(_msg.payload[10], _msg.payload[11]);
+        const uint16_t point_start_index = buff_to_uint16(_msg.payload[12], _msg.payload[13]);
         // sanity check point_total
         if (point_total == 0) {
             break;
@@ -398,45 +398,45 @@ void AP_Proximity_LightWareSF40C::process_message()
         const uint16_t dist_max_cm = distance_max() * 100;
         for (uint16_t i = 0; i < point_count; i++) {
             const uint16_t idx = 14 + (i * 2);
-            const int16_t dist_cm = (int16_t)buff_to_uint16(msg.payload[idx], msg.payload[idx+1]);
+            const int16_t dist_cm = (int16_t)buff_to_uint16(_msg.payload[idx], _msg.payload[idx+1]);
             const float angle_deg = (point_start_index + i) * angle_inc_deg * angle_sign + angle_correction;
             uint8_t sector;
             if (convert_angle_to_sector(angle_deg, sector)) {
-                if (sector != last_sector) {
+                if (sector != _last_sector) {
                     // data for new sector received
                     // no more data from previous sector will arrive so fill in with shortest distance
-                    if (last_sector != UINT8_MAX) {
-                        if (last_distance_cm < INT16_MAX) {
-                            _angle[last_sector] = last_angle_deg;
-                            _distance[last_sector] = last_distance_cm * 0.01f;
-                            _distance_valid[last_sector] = true;
+                    if (_last_sector != UINT8_MAX) {
+                        if (_last_distance_cm < INT16_MAX) {
+                            _angle[_last_sector] = _last_angle_deg;
+                            _distance[_last_sector] = _last_distance_cm * 0.01f;
+                            _distance_valid[_last_sector] = true;
                         } else {
-                            _distance_valid[last_sector] = false;
+                            _distance_valid[_last_sector] = false;
                         }
                         // update boundary used for avoidance
-                        update_boundary_for_sector(last_sector);
+                        update_boundary_for_sector(_last_sector);
                     }
                     // initialise for new sector
-                    last_sector = sector;
-                    last_distance_cm = INT16_MAX;
+                    _last_sector = sector;
+                    _last_distance_cm = INT16_MAX;
                 }
                 // use shortest valid distance
-                if ((dist_cm < last_distance_cm) && (dist_cm >= dist_min_cm) && (dist_cm <= dist_max_cm)) {
-                    last_distance_cm = dist_cm;
-                    last_angle_deg = angle_deg;
+                if ((dist_cm < _last_distance_cm) && (dist_cm >= dist_min_cm) && (dist_cm <= dist_max_cm)) {
+                    _last_distance_cm = dist_cm;
+                    _last_angle_deg = angle_deg;
                 }
             }
         }
         break;
     }
     case MessageID::MOTOR_STATE:
-        if (msg.payload_recv == 1) {
-            sensor_state.motor_state = msg.payload[0];
+        if (_msg.payload_recv == 1) {
+            _sensor_state.motor_state = _msg.payload[0];
         }
         break;
     case MessageID::OUTPUT_RATE:
-        if (msg.payload_recv == 1) {
-            sensor_state.output_rate = msg.payload[0];
+        if (_msg.payload_recv == 1) {
+            _sensor_state.output_rate = _msg.payload[0];
         }
         break;
 

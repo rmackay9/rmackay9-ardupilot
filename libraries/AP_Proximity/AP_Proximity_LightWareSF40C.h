@@ -78,8 +78,8 @@ private:
 
     // request token of sensor (required for reset)
     void request_token();
-    bool got_token() const { return (sensor_state.token[0] != 0 || sensor_state.token[1] != 0); }
-    void clear_token() { memset(sensor_state.token, 0, ARRAY_SIZE(sensor_state.token)); }
+    bool got_token() const { return (_sensor_state.token[0] != 0 || _sensor_state.token[1] != 0); }
+    void clear_token() { memset(_sensor_state.token, 0, ARRAY_SIZE(_sensor_state.token)); }
 
     // request reset of sensor
     void request_reset();
@@ -95,15 +95,15 @@ private:
     void process_message();
 
     // internal variables
-    AP_HAL::UARTDriver *uart;               // uart for communicating with sensor
-    bool sector_initialised;                // true if sectors have been initialised
-    uint32_t last_request_ms;               // system time of last request
-    uint32_t last_reply_ms;                 // system time of last valid reply
-    uint32_t last_restart_ms;               // system time we restarted the sensor
-    uint32_t last_distance_received_ms;     // system time of last distance measurement received from sensor
-    int16_t last_distance_cm;               // last valid distance parsed
-    float last_angle_deg;                   // angle of last_distance_cm
-    uint8_t last_sector = UINT8_MAX;        // sector of last distance_cm
+    AP_HAL::UARTDriver *_uart;              // uart for communicating with sensor
+    bool _sector_initialised;               // true if sectors have been initialised
+    uint32_t _last_request_ms;              // system time of last request
+    uint32_t _last_reply_ms;                // system time of last valid reply
+    uint32_t _last_restart_ms;              // system time we restarted the sensor
+    uint32_t _last_distance_received_ms;    // system time of last distance measurement received from sensor
+    int16_t _last_distance_cm;              // last valid distance parsed
+    float _last_angle_deg;                  // angle of last_distance_cm
+    uint8_t _last_sector = UINT8_MAX;       // sector of last distance_cm
 
     // state of sensor
     struct {
@@ -111,7 +111,7 @@ private:
         uint8_t output_rate;    // output rate number (0 = 20010, 1 = 10005, 2 = 6670, 3 = 2001)
         bool streaming;         // true if distance messages are being streamed
         uint8_t token[2];       // token (supplied by sensor) required for reset
-    } sensor_state;
+    } _sensor_state;
 
     enum class ParseState {
         HEADER = 0,
@@ -135,7 +135,7 @@ private:
         uint8_t crc_low;        // crc low byte
         uint8_t crc_high;       // crc high byte
         uint16_t crc_expected;  // latest message's expected crc
-    } msg;
+    } _msg;
 
     // convert buffer to uint32, uint16
     uint32_t buff_to_uint32(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) const;
