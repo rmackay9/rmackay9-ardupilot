@@ -77,7 +77,7 @@ void ModeSmartRTL::update()
             _reached_destination = true;
             if (rover.is_boat()) {
                 // boats attempt to hold position at home
-                if (g2.rtl_done_behave == Rover::LOITER) {
+                if ((Rover::RTL_Done_Behave)g2.rtl_done_behave.get() == Rover::RTL_Done_Behave::LOITER) {
                    if (!rover.set_mode(rover.mode_loiter, MODE_REASON_FAILSAFE)) {
                       rover.set_mode(rover.mode_hold, MODE_REASON_FAILSAFE);
                    }

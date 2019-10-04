@@ -339,9 +339,9 @@ private:
     } cruise_learn_t;
     cruise_learn_t cruise_learn;
 
-    enum RTL_Done_Behave {
-        HOLD     =0,
-        LOITER   =1
+    enum class RTL_Done_Behave : uint8_t {
+        HOLD     = 0,
+        LOITER   = 1
     };
 
 private:
@@ -467,8 +467,8 @@ private:
         Failsafe_Action_Terminate     = 5
     };
 
-    enum Failsafe_Options {
-        OPTION_HOLD_FS_ALLOW =  (1<<0)
+    enum class Failsafe_Options : uint32_t {
+        Failsafe_Option_Active_In_Hold = (1<<0)
     };
 
     static constexpr int8_t _failsafe_priorities[] = {
@@ -499,7 +499,6 @@ public:
 
     // Simple mode
     float simple_sin_yaw;
-
 };
 
 extern const AP_HAL::HAL& hal;

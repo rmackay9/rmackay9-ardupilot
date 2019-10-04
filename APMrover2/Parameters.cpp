@@ -624,7 +624,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @DisplayName: Rover Failsafe Options
     // @Description: Bitmask to enable Rover failsafe options:
     // @Values: 0:None,1:FS allowed in HOLD mode
-    // @Bitmask: 0:Enable FS in HOLD mode
+    // @Bitmask: 0:FS allowed in HOLD mode
     // @User: Advanced
     AP_GROUPINFO("FS_OPTIONS", 48, ParametersG2, fs_options, 0),
 
