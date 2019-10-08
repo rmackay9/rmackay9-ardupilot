@@ -26,7 +26,7 @@ void Copter::esc_calibration_startup_check()
     if (!arming.rc_calibration_checks(true)) {
         // clear esc flag for next time
         if ((g.esc_calibrate != ESCCalibrationModes::ESCCAL_NONE) && (g.esc_calibrate != ESCCalibrationModes::ESCCAL_DISABLED)) {
-            g.esc_calibrate.set_and_save(ESCCalibrationModes::ESCCAL_NONE);
+            g.esc_calibrate.set_and_save(ESCCalibrationModes::ESCCAL_DISABLED);
         }
         return;
     }
@@ -68,8 +68,8 @@ void Copter::esc_calibration_startup_check()
     }
 
     // clear esc flag for next time
-    if (g.esc_calibrate != ESCCalibrationModes::ESCCAL_DISABLED) {
-        g.esc_calibrate.set_and_save(ESCCalibrationModes::ESCCAL_NONE);
+    if ((g.esc_calibrate != ESCCalibrationModes::ESCCAL_NONE) && (g.esc_calibrate != ESCCalibrationModes::ESCCAL_DISABLED)) {
+        g.esc_calibrate.set_and_save(ESCCalibrationModes::ESCCAL_DISABLED);
     }
 #endif  // FRAME_CONFIG != HELI_FRAME
 }
@@ -151,7 +151,7 @@ void Copter::esc_calibration_notify()
 void Copter::esc_calibration_setup()
 {
     // clear esc flag for next time
-    g.esc_calibrate.set_and_save(ESCCAL_NONE);
+    g.esc_calibrate.set_and_save(ESCCAL_DISABLED);
 
     if (motors->get_pwm_type() >= AP_Motors::PWM_TYPE_ONESHOT) {
         // run at full speed for oneshot ESCs (actually done on push)
