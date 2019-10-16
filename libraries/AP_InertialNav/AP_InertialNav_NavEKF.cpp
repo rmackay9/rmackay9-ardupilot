@@ -32,7 +32,6 @@ void AP_InertialNav_NavEKF::update(bool high_vibes)
     Vector3f velNED;
     if (_ahrs_ekf.get_velocity_NED(velNED)) {
         // during high vibration events use vertical position change
-        // ToDo: fix and use EKF's get_vert_pos_rate() function instead of baro
         if (high_vibes) {
             float rate_z;
             if (_ahrs_ekf.get_vert_pos_rate(rate_z)) {
