@@ -211,7 +211,7 @@ void Copter::check_vibration()
     uint32_t now = AP_HAL::millis();
 
     // assume checks will succeed
-    bool checks_succeeded = true;
+    /*bool checks_succeeded = true;
 
     // check if vertical velocity and position innovations are positive (NKF3.IVD & NKF3.IPD are both positive)
     Vector3f vel_innovation;
@@ -235,6 +235,12 @@ void Copter::check_vibration()
 
     // if no failure
     if ((g2.fs_vibe_enabled == 0) || !checks_succeeded || !motors->armed() || !innov_velD_posD_positive || !var_vel_hgt_high) {
+    */
+    const RC_Channel *rc6 = rc().channel(CH_6);
+    if (rc6 == nullptr) {
+        return;
+    }
+    if (rc6->get_radio_in() < 1500) {
         if (vibration_check.high_vibes) {
             // start clear time
             if (vibration_check.clear_ms == 0) {
@@ -242,7 +248,7 @@ void Copter::check_vibration()
                 return;
             }
             // turn off vibration compensation after 15 seconds
-            if (now - vibration_check.clear_ms > 15000) {
+            if (now - vibration_check.clear_ms > 1000) {
                 // restore ekf gains, reset timers and update user
                 vibration_check.high_vibes = false;
                 pos_control->set_vibe_comp(false);
