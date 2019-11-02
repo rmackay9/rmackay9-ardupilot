@@ -73,6 +73,10 @@
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_RX     16
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_TX     32
 
+#define AP_SERIALMANAGER_HYBRID_BAUD           9600
+#define AP_SERIALMANAGER_HYBRID_BUFSIZE_RX     70
+#define AP_SERIALMANAGER_HYBRID_BUFSIZE_TX     70
+
 class AP_SerialManager {
 public:
     AP_SerialManager();
@@ -102,6 +106,7 @@ public:
         SerialProtocol_ESCTelemetry = 16,
         SerialProtocol_Devo_Telem = 17,
         SerialProtocol_OpticalFlow = 18,
+		SerialProtocol_Hybrid = 19,
     };
 
     // get singleton instance

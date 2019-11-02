@@ -83,6 +83,7 @@
 #include <AP_Arming/AP_Arming.h>
 #include <AP_SmartRTL/AP_SmartRTL.h>
 #include <AP_TempCalibration/AP_TempCalibration.h>
+#include <AP_Hybrid/AP_Hybrid.h>
 
 // Configuration
 #include "defines.h"
@@ -557,6 +558,7 @@ private:
     // Landing Gear Controller
     AP_LandingGear landinggear;
 
+    AP_Hybrid hybrid;
     // terrain handling
 #if AP_TERRAIN_AVAILABLE && AC_TERRAIN
     AP_Terrain terrain{ahrs, mission, rally};
@@ -678,6 +680,7 @@ private:
     void update_super_simple_bearing(bool force_update);
     void read_AHRS(void);
     void update_altitude();
+    void update_hybrid(void);
 
     // Attitude.cpp
     float get_pilot_desired_yaw_rate(int16_t stick_angle);
@@ -769,6 +772,7 @@ private:
     void send_pid_tuning(mavlink_channel_t chan);
     void gcs_data_stream_send(void);
     void gcs_check_input(void);
+    void send_hybrid_read(mavlink_channel_t chan);
 
     // heli.cpp
     void heli_init();
@@ -811,6 +815,7 @@ private:
 #endif
     void Log_Write_Precland();
     void Log_Write_GuidedTarget(uint8_t target_type, const Vector3f& pos_target, const Vector3f& vel_target);
+    void Log_Write_Hybrid();
     void Log_Write_Vehicle_Startup_Messages();
     void log_init(void);
 

@@ -486,6 +486,36 @@ void Copter::Log_Write_GuidedTarget(uint8_t target_type, const Vector3f& pos_tar
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
+struct PACKED log_Hybrid {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint32_t    runTime;
+	uint32_t    nextRepairTime;
+	uint16_t	runStatus;
+	uint16_t	rate;
+	uint16_t	voltage;
+	uint16_t	current;
+	uint8_t		status;
+};
+
+// Write
+void Copter::Log_Write_Hybrid()
+{
+	AP_Hybrid::HybridReadData data = hybrid.get_data();
+    struct log_Hybrid pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_HYBRID_MSG),
+        time_us         : AP_HAL::micros64(),
+		runTime			: data.runTime,
+		nextRepairTime	: data.nextRepairTime,
+		runStatus		: data.runStatus,
+		rate			: data.rate,
+		voltage			: data.voltage,
+		current			: data.current,
+		status			: data.status
+    };
+    DataFlash.WriteBlock(&pkt, sizeof(pkt));
+}
+
 // type and unit information can be found in
 // libraries/DataFlash/Logstructure.h; search for "log_Units" for
 // units and "Format characters" for field type information
@@ -531,6 +561,8 @@ const struct LogStructure Copter::log_structure[] = {
 #endif
     { LOG_GUIDEDTARGET_MSG, sizeof(log_GuidedTarget),
       "GUID",  "QBffffff",    "TimeUS,Type,pX,pY,pZ,vX,vY,vZ", "s-mmmnnn", "F-000000" },
+	{ LOG_HYBRID_MSG, sizeof(log_Hybrid),
+		"HYBR",  "QIIHHHHB",    "TimeUS,runTime,nxtTime,runStatus,rate,voltage,current,status", "s-------", "F-------" },
 };
 
 void Copter::Log_Write_Vehicle_Startup_Messages()

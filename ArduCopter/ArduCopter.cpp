@@ -190,6 +190,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats,             &copter.g2.stats,            update,           1, 100),
 #endif
+	SCHED_TASK(update_hybrid, 5,   200),
 };
 
 constexpr int8_t Copter::_failsafe_priorities[7];
@@ -361,6 +362,7 @@ void Copter::ten_hz_logging_loop()
 #if FRAME_CONFIG == HELI_FRAME
     Log_Write_Heli();
 #endif
+    Log_Write_Hybrid();
 }
 
 // twentyfive_hz_logging - should be run at 25hz
@@ -571,6 +573,11 @@ void Copter::update_altitude()
     if (should_log(MASK_LOG_CTUN)) {
         Log_Write_Control_Tuning();
     }
+}
+
+void Copter::update_hybrid(void)
+{
+    hybrid.update();
 }
 
 AP_HAL_MAIN_CALLBACKS(&copter);

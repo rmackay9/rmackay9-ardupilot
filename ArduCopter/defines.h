@@ -313,6 +313,7 @@ enum LoggingParameters {
      LOG_HELI_MSG,
      LOG_PRECLAND_MSG,
      LOG_GUIDEDTARGET_MSG,
+	 LOG_HYBRID_MSG,
 };
 
 #define MASK_LOG_ATTITUDE_FAST          (1<<0)

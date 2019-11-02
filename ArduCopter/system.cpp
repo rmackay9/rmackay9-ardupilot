@@ -92,6 +92,8 @@ void Copter::init_ardupilot()
     // setup telem slots with serial ports
     gcs().setup_uarts(serial_manager);
 
+    hybrid.init(serial_manager);
+
 #if FRSKY_TELEM_ENABLED == ENABLED
     // setup frsky, and pass a number of parameters to the library
     frsky_telemetry.init(serial_manager,

@@ -307,6 +307,10 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
         copter.send_rpm(chan);
 #endif
         break;
+    case MSG_HYBRID_READ:
+    	CHECK_PAYLOAD_SIZE(HYBRID_READ);
+    	copter.send_hybrid_read(chan);
+    	break;
 
     case MSG_TERRAIN:
 #if AP_TERRAIN_AVAILABLE && AC_TERRAIN
@@ -495,7 +499,8 @@ static const ap_message STREAM_EXTRA1_msgs[] = {
     MSG_PID_TUNING // Up to four PID_TUNING messages are sent, depending on GCS_PID_MASK parameter
 };
 static const ap_message STREAM_EXTRA2_msgs[] = {
-    MSG_VFR_HUD
+    MSG_VFR_HUD,
+	MSG_HYBRID_READ,
 };
 static const ap_message STREAM_EXTRA3_msgs[] = {
     MSG_AHRS,
@@ -1639,6 +1644,24 @@ void Copter::gcs_data_stream_send(void)
 void Copter::gcs_check_input(void)
 {
     gcs().update();
+}
+
+//send hybrid data
+void Copter::send_hybrid_read(mavlink_channel_t chan)
+{
+	AP_Hybrid::HybridReadData hybridData = hybrid.get_data();
+    if(hybridData.checksum)
+    {
+    	mavlink_msg_hybrid_read_send(
+    	            chan,
+					hybridData.runTime,
+					hybridData.nextRepairTime,
+					hybridData.runStatus,
+					hybridData.rate,
+					hybridData.voltage,
+					hybridData.current,
+					hybridData.status);
+    }
 }
 
 /*
