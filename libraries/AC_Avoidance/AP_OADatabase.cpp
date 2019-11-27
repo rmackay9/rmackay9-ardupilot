@@ -144,34 +144,7 @@ void AP_OADatabase::queue_push(const Location &loc, const uint32_t timestamp_ms,
         return;
     }
 
-    AP_OADatabase::OA_DbItemImportance importance = AP_OADatabase::OA_DbItemImportance::Normal;
-
-    if (distance <= 0 || angle < 0 || angle > 360) {
-        // sanity check
-        importance = AP_OADatabase::OA_DbItemImportance::Normal;
-
-    } else if (distance < 10 && (angle > (360-10) || angle < 10)) {
-        // far and directly in front +/- 10deg
-        importance = AP_OADatabase::OA_DbItemImportance::High;
-    } else if (distance < 5 && (angle > (360-30) || angle < 30)) {
-        // kinda far and forward of us +/- 30deg
-        importance = AP_OADatabase::OA_DbItemImportance::High;
-    } else if (distance < 3 && (angle > (360-90) || angle < 90)) {
-        // near and ahead +/- 90deg
-        importance = AP_OADatabase::OA_DbItemImportance::High;
-    } else if (distance < 1.5) {
-        // very close anywhere
-        importance = AP_OADatabase::OA_DbItemImportance::High;
-
-    } else if  (distance >= 10) {
-        // really far away
-        importance = AP_OADatabase::OA_DbItemImportance::Low;
-    } else if (distance < 5 && (angle <= (360-90) || angle >= 90)) {
-        // kinda far and behind us
-        importance = AP_OADatabase::OA_DbItemImportance::Low;
-    }
-
-    const OA_DbItem item = {loc, timestamp_ms, MAX(_radius_min, distance * dist_to_radius_scalar), 0, importance};
+    const OA_DbItem item = {loc, timestamp_ms, MAX(_radius_min, distance * dist_to_radius_scalar), 0, AP_OADatabase::OA_DbItemImportance::Normal};
     {
         WITH_SEMAPHORE(_queue.sem);
         _queue.items->push(item);
