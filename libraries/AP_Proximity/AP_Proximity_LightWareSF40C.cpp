@@ -18,6 +18,7 @@
 #include <AP_HAL/utility/sparse-endian.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_Math/crc.h>
+#include <AP_Perf/AP_Perf.h>
 #include "AP_Proximity_LightWareSF40C.h"
 
 extern const AP_HAL::HAL& hal;
@@ -276,6 +277,7 @@ void AP_Proximity_LightWareSF40C::process_replies()
         return;
     }
 
+    AP_Perf(2);
     int16_t nbytes = _uart->available();
     while (nbytes-- > 0) {
         const int16_t r = _uart->read();
@@ -363,6 +365,7 @@ void AP_Proximity_LightWareSF40C::parse_byte(uint8_t b)
 // process the latest message held in the _msg structure
 void AP_Proximity_LightWareSF40C::process_message()
 {
+    AP_Perf(3);
     // process payload
     switch (_msg.msgid) {
     case MessageID::TOKEN:
@@ -401,11 +404,13 @@ void AP_Proximity_LightWareSF40C::process_message()
         const uint16_t dist_min_cm = distance_min() * 100;
         const uint16_t dist_max_cm = distance_max() * 100;
         for (uint16_t i = 0; i < point_count; i++) {
+            AP_Perf(4);
             const uint16_t idx = 14 + (i * 2);
             const int16_t dist_cm = (int16_t)buff_to_uint16(_msg.payload[idx], _msg.payload[idx+1]);
             const float angle_deg = wrap_360((point_start_index + i) * angle_inc_deg * angle_sign + angle_correction);
             uint8_t sector;
             if (convert_angle_to_sector(angle_deg, sector)) {
+                AP_Perf(5);
                 if (sector != _last_sector) {
                     // update boundary used for avoidance
                     if (_last_sector != UINT8_MAX) {

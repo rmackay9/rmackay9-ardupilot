@@ -18,6 +18,7 @@
 #include <AP_AHRS/AP_AHRS.h>
 #include <AC_Avoidance/AP_OADatabase.h>
 #include <AP_HAL/AP_HAL.h>
+#include <AP_Perf/AP_Perf.h>
 #include "AP_Proximity.h"
 #include "AP_Proximity_Backend.h"
 
@@ -363,6 +364,7 @@ void AP_Proximity_Backend::database_push(float angle, float distance)
 // update Object Avoidance database with Earth-frame point
 void AP_Proximity_Backend::database_push(float angle, float distance, uint32_t timestamp_ms, const Location &current_loc, float current_heading)
 {
+    AP_Perf(6);
     AP_OADatabase *oaDb = AP::oadatabase();
     if (oaDb == nullptr || !oaDb->healthy()) {
         return;

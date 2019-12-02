@@ -24,6 +24,7 @@
 #include "AP_Proximity_SITL.h"
 #include "AP_Proximity_MorseSITL.h"
 #include "AP_Proximity_AirSimSITL.h"
+#include <AP_Perf/AP_Perf.h>
 
 extern const AP_HAL::HAL &hal;
 
@@ -213,6 +214,7 @@ void AP_Proximity::init(void)
 // update Proximity state for all instances. This should be called at a high rate by the main loop
 void AP_Proximity::update(void)
 {
+    AP_Perf(1);
     for (uint8_t i=0; i<num_instances; i++) {
         if (!valid_instance(i)) {
             continue;
