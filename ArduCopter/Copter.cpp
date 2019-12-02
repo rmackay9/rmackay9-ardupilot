@@ -235,6 +235,8 @@ void Copter::loop()
 // Main loop - 400hz
 void Copter::fast_loop()
 {
+    AP_Perf(0);
+
     // update INS immediately to get current gyro data populated
     ins.update();
 
@@ -437,6 +439,13 @@ void Copter::three_hz_loop()
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
+    static uint8_t counter = 0;
+    counter++;
+    if (counter >= 10) {
+        counter = 0;
+        AP_Perf::print_timing_data();
+    }
+
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap.value);
     }
