@@ -215,7 +215,6 @@ void AP_Proximity_LightWareSF40C::process_replies()
         return;
     }
 
-    AP_Perf(2);
     int16_t nbytes = _uart->available();
     while (nbytes-- > 0) {
         const int16_t r = _uart->read();
@@ -303,7 +302,6 @@ void AP_Proximity_LightWareSF40C::parse_byte(uint8_t b)
 // process the latest message held in the _msg structure
 void AP_Proximity_LightWareSF40C::process_message()
 {
-    AP_Perf(3);
     // process payload
     switch (_msg.msgid) {
     case MessageID::TOKEN:
@@ -347,7 +345,6 @@ void AP_Proximity_LightWareSF40C::process_message()
         float combined_angle_deg = 0;
         float combined_dist_m = INT16_MAX;
         for (uint16_t i = 0; i < point_count; i++) {
-            AP_Perf(4);
             const uint16_t idx = 14 + (i * 2);
             const int16_t dist_cm = (int16_t)buff_to_uint16(_msg.payload[idx], _msg.payload[idx+1]);
             const float angle_deg = wrap_360((point_start_index + i) * angle_inc_deg * angle_sign + angle_correction);
@@ -367,7 +364,6 @@ void AP_Proximity_LightWareSF40C::process_message()
 
             // check reading is not within an ignore zone
             if (!ignore_reading(angle_deg)) {
-                AP_Perf(5);
                 // check distance reading is valid
                 if ((dist_cm >= dist_min_cm) && (dist_cm <= dist_max_cm)) {
                     const float dist_m = dist_cm * 0.01f;
@@ -390,7 +386,6 @@ void AP_Proximity_LightWareSF40C::process_message()
 
             // send combined distance to object database
             if ((i+1 >= point_count) || (combined_count >= PROXIMITY_SF40C_COMBINE_READINGS)) {
-                AP_Perf(6);
                 if ((combined_dist_m < INT16_MAX) && database_ready) {
                     database_push(combined_angle_deg, combined_dist_m, _last_distance_received_ms, current_pos, current_heading);
                 }

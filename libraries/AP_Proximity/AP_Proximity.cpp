@@ -214,7 +214,6 @@ void AP_Proximity::init(void)
 // update Proximity state for all instances. This should be called at a high rate by the main loop
 void AP_Proximity::update(void)
 {
-    AP_Perf(1);
     for (uint8_t i=0; i<num_instances; i++) {
         if (!valid_instance(i)) {
             continue;
