@@ -3,8 +3,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/Location.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
-
-#if !HAL_MINIMIZE_FEATURES
 #include <AP_Param/AP_Param.h>
 
 class AP_OADatabase {
@@ -126,16 +124,6 @@ private:
 
     static AP_OADatabase *_singleton;
 };
-#else
-class AP_OADatabase {
-public:
-    static AP_OADatabase *get_singleton() { return nullptr; }
-    void init() {};
-    void queue_push(const Location &loc, const uint32_t timestamp_ms, const float distance, const float angle) {};
-    bool healthy() const { return false; }
-    void send_adsb_vehicle(mavlink_channel_t chan, uint16_t interval_ms) {};
-};
-#endif // #if !HAL_MINIMIZE_FEATURES
 
 namespace AP {
     AP_OADatabase *oadatabase();
