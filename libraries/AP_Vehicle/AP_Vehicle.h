@@ -32,6 +32,7 @@
 #include <AP_Param/AP_Param.h>
 #include <AP_Relay/AP_Relay.h>                      // APM relay
 #include <AP_RSSI/AP_RSSI.h>                        // RSSI Library
+#include <AP_Scheduler/AP_Scheduler.h>
 #include <AP_SerialManager/AP_SerialManager.h>      // Serial manager library
 #include <AP_ServoRelayEvents/AP_ServoRelayEvents.h>
 #include <AP_Hott_Telem/AP_Hott_Telem.h>
@@ -44,6 +45,7 @@ public:
         if (_singleton) {
             AP_HAL::panic("Too many Vehicles");
         }
+        AP_Param::setup_object_defaults(this, var_info);
         _singleton = this;
     }
 
@@ -110,6 +112,7 @@ public:
 
     // returns true if the vehicle has crashed
     virtual bool is_crashed() const { return false; }
+    void get_common_scheduler_tasks(const AP_Scheduler::Task*& tasks, uint8_t& num_tasks);
 
 protected:
 
@@ -130,7 +133,6 @@ protected:
     RangeFinder rangefinder;
 
     AP_RSSI rssi;
-
     AP_SerialManager serial_manager;
 
     AP_Relay relay;
@@ -152,6 +154,12 @@ protected:
     AP_Generator_RichenPower generator;
 #endif
 
+    // initialize the vehicle
+    void init_vehicle();
+
+    static const struct AP_Param::GroupInfo var_info[];
+    static const struct AP_Scheduler::Task scheduler_tasks[];
+
 private:
 
     static AP_Vehicle *_singleton;
@@ -163,5 +171,7 @@ namespace AP {
 };
 
 extern const AP_HAL::HAL& hal;
+
+extern const AP_Param::Info vehicle_var_info[];
 
 #include "AP_Vehicle_Type.h"
