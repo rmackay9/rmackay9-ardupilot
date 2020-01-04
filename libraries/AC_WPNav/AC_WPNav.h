@@ -3,6 +3,7 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
 #include <AP_Math/AP_Math.h>
+#include <AP_Math/scurves.h>
 #include <AP_Common/Location.h>
 #include <AP_InertialNav/AP_InertialNav.h>     // Inertial Navigation library
 #include <AC_AttitudeControl/AC_PosControl.h>      // Position control library
@@ -30,7 +31,8 @@
 #define WPNAV_WP_FAST_OVERSHOOT_MAX     200.0f      // 2m overshoot is allowed during fast waypoints to allow for smooth transitions to next waypoint
 
 #define WPNAV_YAW_DIST_MIN                 200      // minimum track length which will lead to target yaw being updated to point at next waypoint.  Under this distance the yaw target will be frozen at the current heading
-#define WPNAV_YAW_LEASH_PCT_MIN         0.134f      // target point must be at least this distance from the vehicle (expressed as a percentage of the maximum distance it can be from the vehicle - i.e. the leash length)
+#define WPNAV_YAW_VEL_MIN                   10      // target velocity must be at least 10cm/s for vehicle's yaw to change
+
 
 #define WPNAV_RANGEFINDER_FILT_Z         0.25f      // range finder distance filtered at 0.25hz
 
@@ -71,9 +73,10 @@ public:
     ///
 
     /// wp_and_spline_init - initialise straight line and spline waypoint controllers
+    ///     speed_cms should be set to a positive value or left at zero to use the default speed
     ///     updates target roll, pitch targets and I terms based on vehicle lean angles
     ///     should be called once before the waypoint controller is used but does not need to be called before subsequent updates to destination
-    void wp_and_spline_init();
+    void wp_and_spline_init(float speed_cms = 0.0f);
 
     /// set current target horizontal speed during wp navigation
     void set_speed_xy(float speed_cms);
@@ -107,29 +110,29 @@ public:
     bool origin_and_destination_are_terrain_alt() const { return _terrain_alt; }
 
     /// set_wp_destination waypoint using location class
+    ///     provide the next_destination if known
     ///     returns false if conversion from location to vector from ekf origin cannot be calculated
-    bool set_wp_destination(const Location& destination);
+    bool set_wp_destination_loc(const Location& destination);
+    bool set_wp_destination_loc_next(const Location& destination);
 
     // returns wp location using location class.
     // returns false if unable to convert from target vector to global
     // coordinates
-    bool get_wp_destination(Location& destination) const;
+    bool get_wp_destination_loc(Location& destination) const;
 
     // returns object avoidance adjusted destination which is always the same as get_wp_destination
     // having this function unifies the AC_WPNav_OA and AC_WPNav interfaces making vehicle code simpler
-    virtual bool get_oa_wp_destination(Location& destination) const { return get_wp_destination(destination); }
+    virtual bool get_oa_wp_destination(Location& destination) const { return get_wp_destination_loc(destination); }
 
     /// set_wp_destination waypoint using position vector (distance from ekf origin in cm)
     ///     terrain_alt should be true if destination.z is a desired altitude above terrain
-    bool set_wp_destination(const Vector3f& destination, bool terrain_alt = false);
+    virtual bool set_wp_destination(const Vector3f& destination, bool terrain_alt = false);
+    bool set_wp_destination_next(const Vector3f& destination, bool terrain_alt = false);
 
     /// set waypoint destination using NED position vector from ekf origin in meters
+    ///     provide next_destination_NED if known
     bool set_wp_destination_NED(const Vector3f& destination_NED);
-
-    /// set_wp_origin_and_destination - set origin and destination waypoints using position vectors (distance from ekf origin in cm)
-    ///     terrain_alt should be true if origin.z and destination.z are desired altitudes above terrain (false if these are alt-above-ekf-origin)
-    ///     returns false on failure (likely caused by missing terrain data)
-    virtual bool set_wp_origin_and_destination(const Vector3f& origin, const Vector3f& destination, bool terrain_alt = false);
+    bool set_wp_destination_NED_next(const Vector3f& destination_NED);
 
     /// shift_wp_origin_to_current_pos - shifts the origin and destination so the origin starts at the current position
     ///     used to reset the position just before takeoff
@@ -165,63 +168,33 @@ public:
         return get_wp_distance_to_destination() < _wp_radius_cm;
     }
 
-    /// set_fast_waypoint - set to true to ignore the waypoint radius and consider the waypoint 'reached' the moment the intermediate point reaches it
-    void set_fast_waypoint(bool fast) { _flags.fast_waypoint = fast; }
-
     /// update_wpnav - run the wp controller - should be called at 100hz or higher
     virtual bool update_wpnav();
 
-    // check_wp_leash_length - check recalc_wp_leash flag and calls calculate_wp_leash_length() if necessary
-    //  should be called after _pos_control.update_xy_controller which may have changed the position controller leash lengths
-    void check_wp_leash_length();
-
-    /// calculate_wp_leash_length - calculates track speed, acceleration and leash lengths for waypoint controller
-    void calculate_wp_leash_length();
+    // returns true if update_wpnav has been run very recently
+    bool is_active() const;
 
     ///
     /// spline methods
     ///
 
-    // segment start types
-    // stop - vehicle is not moving at origin
-    // straight-fast - vehicle is moving, previous segment is straight.  vehicle will fly straight through the waypoint before beginning it's spline path to the next wp
-    //     _flag.segment_type holds whether prev segment is straight vs spline but we don't know if it has a delay
-    // spline-fast - vehicle is moving, previous segment is splined, vehicle will fly through waypoint but previous segment should have it flying in the correct direction (i.e. exactly parallel to position difference vector from previous segment's origin to this segment's destination)
-
-    // segment end types
-    // stop - vehicle is not moving at destination
-    // straight-fast - next segment is straight, vehicle's destination velocity should be directly along track from this segment's destination to next segment's destination
-    // spline-fast - next segment is spline, vehicle's destination velocity should be parallel to position difference vector from previous segment's origin to this segment's destination
-
     // get target yaw in centi-degrees (used for wp and spline navigation)
     float get_yaw() const;
+    float get_yaw_rate() const;
 
     /// set_spline_destination waypoint using location class
     ///     returns false if conversion from location to vector from ekf origin cannot be calculated
-    ///     terrain_alt should be true if destination.z is a desired altitude above terrain (false if its desired altitude above ekf origin)
-    ///     stopped_at_start should be set to true if vehicle is stopped at the origin
-    ///     seg_end_type should be set to stopped, straight or spline depending upon the next segment's type
-    ///     next_destination should be set to the next segment's destination if the seg_end_type is SEGMENT_END_STRAIGHT or SEGMENT_END_SPLINE
-    bool set_spline_destination(const Location& destination, bool stopped_at_start, spline_segment_end_type seg_end_type, Location next_destination);
+    ///     next_destination should be set to the next segment's destination
+    bool set_spline_destination_loc(const Location& destination, Location next_destination, bool next_is_spline);
+    bool set_spline_destination_next_loc(const Location& destination, Location next_destination, bool next_is_spline);
 
     /// set_spline_destination waypoint using position vector (distance from ekf origin in cm)
-    ///     returns false if conversion from location to vector from ekf origin cannot be calculated
-    ///     terrain_alt should be true if destination.z is a desired altitudes above terrain (false if its desired altitudes above ekf origin)
-    ///     stopped_at_start should be set to true if vehicle is stopped at the origin
-    ///     seg_end_type should be set to stopped, straight or spline depending upon the next segment's type
-    ///     next_destination should be set to the next segment's destination if the seg_end_type is SEGMENT_END_STRAIGHT or SEGMENT_END_SPLINE
+    ///     terrain_alt should be true if destination.z is a desired altitude above terrain (false if its desired altitudes above ekf origin)
+    ///     next_destination should be set to the next segment's destination
+    ///     next_terrain_alt should be true if next_destination.z is a desired altitude above terrain (false if its desired altitudes above ekf origin)
     ///     next_destination.z  must be in the same "frame" as destination.z (i.e. if destination is a alt-above-terrain, next_destination should be too)
-    bool set_spline_destination(const Vector3f& destination, bool terrain_alt, bool stopped_at_start, spline_segment_end_type seg_end_type, const Vector3f& next_destination);
-
-    /// set_spline_origin_and_destination - set origin and destination waypoints using position vectors (distance from ekf origin in cm)
-    ///     terrain_alt should be true if origin.z and destination.z are desired altitudes above terrain (false if desired altitudes above ekf origin)
-    ///     stopped_at_start should be set to true if vehicle is stopped at the origin
-    ///     seg_end_type should be set to stopped, straight or spline depending upon the next segment's type
-    ///     next_destination should be set to the next segment's destination if the seg_end_type is SEGMENT_END_STRAIGHT or SEGMENT_END_SPLINE
-    bool set_spline_origin_and_destination(const Vector3f& origin, const Vector3f& destination, bool terrain_alt, bool stopped_at_start, spline_segment_end_type seg_end_type, const Vector3f& next_destination);
-
-    /// update_spline - update spline controller
-    bool update_spline();
+    bool set_spline_destination(const Vector3f& destination, bool terrain_alt, const Vector3f& next_destination, bool next_terrain_alt, bool next_is_spline);
+    bool set_spline_destination_next(const Vector3f& destination, bool terrain_alt, const Vector3f& next_destination, bool next_terrain_alt, bool next_is_spline);
 
     ///
     /// shared methods
@@ -237,6 +210,9 @@ public:
     /// return the crosstrack_error - horizontal error of the actual position vs the desired position
     float crosstrack_error() const { return _track_error_xy;}
 
+    // update target position (an offset from ekf origin), velocity and acceleration to consume the altitude offset
+    void update_targets_with_offset(float alt_offset, Vector3f &target_pos, Vector3f &target_vel, Vector3f &target_accel, float dt);
+
     static const struct AP_Param::GroupInfo var_info[];
 
 protected:
@@ -251,34 +227,13 @@ protected:
     struct wpnav_flags {
         uint8_t reached_destination     : 1;    // true if we have reached the destination
         uint8_t fast_waypoint           : 1;    // true if we should ignore the waypoint radius and consider the waypoint complete once the intermediate target has reached the waypoint
-        uint8_t slowing_down            : 1;    // true when target point is slowing down before reaching the destination
-        uint8_t recalc_wp_leash         : 1;    // true if we need to recalculate the leash lengths because of changes in speed or acceleration
-        uint8_t new_wp_destination      : 1;    // true if we have just received a new destination.  allows us to freeze the position controller's xy feed forward
         SegmentType segment_type        : 1;    // active segment is either straight or spline
         uint8_t wp_yaw_set              : 1;    // true if yaw target has been set
     } _flags;
 
-    /// calc_slow_down_distance - calculates distance before waypoint that target point should begin to slow-down assuming it is traveling at full speed
-    void calc_slow_down_distance(float speed_cms, float accel_cmss);
-
-    /// get_slow_down_speed - returns target speed of target point based on distance from the destination (in cm)
-    float get_slow_down_speed(float dist_from_dest_cm, float accel_cmss);
     
     /// wp_speed_update - calculates how to change speed when changes are requested
     void wp_speed_update(float dt);
-
-    /// spline protected functions
-
-    /// update_spline_solution - recalculates hermite_spline_solution grid
-    void update_spline_solution(const Vector3f& origin, const Vector3f& dest, const Vector3f& origin_vel, const Vector3f& dest_vel);
-
-    /// advance_spline_target_along_track - move target location along track from origin to destination
-    ///     returns false if it is unable to advance (most likely because of missing terrain data)
-    bool advance_spline_target_along_track(float dt);
-
-    /// calc_spline_pos_vel - update position and velocity from given spline time
-    /// 	relies on update_spline_solution being called since the previous
-    void calc_spline_pos_vel(float spline_time, Vector3f& position, Vector3f& velocity);
 
     // get terrain's altitude (in cm above the ekf origin) at the current position (+ve means terrain below vehicle is above ekf origin's altitude)
     bool get_terrain_offset(float& offset_cm);
@@ -289,6 +244,10 @@ protected:
 
     // set heading used for spline and waypoint navigation
     void set_yaw_cd(float heading_cd);
+    void set_yaw_rate_cds(float yaw_rate_cds);
+
+    /// update scruve with acceleration and velocity limits
+    void set_kinematic_limits(scurves &scurve_leg, const Vector3f &origin, const Vector3f &destination);
 
     // references and pointers to external libraries
     const AP_InertialNav&   _inav;
@@ -303,37 +262,35 @@ protected:
     AP_Float    _wp_speed_down_cms;     // default maximum descent rate in cm/s
     AP_Float    _wp_radius_cm;          // distance from a waypoint in cm that, when crossed, indicates the wp has been reached
     AP_Float    _wp_accel_cmss;          // horizontal acceleration in cm/s/s during missions
+    AP_Float    _wp_jerk;               // maximum jerk used to generate s-curve trajectories
     AP_Float    _wp_accel_z_cmss;        // vertical acceleration in cm/s/s during missions
+
+    // scurve
+    scurves _scurve_prev_leg;           // previous spline trajectory used to blend with current s-curve trajectory
+    scurves _scurve_this_leg;           // current spline trajectory
+    scurves _scurve_next_leg;           // next spline trajectory used to blend with current s-curve trajectory
 
     // waypoint controller internal variables
     uint32_t    _wp_last_update;        // time of last update_wpnav call
     float       _wp_desired_speed_xy_cms;   // desired wp speed in cm/sec
     Vector3f    _origin;                // starting point of trip to next waypoint in cm from ekf origin
     Vector3f    _destination;           // target destination in cm from ekf origin
-    Vector3f    _pos_delta_unit;        // each axis's percentage of the total track from origin to destination
     float       _track_error_xy;        // horizontal error of the actual position vs the desired position
-    float       _track_length;          // distance in cm between origin and destination
-    float       _track_length_xy;       // horizontal distance in cm between origin and destination
     float       _track_desired;         // our desired distance along the track in cm
-    float       _limited_speed_xy_cms;  // horizontal speed in cm/s used to advance the intermediate target towards the destination.  used to limit extreme acceleration after passing a waypoint
-    float       _track_accel;           // acceleration along track
-    float       _track_speed;           // speed in cm/s along track
-    float       _track_leash_length;    // leash length along track
-    float       _slow_down_dist;        // vehicle should begin to slow down once it is within this distance from the destination
-
-    // spline variables
-    float       _spline_time;           // current spline time between origin and destination
-    float       _spline_time_scale;     // current spline time between origin and destination
-    Vector3f    _spline_origin_vel;     // the target velocity vector at the origin of the spline segment
-    Vector3f    _spline_destination_vel;// the target velocity vector at the destination point of the spline segment
-    Vector3f    _hermite_spline_solution[4]; // array describing spline path between origin and destination
-    float       _spline_vel_scaler;	    //
-    float       _yaw;                   // heading according to yaw
+    float       _track_scaler_dt;       // time compression multiplier to slow the progress along the track
+    float       _yaw;                   // current yaw heading based on track direction
+    float       _yaw_rate;              // current yaw rate based on track curvature
 
     // terrain following variables
     bool        _terrain_alt;   // true if origin and destination.z are alt-above-terrain, false if alt-above-ekf-origin
-    bool        _rangefinder_available;
-    AP_Int8     _rangefinder_use;
-    bool        _rangefinder_healthy;
-    float       _rangefinder_alt_cm;
+    bool        _rangefinder_available; // true if rangefinder is enabled (user switch can turn this true/false)
+    AP_Int8     _rangefinder_use;       // parameter that specifies if the range finder should be used for terrain following commands
+    bool        _rangefinder_healthy;   // true if rangefinder distance is healthy (i.e. between min and maximum)
+    float       _rangefinder_alt_cm;    // latest distance from the rangefinder
+
+    // position, velocity and acceleration targets passed to position controller
+    float       _pos_target_offset;
+    float       _vel_target_offset;
+    float       _accel_target_offset;
+
 };
