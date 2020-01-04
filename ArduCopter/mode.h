@@ -363,13 +363,10 @@ public:
     bool loiter_start();
     void rtl_start();
     void takeoff_start(const Location& dest_loc);
-    void wp_start(const Location& dest_loc);
     void land_start();
     void land_start(const Vector3f& destination);
     void circle_movetoedge_start(const Location &circle_center, float radius_m);
     void circle_start();
-    void spline_start(const Vector3f& destination, bool stopped_at_start, AC_WPNav::spline_segment_end_type seg_end_type, const Vector3f& next_spline_destination);
-    void spline_start(const Location& destination, bool stopped_at_start, AC_WPNav::spline_segment_end_type seg_end_type, const Location& next_destination);
     void nav_guided_start();
 
     bool is_landing() const override;
@@ -419,7 +416,6 @@ private:
 
     void takeoff_run();
     void wp_run();
-    void spline_run();
     void land_run();
     void rtl_run();
     void circle_run();
@@ -442,12 +438,14 @@ private:
 
     void do_takeoff(const AP_Mission::Mission_Command& cmd);
     void do_nav_wp(const AP_Mission::Mission_Command& cmd);
+    void do_next_wp(const AP_Mission::Mission_Command& cmd);
     void do_land(const AP_Mission::Mission_Command& cmd);
     void do_loiter_unlimited(const AP_Mission::Mission_Command& cmd);
     void do_circle(const AP_Mission::Mission_Command& cmd);
     void do_loiter_time(const AP_Mission::Mission_Command& cmd);
     void do_loiter_to_alt(const AP_Mission::Mission_Command& cmd);
     void do_spline_wp(const AP_Mission::Mission_Command& cmd);
+    void get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, Location& dest_loc, Location& next_dest_loc, bool& spline_at_end);
 #if NAV_GUIDED == ENABLED
     void do_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
     void do_guided_limits(const AP_Mission::Mission_Command& cmd);

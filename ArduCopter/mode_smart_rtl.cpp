@@ -106,7 +106,8 @@ void ModeSmartRTL::path_follow_run()
                 // peek at the next point
                 Vector3f next_next_point;
                 if (g2.smart_rtl.peek_point(next_next_point)) {
-                    wp_nav->set_wp_destination_NED(next_point, next_next_point);
+                    wp_nav->set_wp_destination_NED(next_point);
+                    wp_nav->set_wp_destination_NED_next(next_next_point);
                 } else {
                     // this should never happen but send next point anyway
                     wp_nav->set_wp_destination_NED(next_point);
@@ -181,7 +182,7 @@ bool ModeSmartRTL::get_wp(Location& destination)
     case SmartRTL_PathFollow:
     case SmartRTL_PreLandPosition:
     case SmartRTL_Descend:
-        return wp_nav->get_wp_destination(destination);
+        return wp_nav->get_wp_destination_loc(destination);
     case SmartRTL_Land:
         return false;
     }
