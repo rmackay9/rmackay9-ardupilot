@@ -43,6 +43,9 @@ public:
     // get next point on the path to home, returns true on success
     bool pop_point(Vector3f& point);
 
+    // peek at next point on the path without removing it form the path. Returns true on success
+    bool peek_point(Vector3f& point);
+
     // clear return path and set return location if position_ok is true.  This should be called as part of the arming procedure
     // if position_ok is false, SmartRTL will not be available.
     // example sketches use the method that allows providing vehicle position directly
