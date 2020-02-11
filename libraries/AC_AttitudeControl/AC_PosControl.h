@@ -10,6 +10,7 @@
 #include <AP_InertialNav/AP_InertialNav.h>     // Inertial Navigation library
 #include "AC_AttitudeControl.h" // Attitude control library
 #include <AP_Motors/AP_Motors.h>          // motors library
+#include <AC_Avoidance/AC_Avoid.h>
 #include <AP_Vehicle/AP_Vehicle.h>         // common vehicle parameters
 
 
