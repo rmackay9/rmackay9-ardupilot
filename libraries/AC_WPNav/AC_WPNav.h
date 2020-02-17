@@ -52,10 +52,10 @@ public:
     void set_terrain(AP_Terrain* terrain_ptr) { _terrain = terrain_ptr; }
 
     /// provide rangefinder altitude
-    void set_rangefinder_alt(bool use, bool healthy, float alt_cm) { _rangefinder_available = use; _rangefinder_healthy = healthy; _rangefinder_alt_cm = alt_cm; }
+    void set_rangefinder_alt(bool use, bool healthy, float alt_cm) { _rangefinder_state.available = use; _rangefinder_state.healthy = healthy; _rangefinder_state.dist_cm = alt_cm; }
 
     // return true if range finder may be used for terrain following
-    bool rangefinder_used_and_healthy() const { return _rangefinder_use && _rangefinder_healthy; }
+    bool rangefinder_used_and_healthy() const { return _rangefinder_use && _rangefinder_state.healthy; }
 
     // get expected source of terrain data if alt-above-terrain command is executed (used by Copter's ModeRTL)
     enum class TerrainSource {
@@ -320,8 +320,10 @@ protected:
 
     // terrain following variables
     bool        _terrain_alt;   // true if origin and destination.z are alt-above-terrain, false if alt-above-ekf-origin
-    bool        _rangefinder_available;
     AP_Int8     _rangefinder_use;
-    bool        _rangefinder_healthy;
-    float       _rangefinder_alt_cm;
+    struct RangeFinderState {
+        bool available : 1;
+        bool healthy   : 1;
+        float dist_cm;
+    } _rangefinder_state;
 };

@@ -99,7 +99,7 @@ AC_WPNav::AC_WPNav(const AP_InertialNav& inav, const AP_AHRS_View& ahrs, AC_PosC
 AC_WPNav::TerrainSource AC_WPNav::get_terrain_source() const
 {
     // use range finder if connected
-    if (_rangefinder_available && _rangefinder_use) {
+    if (_rangefinder_state.available && _rangefinder_use) {
         return AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER;
     }
 #if AP_TERRAIN_AVAILABLE
@@ -963,8 +963,8 @@ bool AC_WPNav::get_terrain_offset(float& offset_cm)
     case AC_WPNav::TerrainSource::TERRAIN_UNAVAILABLE:
         return false;
     case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER:
-        if (_rangefinder_healthy) {
-            offset_cm = _inav.get_altitude() - _rangefinder_alt_cm;
+        if (_rangefinder_state.healthy) {
+            offset_cm = _inav.get_altitude() - _rangefinder_state.dist_cm;
             return true;
         }
         return false;
