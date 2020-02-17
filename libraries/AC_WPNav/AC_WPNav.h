@@ -319,8 +319,8 @@ protected:
     float       _yaw;                   // heading according to yaw
 
     // terrain following variables
-    bool        _terrain_alt;   // true if origin and destination.z are alt-above-terrain, false if alt-above-ekf-origin
-    AP_Int8     _rangefinder_use;
+    bool        _terrain_alt;           // true if origin and destination.z are alt-above-terrain, false if alt-above-ekf-origin
+    AP_Int8     _rangefinder_use;       // if 1 rangefinder is used for terrain following
     struct RangeFinderState {
         bool available : 1;
         bool healthy   : 1;
