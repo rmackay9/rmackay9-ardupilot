@@ -17,7 +17,7 @@ public:
     /// set origin and destination waypoints using position vectors (distance from ekf origin in cm)
     ///     terrain_alt should be true if origin.z and destination.z are desired altitudes above terrain (false if these are alt-above-ekf-origin)
     ///     returns false on failure (likely caused by missing terrain data)
-    bool set_wp_origin_and_destination(const Vector3f& origin, const Vector3f& destination, bool terrain_alt = false) override;
+    bool set_wp_origin_and_destination(const Vector3f& origin, const Vector3f& destination, WPNavAltType alt_type = WPNavAltType::WPNAV_ALTTYPE_ABOVE_EKF_ORIGIN) override;
 
     /// get horizontal distance to destination in cm
     /// always returns distance to final destination (i.e. does not use oa adjusted destination)

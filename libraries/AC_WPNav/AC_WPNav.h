@@ -53,6 +53,7 @@ public:
 
     /// provide rangefinder altitude
     void set_rangefinder_alt(bool use, bool healthy, float alt_cm) { _rangefinder_state.available = use; _rangefinder_state.healthy = healthy; _rangefinder_state.dist_cm = alt_cm; }
+    void set_rangefinder_up_dist(bool use, bool healthy, float dist_cm) { _rangefinder_up_state.available = use; _rangefinder_up_state.healthy = healthy; _rangefinder_up_state.dist_cm = dist_cm; }
 
     // return true if range finder may be used for terrain following
     bool rangefinder_used_and_healthy() const { return _rangefinder_use && _rangefinder_state.healthy; }
@@ -60,10 +61,18 @@ public:
     // get expected source of terrain data if alt-above-terrain command is executed (used by Copter's ModeRTL)
     enum class TerrainSource {
         TERRAIN_UNAVAILABLE,
-        TERRAIN_FROM_RANGEFINDER,
+        TERRAIN_FROM_RANGEFINDER_DOWN,
+        TERRAIN_FROM_RANGEFINDER_UP,
         TERRAIN_FROM_TERRAINDATABASE,
     };
-    AC_WPNav::TerrainSource get_terrain_source() const;
+    AC_WPNav::TerrainSource get_terrain_source(float target_alt_cm) const;
+
+    // altitude types
+    enum class WPNavAltType {
+        WPNAV_ALTTYPE_ABOVE_EKF_ORIGIN = 0,
+        WPNAV_ALTTYPE_ABOVE_TERRAIN,
+        WPNAV_ALTTYPE_BELOW_SURFACE,
+    };
 
     ///
     /// waypoint controller
@@ -102,8 +111,8 @@ public:
     /// get origin using position vector (distance from ekf origin in cm)
     const Vector3f &get_wp_origin() const { return _origin; }
 
-    /// true if origin.z and destination.z are alt-above-terrain, false if alt-above-ekf-origin
-    bool origin_and_destination_are_terrain_alt() const { return _terrain_alt; }
+    /// true if origin.z and destination.z are alt-above-terrain, false if alt-above-ekf-origin or alt-below-surface
+    bool origin_and_destination_are_alt_above_terrain() const { return _destination_alt_type == WPNavAltType::WPNAV_ALTTYPE_ABOVE_TERRAIN; }
 
     /// set_wp_destination waypoint using location class
     ///     returns false if conversion from location to vector from ekf origin cannot be calculated
@@ -120,7 +129,7 @@ public:
 
     /// set_wp_destination waypoint using position vector (distance from ekf origin in cm)
     ///     terrain_alt should be true if destination.z is a desired altitude above terrain
-    bool set_wp_destination(const Vector3f& destination, bool terrain_alt = false);
+    bool set_wp_destination(const Vector3f& destination, WPNavAltType alt_type = WPNavAltType::WPNAV_ALTTYPE_ABOVE_EKF_ORIGIN);
 
     /// set waypoint destination using NED position vector from ekf origin in meters
     bool set_wp_destination_NED(const Vector3f& destination_NED);
@@ -128,7 +137,7 @@ public:
     /// set_wp_origin_and_destination - set origin and destination waypoints using position vectors (distance from ekf origin in cm)
     ///     terrain_alt should be true if origin.z and destination.z are desired altitudes above terrain (false if these are alt-above-ekf-origin)
     ///     returns false on failure (likely caused by missing terrain data)
-    virtual bool set_wp_origin_and_destination(const Vector3f& origin, const Vector3f& destination, bool terrain_alt = false);
+    virtual bool set_wp_origin_and_destination(const Vector3f& origin, const Vector3f& destination, WPNavAltType alt_type = WPNavAltType::WPNAV_ALTTYPE_ABOVE_EKF_ORIGIN);
 
     /// shift_wp_origin_to_current_pos - shifts the origin and destination so the origin starts at the current position
     ///     used to reset the position just before takeoff
@@ -195,19 +204,19 @@ public:
 
     /// set_spline_destination waypoint using position vector (distance from ekf origin in cm)
     ///     returns false if conversion from location to vector from ekf origin cannot be calculated
-    ///     terrain_alt should be true if destination.z is a desired altitudes above terrain (false if its desired altitudes above ekf origin)
+    ///     alt_type defines the frame of origin.z and destination.z which can be above-ekf-origin, above-terrain or below-surface
     ///     stopped_at_start should be set to true if vehicle is stopped at the origin
     ///     seg_end_type should be set to stopped, straight or spline depending upon the next segment's type
     ///     next_destination should be set to the next segment's destination if the seg_end_type is SEGMENT_END_STRAIGHT or SEGMENT_END_SPLINE
     ///     next_destination.z  must be in the same "frame" as destination.z (i.e. if destination is a alt-above-terrain, next_destination should be too)
-    bool set_spline_destination(const Vector3f& destination, bool terrain_alt, bool stopped_at_start, spline_segment_end_type seg_end_type, const Vector3f& next_destination);
+    bool set_spline_destination(const Vector3f& destination, WPNavAltType alt_type, bool stopped_at_start, spline_segment_end_type seg_end_type, const Vector3f& next_destination);
 
     /// set_spline_origin_and_destination - set origin and destination waypoints using position vectors (distance from ekf origin in cm)
-    ///     terrain_alt should be true if origin.z and destination.z are desired altitudes above terrain (false if desired altitudes above ekf origin)
+    ///     alt_type defines the frame of origin.z and destination.z which can be above-ekf-origin, above-terrain or below-surface
     ///     stopped_at_start should be set to true if vehicle is stopped at the origin
     ///     seg_end_type should be set to stopped, straight or spline depending upon the next segment's type
     ///     next_destination should be set to the next segment's destination if the seg_end_type is SEGMENT_END_STRAIGHT or SEGMENT_END_SPLINE
-    bool set_spline_origin_and_destination(const Vector3f& origin, const Vector3f& destination, bool terrain_alt, bool stopped_at_start, spline_segment_end_type seg_end_type, const Vector3f& next_destination);
+    bool set_spline_origin_and_destination(const Vector3f& origin, const Vector3f& destination, WPNavAltType alt_type, bool stopped_at_start, spline_segment_end_type seg_end_type, const Vector3f& next_destination);
 
     /// reached_spline_destination - true when we have come within RADIUS cm of the waypoint
     bool reached_spline_destination() const { return _flags.reached_destination; }
@@ -272,9 +281,9 @@ protected:
     // get terrain's altitude (in cm above the ekf origin) at the current position (+ve means terrain below vehicle is above ekf origin's altitude)
     bool get_terrain_offset(float& offset_cm);
 
-    // convert location to vector from ekf origin.  terrain_alt is set to true if resulting vector's z-axis should be treated as alt-above-terrain
+    // convert location to vector from ekf origin.  alt_type is set to above-ekf-origin, above-terrain or below-surface and specifies how the resulting vector's z-axis should be treated
     //      returns false if conversion failed (likely because terrain data was not available)
-    bool get_vector_NEU(const Location &loc, Vector3f &vec, bool &terrain_alt);
+    bool get_vector_NEU(const Location &loc, Vector3f &vec, WPNavAltType &alt_type);
 
     // set heading used for spline and waypoint navigation
     void set_yaw_cd(float heading_cd);
@@ -298,6 +307,7 @@ protected:
     uint32_t    _wp_last_update;        // time of last update_wpnav call
     Vector3f    _origin;                // starting point of trip to next waypoint in cm from ekf origin
     Vector3f    _destination;           // target destination in cm from ekf origin
+    WPNavAltType _destination_alt_type; // altitude type of origin and destination
     Vector3f    _pos_delta_unit;        // each axis's percentage of the total track from origin to destination
     float       _track_error_xy;        // horizontal error of the actual position vs the desired position
     float       _track_length;          // distance in cm between origin and destination
@@ -319,11 +329,10 @@ protected:
     float       _yaw;                   // heading according to yaw
 
     // terrain following variables
-    bool        _terrain_alt;           // true if origin and destination.z are alt-above-terrain, false if alt-above-ekf-origin
     AP_Int8     _rangefinder_use;       // if 1 rangefinder is used for terrain following
     struct RangeFinderState {
         bool available : 1;
         bool healthy   : 1;
         float dist_cm;
-    } _rangefinder_state;
+    } _rangefinder_state, _rangefinder_up_state;
 };
