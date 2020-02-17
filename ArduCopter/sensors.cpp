@@ -93,6 +93,11 @@ void Copter::read_rangefinder(void)
                 wp_nav->set_rangefinder_alt(rangefinder_state.enabled, rangefinder_state.alt_healthy, rangefinder_state.alt_cm_filt.get());
             }
         }
+        if (rf_orient == ROTATION_PITCH_90) {
+            if (rangefinder_up_state.alt_healthy || timed_out) {
+                wp_nav->set_rangefinder_up_dist(rangefinder_up_state.enabled, rangefinder_up_state.alt_healthy, rangefinder_up_state.alt_cm_filt.get());
+            }
+        }
     }
 
 #else

@@ -88,7 +88,7 @@ void ModeGuided::pos_control_start()
     wp_nav->get_wp_stopping_point(stopping_point);
 
     // no need to check return status because terrain data is not used
-    wp_nav->set_wp_destination(stopping_point, false);
+    wp_nav->set_wp_destination(stopping_point, AC_WPNav::WPNavAltType::WPNAV_ALTTYPE_ABOVE_EKF_ORIGIN);
 
     // initialise yaw
     auto_yaw.set_mode_to_default(false);
@@ -197,7 +197,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
     set_yaw_state(use_yaw, yaw_cd, use_yaw_rate, yaw_rate_cds, relative_yaw);
 
     // no need to check return status because terrain data is not used
-    wp_nav->set_wp_destination(destination, false);
+    wp_nav->set_wp_destination(destination, AC_WPNav::WPNavAltType::WPNAV_ALTTYPE_ABOVE_EKF_ORIGIN);
 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode, destination, Vector3f());

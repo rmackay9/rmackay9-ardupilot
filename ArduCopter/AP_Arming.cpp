@@ -234,12 +234,13 @@ bool AP_Arming_Copter::parameter_checks(bool display_failure)
         // checks when using range finder for RTL
         if (copter.mode_rtl.get_alt_type() == ModeRTL::RTLAltType::RTL_ALTTYPE_TERRAIN) {
             // get terrain source from wpnav
-            switch (copter.wp_nav->get_terrain_source()) {
+            switch (copter.wp_nav->get_terrain_source(copter.g.rtl_altitude)) {
             case AC_WPNav::TerrainSource::TERRAIN_UNAVAILABLE:
+            case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER_UP:
                 check_failed(ARMING_CHECK_PARAMETERS, display_failure, "RTL_ALT_TYPE=1 but no terrain data");
                 return false;
                 break;
-            case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER:
+            case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER_DOWN:
                 if (!copter.rangefinder_state.enabled || !copter.rangefinder.has_orientation(ROTATION_PITCH_270)) {
                     check_failed(ARMING_CHECK_PARAMETERS, display_failure, "RTL_ALT_TYPE=1 but no rangefinder");
                     return false;

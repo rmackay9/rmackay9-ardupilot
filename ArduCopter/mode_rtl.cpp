@@ -444,13 +444,14 @@ void ModeRTL::compute_return_target()
     ReturnTargetAltType alt_type = ReturnTargetAltType::RETURN_TARGET_ALTTYPE_RELATIVE;
     if (terrain_following_allowed && (get_alt_type() == RTLAltType::RTL_ALTTYPE_TERRAIN)) {
         // convert RTL_ALT_TYPE and WPNAV_RFNG_USE parameters to ReturnTargetAltType
-        switch (wp_nav->get_terrain_source()) {
+        switch (wp_nav->get_terrain_source(g.rtl_altitude)) {
         case AC_WPNav::TerrainSource::TERRAIN_UNAVAILABLE:
+        case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER_UP:  // we do not support RTL at a distance below upward facing rangefinder, use alt-above-home instead
             alt_type = ReturnTargetAltType::RETURN_TARGET_ALTTYPE_RELATIVE;
             AP::logger().Write_Error(LogErrorSubsystem::NAVIGATION, LogErrorCode::RTL_MISSING_RNGFND);
             gcs().send_text(MAV_SEVERITY_CRITICAL, "RTL: no terrain data, using alt-above-home");
             break;
-        case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER:
+        case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER_DOWN:
             alt_type = ReturnTargetAltType::RETURN_TARGET_ALTTYPE_RANGEFINDER;
             break;
         case AC_WPNav::TerrainSource::TERRAIN_FROM_TERRAINDATABASE:

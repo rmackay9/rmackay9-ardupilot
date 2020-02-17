@@ -111,7 +111,7 @@ void ModeZigZag::save_or_move_to_destination(uint8_t dest_num)
             bool terr_alt;
             if (calculate_next_dest(dest_num, stage == AUTO, next_dest, terr_alt)) {
                 wp_nav->wp_and_spline_init();
-                if (wp_nav->set_wp_destination(next_dest, terr_alt)) {
+                if (wp_nav->set_wp_destination(next_dest, terr_alt ? AC_WPNav::WPNavAltType::WPNAV_ALTTYPE_ABOVE_TERRAIN : AC_WPNav::WPNavAltType::WPNAV_ALTTYPE_ABOVE_EKF_ORIGIN)) {
                     stage = AUTO;
                     reach_wp_time_ms = 0;
                     if (dest_num == 0) {
@@ -134,7 +134,7 @@ void ModeZigZag::return_to_manual_control(bool maintain_target)
         if (maintain_target) {
             const Vector3f& wp_dest = wp_nav->get_wp_destination();
             loiter_nav->init_target(wp_dest);
-            if (wp_nav->origin_and_destination_are_terrain_alt()) {
+            if (wp_nav->origin_and_destination_are_alt_above_terrain()) {
                 copter.surface_tracking.set_target_alt_cm(wp_dest.z);
             }
         } else {
@@ -347,7 +347,7 @@ bool ModeZigZag::calculate_next_dest(uint8_t dest_num, bool use_wpnav_alt, Vecto
 
     if (use_wpnav_alt) {
         // get altitude target from waypoint controller
-        terrain_alt = wp_nav->origin_and_destination_are_terrain_alt();
+        terrain_alt = wp_nav->origin_and_destination_are_alt_above_terrain();
         next_dest.z = wp_nav->get_wp_destination().z;
     } else {
         // if we have a downward facing range finder then use terrain altitude targets
