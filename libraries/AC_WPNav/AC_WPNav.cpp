@@ -139,7 +139,7 @@ void AC_WPNav::wp_and_spline_init()
     _wp_desired_speed_xy_cms = _wp_speed_cms;
 
     // initialise position controller speed and acceleration
-    _pos_control.set_max_speed_xy(MAX(_inav.get_speed_xy(), 1.0f));
+    _pos_control.set_max_speed_xy(_wp_speed_cms);
     _pos_control.set_max_accel_xy(_wp_accel_cmss);
     _pos_control.set_max_speed_z(-_wp_speed_down_cms, _wp_speed_up_cms);
     _pos_control.set_max_accel_z(_wp_accel_z_cmss);
