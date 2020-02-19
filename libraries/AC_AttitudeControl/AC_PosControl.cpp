@@ -667,11 +667,14 @@ void AC_PosControl::set_max_accel_xy(float accel_cmss)
 /// set_max_speed_xy - set the maximum horizontal speed maximum in cm/s
 void AC_PosControl::set_max_speed_xy(float speed_cms)
 {
-    if (fabsf(_speed_cms - speed_cms) > 1.0f) {
-        _speed_cms = speed_cms;
-        _flags.recalc_leash_xy = true;
-        calc_leash_length_xy();
+    // return immediately if no change in speed
+    if (is_equal(_speed_cms, speed_cms)) {
+        return;
     }
+
+    _speed_cms = speed_cms;
+    _flags.recalc_leash_xy = true;
+    calc_leash_length_xy();
 }
 
 /// set_pos_target in cm from home
