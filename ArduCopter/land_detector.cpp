@@ -83,6 +83,21 @@ void Copter::update_land_detector()
             // we've sensed movement up or down so reset land_detector
             land_detector_count = 0;
         }
+
+        static uint8_t log_counter = 0;
+        if (log_counter++ >= 10) {
+            log_counter = 0;
+            DataFlash_Class::instance()->Log_Write("LNDD", "TimeUS,MotLow,ATCLow,AccZ,AccLow,Cr,CrLow,RFnd,LandCnt","QBBfBfBBI",
+                               AP_HAL::micros64(),
+                               (uint8_t)motors->limit.throttle_lower,
+                               (uint8_t)attitude_control->is_throttle_mix_min(),
+                               (double)land_accel_ef_filter.get().length(),
+                               (uint8_t)accel_stationary,
+                               (double)inertial_nav.get_velocity_z(),
+                               (uint8_t)descent_rate_low,
+                               (uint8_t)rangefinder_check,
+                               (uint32_t)land_detector_count);
+        }
     }
 
     set_land_complete_maybe(ap.land_complete || (land_detector_count >= LAND_DETECTOR_MAYBE_TRIGGER_SEC*scheduler.get_loop_rate_hz()));
