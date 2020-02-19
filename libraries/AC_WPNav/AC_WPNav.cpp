@@ -138,13 +138,8 @@ void AC_WPNav::wp_and_spline_init()
     // initialize the desired wp speed if not already done
     _wp_desired_speed_cms = _wp_speed_cms;
 
-    // initialise the current wp speed to current speed along the track
-    const Vector3f &curr_vel = _inav.get_velocity();
-    // get speed along track (note: we convert vertical speed into horizontal speed equivalent)
-    _wp_current_speed_cms = curr_vel.x * _pos_delta_unit.x + curr_vel.y * _pos_delta_unit.y;
-
     // initialise position controller speed and acceleration
-    _pos_control.set_max_speed_xy(_wp_current_speed_cms);
+    _pos_control.set_max_speed_xy(_wp_speed_cms);
     _pos_control.set_max_accel_xy(_wp_accel_cmss);
     _pos_control.set_max_speed_z(-_wp_speed_down_cms, _wp_speed_up_cms);
     _pos_control.set_max_accel_z(_wp_accel_z_cmss);
@@ -292,6 +287,11 @@ bool AC_WPNav::set_wp_origin_and_destination(const Vector3f& origin, const Vecto
     // get speed along track (note: we convert vertical speed into horizontal speed equivalent)
     float speed_along_track = curr_vel.x * _pos_delta_unit.x + curr_vel.y * _pos_delta_unit.y + curr_vel.z * _pos_delta_unit.z;
     _limited_speed_xy_cms = constrain_float(speed_along_track, 0, _pos_control.get_max_speed_xy());
+
+    // set current wp speed and initialize position controller max speed.  This is done so aircraft moves from current speed to 
+    // desired wp speed while obeying wp_accel.
+    _wp_current_speed_cms = speed_along_track;
+    _pos_control.set_max_speed_xy(_wp_current_speed_cms);
 
     return true;
 }
