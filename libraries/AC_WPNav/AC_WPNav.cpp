@@ -136,10 +136,10 @@ void AC_WPNav::wp_and_spline_init()
     _pos_control.set_desired_velocity_xy(0.0f, 0.0f);
 
     // initialize the desired wp speed if not already done
-    _wp_desired_speed_cms = _wp_speed_cms;
+    _wp_desired_speed_xy_cms = _wp_speed_cms;
 
     // initialise position controller speed and acceleration
-    _pos_control.set_max_speed_xy(_wp_speed_cms);
+    _pos_control.set_max_speed_xy(MAX(_inav.get_speed_xy(), 1.0f));
     _pos_control.set_max_accel_xy(_wp_accel_cmss);
     _pos_control.set_max_speed_z(-_wp_speed_down_cms, _wp_speed_up_cms);
     _pos_control.set_max_accel_z(_wp_accel_z_cmss);
@@ -155,7 +155,7 @@ void AC_WPNav::set_speed_xy(float speed_cms)
 {
     // range check target speed
     if (speed_cms >= WPNAV_WP_SPEED_MIN) {
-        _wp_desired_speed_cms = speed_cms;
+        _wp_desired_speed_xy_cms = speed_cms;
     }
 }
 
@@ -287,11 +287,6 @@ bool AC_WPNav::set_wp_origin_and_destination(const Vector3f& origin, const Vecto
     // get speed along track (note: we convert vertical speed into horizontal speed equivalent)
     float speed_along_track = curr_vel.x * _pos_delta_unit.x + curr_vel.y * _pos_delta_unit.y + curr_vel.z * _pos_delta_unit.z;
     _limited_speed_xy_cms = constrain_float(speed_along_track, 0, _pos_control.get_max_speed_xy());
-
-    // set current wp speed and initialize position controller max speed.  This is done so aircraft moves from current speed to 
-    // desired wp speed while obeying wp_accel.
-    _wp_current_speed_cms = speed_along_track;
-    _pos_control.set_max_speed_xy(_wp_current_speed_cms);
 
     return true;
 }
@@ -1070,26 +1065,27 @@ float AC_WPNav::get_slow_down_speed(float dist_from_dest_cm, float accel_cmss)
 void AC_WPNav::wp_speed_update(float dt)
 {
     // return if speed has not changed
-    if (is_equal(_wp_desired_speed_cms, _wp_current_speed_cms)) {
+    float curr_max_speed_xy_cms = _pos_control.get_max_speed_xy();
+    if (is_equal(_wp_desired_speed_xy_cms, curr_max_speed_xy_cms)) {
         return;
     }
     // calculate speed change
-    if (_wp_desired_speed_cms > _wp_current_speed_cms) {
+    if (_wp_desired_speed_xy_cms > curr_max_speed_xy_cms) {
         // speed up is requested so increase speed within limit set by WPNAV_ACCEL
-        _wp_current_speed_cms += _wp_accel_cmss * dt;
-        if (_wp_current_speed_cms > _wp_desired_speed_cms) {
-            _wp_current_speed_cms = _wp_desired_speed_cms;
+        curr_max_speed_xy_cms += _wp_accel_cmss * dt;
+        if (curr_max_speed_xy_cms > _wp_desired_speed_xy_cms) {
+            curr_max_speed_xy_cms = _wp_desired_speed_xy_cms;
         }
-    } else if (_wp_desired_speed_cms < _wp_current_speed_cms) {
+    } else if (_wp_desired_speed_xy_cms < curr_max_speed_xy_cms) {
         // slow down is requested so reduce speed within limit set by WPNAV_ACCEL
-        _wp_current_speed_cms -= _wp_accel_cmss * dt;
-        if (_wp_current_speed_cms < _wp_desired_speed_cms) {
-            _wp_current_speed_cms = _wp_desired_speed_cms;
+        curr_max_speed_xy_cms -= _wp_accel_cmss * dt;
+        if (curr_max_speed_xy_cms < _wp_desired_speed_xy_cms) {
+            curr_max_speed_xy_cms = _wp_desired_speed_xy_cms;
         }
     }
 
-    //update position controller speed
-    _pos_control.set_max_speed_xy(_wp_current_speed_cms);
+    // update position controller speed
+    _pos_control.set_max_speed_xy(curr_max_speed_xy_cms);
     
     // flag that wp leash must be recalculated
     _flags.recalc_wp_leash = true;
