@@ -369,6 +369,36 @@ void Copter::fourhundred_hz_logging()
 // should be run at 10hz
 void Copter::ten_hz_logging_loop()
 {
+    // viso debug
+    const uint64_t remote_time_us = AP_HAL::micros();
+    const uint32_t time_ms = AP_HAL::millis();
+    static const float pos_inc = 0.10;
+    static float pos_x = 0;
+    pos_x += pos_inc;
+    static const float yaw_inc_rad = radians(-0.1f); // 1deg/sec yaw
+    static float yaw_rad = 0;
+    yaw_rad += yaw_inc_rad;
+    Quaternion att;
+    if (AP::ahrs().get_quaternion(att)) {
+        att.from_euler(0,0,yaw_rad);
+        static uint8_t reset_counter = 0;
+        // pos jump handling
+        static float pos_jump_inc = 10;  // 10m jump
+        static uint16_t jump_counter = 0;
+        jump_counter++;
+        if (jump_counter >= 300) {   // jumps happen every 30 sec
+            jump_counter = 0;
+            pos_x += pos_jump_inc;
+            reset_counter++;
+        }
+        visual_odom.handle_vision_position_estimate(remote_time_us,
+                                                time_ms,
+                                                pos_x,
+                                                0,0,  // y, z
+                                                att,
+                                                reset_counter);
+    }
+
     // log attitude data if we're not already logging at the higher rate
     if (should_log(MASK_LOG_ATTITUDE_MED) && !should_log(MASK_LOG_ATTITUDE_FAST) && !copter.flightmode->logs_attitude()) {
         Log_Write_Attitude();
