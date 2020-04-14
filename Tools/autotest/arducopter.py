@@ -1914,8 +1914,8 @@ class AutoTestCopter(AutoTest):
         if ex is not None:
             raise ex
 
-    def fly_vision_position(self):
-        """Disable GPS navigation, enable Vicon input."""
+    def fly_vision_position(self, ekf=2):
+        """disable GPS navigation, enable Vicon input"""
         # scribble down a location we can set origin to:
 
         self.progress("Waiting for location")
@@ -1931,8 +1931,20 @@ class AutoTestCopter(AutoTest):
 
         ex = None
         try:
+            self.set_parameter("AHRS_EKF_TYPE", ekf)
+            if ekf == 2:
+                self.set_parameter("EK2_ENABLE", 1)
+                self.set_parameter("EK3_ENABLE", 0)
+                self.fetch_parameters()
+                self.set_parameter("EK2_GPS_TYPE", 3)
+            elif ekf == 3:
+                self.set_parameter("EK2_ENABLE", 0)
+                self.set_parameter("EK3_ENABLE", 1)
+                self.fetch_parameters()
+                self.set_parameter("EK3_GPS_TYPE", 3)
+            else:
+                raise ValueError()
             self.set_parameter("GPS_TYPE", 0)
-            self.set_parameter("EK2_GPS_TYPE", 3)
             self.set_parameter("VISO_TYPE", 1)
             self.set_parameter("SERIAL5_PROTOCOL", 1)
             self.reboot_sitl()
@@ -4848,6 +4860,10 @@ class AutoTestCopter(AutoTest):
             ("VisionPosition",
              "Fly Vision Position",
              self.fly_vision_position),
+
+            ("VisionPositionEKF3",
+             "Fly Vision Position (EKF3)",
+             lambda : self.fly_vision_position(ekf=3)),
 
             ("BeaconPosition",
              "Fly Beacon Position",
