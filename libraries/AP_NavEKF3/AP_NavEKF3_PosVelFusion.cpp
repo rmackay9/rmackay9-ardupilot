@@ -423,7 +423,13 @@ void NavEKF3_core::SelectVelPosFusion()
         }
     }
 
-    // To-Do: add external nav position reset handling here?
+    // check for external nav position reset
+    if (extNavDataToFuse && (PV_AidingMode == AID_ABSOLUTE) && (frontend->_fusionModeGPS == 3) && (extNavDataDelayed.posReset)) {
+        // reset position and yaw using external nav data
+        posResetSource = EXTNAV;
+        ResetPosition();
+        alignYawAngle();
+    }
 
     // If we are operating without any aiding, fuse in the last known position
     // to constrain tilt drift. This assumes a non-manoeuvring vehicle
