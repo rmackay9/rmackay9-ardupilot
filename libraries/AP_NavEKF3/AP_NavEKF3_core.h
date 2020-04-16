@@ -891,6 +891,9 @@ private:
     // correct GPS data for antenna position
     void CorrectGPSForAntennaOffset(gps_elements &gps_data);
 
+    // correct external navigation earth-frame position using sensor body-frame offset
+    void CorrectExtNavForSensorOffset(Vector3f &ext_position);
+
     // Variables
     bool statesInitialised;         // boolean true when filter states have been initialised
     bool velHealth;                 // boolean true if velocity measurements have passed innovation consistency check
