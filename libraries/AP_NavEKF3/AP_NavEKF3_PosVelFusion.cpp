@@ -79,10 +79,6 @@ void NavEKF3_core::ResetVelocity(void)
 // resets position states to last GPS measurement or to zero if in constant position mode
 void NavEKF3_core::ResetPosition(void)
 {
-    // Store the position before the reset so that we can record the reset delta
-    posResetNE.x = stateStruct.position.x;
-    posResetNE.y = stateStruct.position.y;
-
     // reset the corresponding covariances
     zeroRows(P,7,8);
     zeroCols(P,7,8);
@@ -101,9 +97,9 @@ void NavEKF3_core::ResetPosition(void)
         if ((imuSampleTime_ms - lastTimeGpsReceived_ms < 250 && posResetSource == DEFAULT) || posResetSource == GPS) {
             // record the ID of the GPS for the data we are using for the reset
             last_gps_idx = gps_corrected.sensor_idx;
-            // write to state vector and compensate for offset  between last GPS measurement and the EKF time horizon
-            stateStruct.position.x = gps_corrected.pos.x  + 0.001f*gps_corrected.vel.x*(float(imuDataDelayed.time_ms) - float(gps_corrected.time_ms));
-            stateStruct.position.y = gps_corrected.pos.y  + 0.001f*gps_corrected.vel.y*(float(imuDataDelayed.time_ms) - float(gps_corrected.time_ms));
+            // reset position to latest GPS position with additional compensation for EKF time horizon
+            const float ImuGPSDt = float(imuDataDelayed.time_ms) - float(gps_corrected.time_ms);
+            ResetPositionNE(gps_corrected.pos.x + 0.001f*gps_corrected.vel.x*ImuGPSDt, gps_corrected.pos.y  + 0.001f*gps_corrected.vel.y*ImuGPSDt);
             // set the variances using the position measurement noise parameter
             P[7][7] = P[8][8] = sq(MAX(gpsPosAccuracy,frontend->_gpsHorizPosNoise));
             // clear the timeout flags and counters
@@ -111,8 +107,7 @@ void NavEKF3_core::ResetPosition(void)
             lastPosPassTime_ms = imuSampleTime_ms;
         } else if ((imuSampleTime_ms - rngBcnLast3DmeasTime_ms < 250 && posResetSource == DEFAULT) || posResetSource == RNGBCN) {
             // use the range beacon data as a second preference
-            stateStruct.position.x = receiverPos.x;
-            stateStruct.position.y = receiverPos.y;
+            ResetPositionNE(receiverPos.x, receiverPos.y);
             // set the variances from the beacon alignment filter
             P[7][7] = receiverPosCov[0][0];
             P[8][8] = receiverPosCov[1][1];
@@ -123,8 +118,7 @@ void NavEKF3_core::ResetPosition(void)
             // use external nav data as the third preference
             ext_nav_elements extNavCorrected = extNavDataDelayed;
             CorrectExtNavForSensorOffset(extNavCorrected.pos);
-            stateStruct.position.x = extNavCorrected.pos.x;
-            stateStruct.position.y = extNavCorrected.pos.y;
+            ResetPositionNE(extNavCorrected.pos.x, extNavCorrected.pos.y);
             // set the variances as received from external nav system data
             P[7][7] = P[8][8] = sq(extNavDataDelayed.posErr);
             // clear the timeout flags and counters
@@ -132,25 +126,9 @@ void NavEKF3_core::ResetPosition(void)
             lastExtNavPassTime_ms = imuSampleTime_ms;
         }
     }
-    for (uint8_t i=0; i<imu_buffer_length; i++) {
-        storedOutput[i].position.x = stateStruct.position.x;
-        storedOutput[i].position.y = stateStruct.position.y;
-    }
-    outputDataNew.position.x = stateStruct.position.x;
-    outputDataNew.position.y = stateStruct.position.y;
-    outputDataDelayed.position.x = stateStruct.position.x;
-    outputDataDelayed.position.y = stateStruct.position.y;
-
-    // Calculate the position jump due to the reset
-    posResetNE.x = stateStruct.position.x - posResetNE.x;
-    posResetNE.y = stateStruct.position.y - posResetNE.y;
-
-    // store the time of the reset
-    lastPosReset_ms = imuSampleTime_ms;
 
     // clear reset source preference
     posResetSource = DEFAULT;
-
 }
 
 // reset the stateStruct's NE position to the specified position
