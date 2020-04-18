@@ -415,25 +415,7 @@ void NavEKF3_core::SelectVelPosFusion()
 
         // If we are also using GPS as the height reference, reset the height
         if (activeHgtSource == HGT_SOURCE_GPS) {
-            // Store the position before the reset so that we can record the reset delta
-            posResetD = stateStruct.position.z;
-
-            // write to the state vector
-            stateStruct.position.z = -hgtMea;
-
-            // Calculate the position jump due to the reset
-            posResetD = stateStruct.position.z - posResetD;
-
-            // Add the offset to the output observer states
-            outputDataNew.position.z += posResetD;
-            vertCompFiltState.pos = outputDataNew.position.z;
-            outputDataDelayed.position.z += posResetD;
-            for (uint8_t i=0; i<imu_buffer_length; i++) {
-                storedOutput[i].position.z += posResetD;
-            }
-
-            // store the time of the reset
-            lastPosResetD_ms = imuSampleTime_ms;
+            ResetPositionD(-hgtMea);
         }
     }
 
