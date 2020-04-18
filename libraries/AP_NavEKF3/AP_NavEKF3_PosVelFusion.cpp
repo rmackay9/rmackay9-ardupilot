@@ -425,7 +425,9 @@ void NavEKF3_core::SelectVelPosFusion()
         if (activeHgtSource == HGT_SOURCE_EXTNAV) {
             ResetPositionD(-hgtMea);
         }
-        alignYawAngle();
+        if (using_external_yaw()) {
+            alignYawAngle();
+        }
     }
 
     // If we are operating without any aiding, fuse in the last known position
