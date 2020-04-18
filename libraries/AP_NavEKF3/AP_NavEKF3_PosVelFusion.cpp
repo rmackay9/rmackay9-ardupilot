@@ -162,6 +162,33 @@ void NavEKF3_core::ResetPositionNE(float posN, float posE)
     lastPosReset_ms = imuSampleTime_ms;
 }
 
+// reset the stateStruct's D position
+//    posResetD is updated to hold the change in position
+//    storedOutput, outputDataNew and outputDataDelayed are updated with the change in position
+//    lastPosResetD_ms is updated with the time of the reset
+void NavEKF3_core::ResetPositionD(float posD)
+{
+    // Store the position before the reset so that we can record the reset delta
+    const float posDOrig = stateStruct.position.z;
+
+    // write to the state vector
+    stateStruct.position.z = posD;
+
+    // Calculate the position jump due to the reset
+    posResetD = stateStruct.position.z - posDOrig;
+
+    // Add the offset to the output observer states
+    outputDataNew.position.z += posResetD;
+    vertCompFiltState.pos = outputDataNew.position.z;
+    outputDataDelayed.position.z += posResetD;
+    for (uint8_t i=0; i<imu_buffer_length; i++) {
+        storedOutput[i].position.z += posResetD;
+    }
+
+    // store the time of the reset
+    lastPosResetD_ms = imuSampleTime_ms;
+}
+
 // reset the vertical position state using the last height measurement
 void NavEKF3_core::ResetHeight(void)
 {
@@ -413,6 +440,9 @@ void NavEKF3_core::SelectVelPosFusion()
     // check for external nav position reset
     if (extNavDataToFuse && (PV_AidingMode == AID_ABSOLUTE) && (frontend->_fusionModeGPS == 3) && extNavDataDelayed.posReset) {
         ResetPositionNE(extNavDataDelayed.pos.x, extNavDataDelayed.pos.y);
+        if (activeHgtSource == HGT_SOURCE_EXTNAV) {
+            ResetPositionD(-hgtMea);
+        }
         alignYawAngle();
     }
 
