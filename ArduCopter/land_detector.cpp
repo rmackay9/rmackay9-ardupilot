@@ -4,6 +4,7 @@
 #define LAND_CHECK_ANGLE_ERROR_DEG  30.0f       // maximum angle error to be considered landing
 #define LAND_CHECK_LARGE_ANGLE_CD   1500.0f     // maximum angle target to be considered landing
 #define LAND_CHECK_ACCEL_MOVING     3.0f        // maximum acceleration after subtracting gravity
+#define LAND_CHECK_MAYBE_LOW_ALT_CM 50.0f       // range finder altitude is under 50cm
 
 
 // counter to verify landings
@@ -89,7 +90,13 @@ void Copter::update_land_detector()
         }
     }
 
-    set_land_complete_maybe(ap.land_complete || (land_detector_count >= LAND_DETECTOR_MAYBE_TRIGGER_SEC*scheduler.get_loop_rate_hz()));
+    // land complete maybe checks rangefinder alt
+    const bool pos_control_active = copter.pos_control->is_active_xy();
+    const bool descending = copter.pos_control->is_active_z() && pos_control->get_vel_target_z() < 0.0f;
+    const bool rangefinder_low = rangefinder_alt_ok() && rangefinder_state.alt_cm_filt.get() < LAND_CHECK_MAYBE_LOW_ALT_CM;
+
+    // set land complete maybe if land complete, land-detector-count is partially satisfied or descending with very low rangefinder altitude
+    set_land_complete_maybe(ap.land_complete || (pos_control_active && descending && rangefinder_low) || (land_detector_count >= LAND_DETECTOR_MAYBE_TRIGGER_SEC*scheduler.get_loop_rate_hz()));
 }
 
 // set land_complete flag and disarm motors if disarm-on-land is configured
