@@ -997,8 +997,8 @@ bool NavEKF3::checkLaneSwitch(void)
         return false;
     }
 
-    float primaryErrorScore = core[primary].errorScore();
-    float lowestErrorScore = primaryErrorScore;
+    //float primaryErrorScore = core[primary].errorScore();
+    //float lowestErrorScore = primaryErrorScore;
     uint8_t newPrimaryIndex = primary;
     for (uint8_t coreIndex=0; coreIndex<num_cores; coreIndex++) {
         if (coreIndex != primary) {
@@ -1006,9 +1006,9 @@ bool NavEKF3::checkLaneSwitch(void)
             // an alternative core is available for selection only if healthy and if states have been updated on this time step
             bool altCoreAvailable = newCore.healthy() && newCore.have_aligned_yaw() && newCore.have_aligned_tilt();
             float altErrorScore = newCore.errorScore();
-            if (altCoreAvailable && altErrorScore < lowestErrorScore && altErrorScore < 0.9) {
+            if (altCoreAvailable && altErrorScore < 0.9) {
                 newPrimaryIndex = coreIndex;
-                lowestErrorScore = altErrorScore;
+                //lowestErrorScore = altErrorScore;
             }
         }
     }
