@@ -1169,7 +1169,9 @@ bool RC_Channel::do_aux_function(const aux_func_t ch_option, const AuxSwitchPos 
 
     case AUX_FUNC::EKF_LANE_SWITCH:
         // used to test emergency lane switch
-        AP::ahrs().check_lane_switch();
+        if (!AP::ahrs().check_lane_switch()) {
+            gcs().send_text(MAV_SEVERITY_INFO, "EKF lane not changed");
+        }
         break;
 
     case AUX_FUNC::EKF_YAW_RESET:
