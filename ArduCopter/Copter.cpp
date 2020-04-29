@@ -477,8 +477,8 @@ void Copter::one_hz_loop()
     } else {
         gcs().send_text(MAV_SEVERITY_CRITICAL,"orig1 not set");
     }
-    if ((temp_orig2.lat != origin2.lat) || (temp_orig2.lng != origin2.lng) || (temp_orig2.alt != origin2.alt)) {
-        if (temp_orig2 != origin2) {
+    if (ahrs.get_origin(temp_orig2, 1)) {
+        if ((temp_orig2.lat != origin2.lat) || (temp_orig2.lng != origin2.lng) || (temp_orig2.alt != origin2.alt)) {
             changed2++;
             origin2 = temp_orig2;
             gcs().send_text(MAV_SEVERITY_CRITICAL,"orig2 upd:%d lat:%ld lon:%ld alt:%ld", (int)changed2, (long)origin2.lat, (long)origin2.lng, (long)origin2.alt);
