@@ -321,8 +321,9 @@ public:
       innovations. This is called when the vehicle code is about to
       trigger an EKF failsafe, and it would like to avoid that by
       using a different EKF lane
+      returns true if the lane was switched
      */
-    void checkLaneSwitch(void);
+    bool checkLaneSwitch(void);
 
     /*
       Request a reset of the EKF yaw. This is called when the vehicle code is about to
