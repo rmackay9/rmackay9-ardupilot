@@ -832,14 +832,15 @@ void NavEKF2::UpdateFilter(void)
   innovations. This is called when the vehicle code is about to
   trigger an EKF failsafe, and it would like to avoid that by
   using a different EKF lane
+  returns true if the lane was switched
 */
-void NavEKF2::checkLaneSwitch(void)
+bool NavEKF2::checkLaneSwitch(void)
 {
     AP::dal().log_event2(AP_DAL::Event::checkLaneSwitch);
     const uint32_t now = AP::dal().millis();
     if (lastLaneSwitch_ms != 0 && now - lastLaneSwitch_ms < 5000) {
         // don't switch twice in 5 seconds
-        return;
+        return false;
     }
     uint8_t newPrimaryIndex = primary;
     for (uint8_t coreIndex=0; coreIndex<num_cores; coreIndex++) {
@@ -861,7 +862,11 @@ void NavEKF2::checkLaneSwitch(void)
         primary = newPrimaryIndex;
         lastLaneSwitch_ms = now;
         GCS_SEND_TEXT(MAV_SEVERITY_CRITICAL, "NavEKF2: lane switch %u", primary);
+        return true;
     }
+
+    // lane was not switched
+    return false;
 }
 
 // Check basic filter health metrics and return a consolidated health status
