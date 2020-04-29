@@ -462,6 +462,31 @@ void Copter::three_hz_loop()
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
+    // debug -- check origin
+    static Location origin1;
+    static Location origin2;
+    static uint8_t changed1 = 0;
+    static uint8_t changed2 = 0;
+    Location temp_orig1, temp_orig2;
+    if (ahrs.get_origin(temp_orig1, 0)) {
+        if ((temp_orig1.lat != origin1.lat) || (temp_orig1.lng != origin1.lng) || (temp_orig1.alt != origin1.alt)) {
+            changed1++;
+            origin1 = temp_orig1;
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"orig1 upd:%d lat:%ld lon:%ld alt:%ld", (int)changed1, (long)origin1.lat, (long)origin1.lng, (long)origin1.alt);
+        }
+    } else {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"orig1 not set");
+    }
+    if ((temp_orig2.lat != origin2.lat) || (temp_orig2.lng != origin2.lng) || (temp_orig2.alt != origin2.alt)) {
+        if (temp_orig2 != origin2) {
+            changed2++;
+            origin2 = temp_orig2;
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"orig2 upd:%d lat:%ld lon:%ld alt:%ld", (int)changed2, (long)origin2.lat, (long)origin2.lng, (long)origin2.alt);
+        }
+    } else {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"orig2 not set");
+    }
+
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap.value);
     }
