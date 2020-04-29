@@ -1895,7 +1895,7 @@ void AP_AHRS_NavEKF::send_ekf_status_report(mavlink_channel_t chan) const
 // passes a reference to the location of the inertial navigation origin
 // in WGS-84 coordinates
 // returns a boolean true when the inertial navigation origin has been set
-bool AP_AHRS_NavEKF::get_origin(Location &ret) const
+bool AP_AHRS_NavEKF::get_origin(Location &ret, int8_t instance) const
 {
     switch (ekf_type()) {
     case EKFType::NONE:
@@ -1903,7 +1903,7 @@ bool AP_AHRS_NavEKF::get_origin(Location &ret) const
 
 #if HAL_NAVEKF2_AVAILABLE
     case EKFType::TWO:
-        if (!EKF2.getOriginLLH(-1,ret)) {
+        if (!EKF2.getOriginLLH(instance,ret)) {
             return false;
         }
         return true;
@@ -1911,7 +1911,7 @@ bool AP_AHRS_NavEKF::get_origin(Location &ret) const
 
 #if HAL_NAVEKF3_AVAILABLE
     case EKFType::THREE:
-        if (!EKF3.getOriginLLH(-1,ret)) {
+        if (!EKF3.getOriginLLH(instance,ret)) {
             return false;
         }
         return true;

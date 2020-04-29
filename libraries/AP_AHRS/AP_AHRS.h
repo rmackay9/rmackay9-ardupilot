@@ -447,7 +447,7 @@ public:
     virtual bool set_origin(const Location &loc) WARN_IF_UNUSED { return false; }
 
     // returns the inertial navigation origin in lat/lon/alt
-    virtual bool get_origin(Location &ret) const  WARN_IF_UNUSED { return false; }
+    virtual bool get_origin(Location &ret, int8_t instance = -1) const  WARN_IF_UNUSED { return false; }
 
     void Log_Write_Home_And_Origin();
 
