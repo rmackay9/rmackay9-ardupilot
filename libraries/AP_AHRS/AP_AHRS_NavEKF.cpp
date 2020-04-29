@@ -2687,15 +2687,16 @@ uint8_t AP_AHRS_NavEKF::get_primary_gyro_index(void) const
 }
 
 // see if EKF lane switching is possible to avoid EKF failsafe
-void AP_AHRS_NavEKF::check_lane_switch(void)
+// returns true if the lane was switched
+bool AP_AHRS_NavEKF::check_lane_switch(void)
 {
     switch (active_EKF_type()) {
     case EKFType::NONE:
-        break;
+        return false;
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     case EKFType::SITL:
-        break;
+        return false;
 #endif
 
 #if HAL_EXTERNAL_AHRS_ENABLED
@@ -2705,16 +2706,17 @@ void AP_AHRS_NavEKF::check_lane_switch(void)
         
 #if HAL_NAVEKF2_AVAILABLE
     case EKFType::TWO:
-        EKF2.checkLaneSwitch();
-        break;
+        return EKF2.checkLaneSwitch();
 #endif
 
 #if HAL_NAVEKF3_AVAILABLE
     case EKFType::THREE:
-        EKF3.checkLaneSwitch();
-        break;
+        return EKF3.checkLaneSwitch();
 #endif
     }
+
+    // we should never get here but just in case
+    return false;
 }
 
 // request EKF yaw reset to try and avoid the need for an EKF lane switch or failsafe
