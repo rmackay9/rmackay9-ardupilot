@@ -1480,6 +1480,9 @@ void AP_AHRS_NavEKF::writeExtNavVelData(const Vector3f &vel, uint32_t timeStamp_
 #if HAL_NAVEKF2_AVAILABLE
     EKF2.writeExtNavVelData(vel, timeStamp_ms, delay_ms);
 #endif
+#if HAL_NAVEKF3_AVAILABLE
+    EKF3.writeExtNavVelData(vel, timeStamp_ms, delay_ms);
+#endif
 }
 
 // inhibit GPS usage
