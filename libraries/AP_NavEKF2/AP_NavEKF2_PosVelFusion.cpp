@@ -47,7 +47,11 @@ void NavEKF2_core::ResetVelocity(void)
             velTimeout = false;
             lastVelPassTime_ms = imuSampleTime_ms;
         } else if (imuSampleTime_ms - extNavVelMeasTime_ms < 250) {
-            stateStruct.velocity = extNavVelNew.vel;
+            // use external nav data as the 2nd preference
+            // correct for antenna position
+            ext_nav_vel_elements extNavVelCorrected = extNavVelDelayed;
+            CorrectExtNavVelForSensorOffset(extNavVelCorrected.vel);
+            stateStruct.velocity = extNavVelCorrected.vel;
             P[4][4] = P[3][3] = sq(frontend->_gpsHorizVelNoise);
             P[5][5] = sq(frontend->_gpsVertVelNoise);
             velTimeout = false;
@@ -362,6 +366,24 @@ void NavEKF2_core::CorrectExtNavForSensorOffset(Vector3f &ext_position) const
 #endif
 }
 
+// correct external navigation earth-frame velocity using sensor body-frame offset
+void NavEKF2_core::CorrectExtNavVelForSensorOffset(Vector3f &ext_velocity) const
+{
+#if HAL_VISUALODOM_ENABLED
+    AP_VisualOdom *visual_odom = AP::visualodom();
+    if (visual_odom == nullptr) {
+        return;
+    }
+    const Vector3f &posOffsetBody = visual_odom->get_pos_offset() - accelPosOffset;
+    if (posOffsetBody.is_zero()) {
+        return;
+    }
+    // TODO use a filtered angular rate with a group delay that matches the sensor delay
+    const Vector3f angRate = imuDataDelayed.delAng * (1.0f/imuDataDelayed.delAngDT);
+    ext_velocity += get_vel_correction_for_sensor_offset(posOffsetBody, prevTnb, angRate);
+#endif
+}
+
 /********************************************************
 *                   FUSE MEASURED_DATA                  *
 ********************************************************/
@@ -447,9 +469,12 @@ void NavEKF2_core::SelectVelPosFusion()
 
     if (extNavVelToFuse && (frontend->_fusionModeGPS == 3)) {
         fuseVelData = true;
-        velPosObs[0] = extNavVelDelayed.vel.x;
-        velPosObs[1] = extNavVelDelayed.vel.y;
-        velPosObs[2] = extNavVelDelayed.vel.z;
+        // correct for external navigation sensor position
+        Vector3f vel_corrected = extNavVelDelayed.vel;
+        CorrectExtNavVelForSensorOffset(vel_corrected);
+        velPosObs[0] = vel_corrected.x;
+        velPosObs[1] = vel_corrected.y;
+        velPosObs[2] = vel_corrected.z;
     }
 
     // we have GPS data to fuse and a request to align the yaw using the GPS course
