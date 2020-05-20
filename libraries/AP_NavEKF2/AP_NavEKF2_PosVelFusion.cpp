@@ -445,7 +445,7 @@ void NavEKF2_core::SelectVelPosFusion()
         fusePosData = false;
     }
 
-    if (extNavVelToFuse) {
+    if (extNavVelToFuse && (frontend->_fusionModeGPS == 3)) {
         fuseVelData = true;
         velPosObs[0] = extNavVelDelayed.vel.x;
         velPosObs[1] = extNavVelDelayed.vel.y;
