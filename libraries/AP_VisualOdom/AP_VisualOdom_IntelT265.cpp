@@ -46,6 +46,12 @@ void AP_VisualOdom_IntelT265::handle_vision_position_estimate(uint64_t remote_ti
     const float angErr = 0; // parameter required?
     AP::ahrs().writeExtNavData(pos, att, posErr, angErr, time_ms, _frontend.get_delay_ms(), get_reset_timestamp_ms(reset_counter));
 
+    // check for valid reset counter (used by pre-arm checks)
+    _had_reset_counter = true;
+    if (reset_counter > 0) {
+        _had_nonzero_reset_counter = true;
+    }
+
     // calculate euler orientation for logging
     float roll;
     float pitch;
@@ -171,6 +177,13 @@ bool AP_VisualOdom_IntelT265::pre_arm_check(char *failure_msg, uint8_t failure_m
     Quaternion ahrs_quat;
     if (!AP::ahrs().get_quaternion(ahrs_quat)) {
         hal.util->snprintf(failure_msg, failure_msg_len, "waiting for AHRS attitude");
+        return false;
+    }
+
+    // check we have received at least one non-zero reset_counter
+    // this ensures the serial connection is using mavlink2 (required to handle position resets from the camera)
+    if (_had_reset_counter && !_had_nonzero_reset_counter) {
+        hal.util->snprintf(failure_msg, failure_msg_len, "check SERIALx_PROTOCOL = MAVLink2");
         return false;
     }
 

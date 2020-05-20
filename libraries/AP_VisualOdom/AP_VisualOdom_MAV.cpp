@@ -40,6 +40,12 @@ void AP_VisualOdom_MAV::handle_vision_position_estimate(uint64_t remote_time_us,
     const float angErr = 0; // parameter required?
     AP::ahrs().writeExtNavData(pos, attitude, posErr, angErr, time_ms, _frontend.get_delay_ms(), get_reset_timestamp_ms(reset_counter));
 
+    // check for valid reset counter (used by pre-arm checks)
+    _had_reset_counter = true;
+    if (reset_counter > 0) {
+        _had_nonzero_reset_counter = true;
+    }
+
     // calculate euler orientation for logging
     float roll;
     float pitch;

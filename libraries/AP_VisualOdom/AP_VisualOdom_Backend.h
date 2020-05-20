@@ -51,6 +51,8 @@ protected:
     // reset counter handling
     uint8_t _last_reset_counter;    // last sensor reset counter received
     uint32_t _reset_timestamp_ms;   // time reset counter was received
+    bool _had_reset_counter;        // true if any reset_counter has been received (only available in some messages)
+    bool _had_nonzero_reset_counter;// true if any reset_counter has been non-zero (used for pre-arm checks)
 };
 
 #endif
