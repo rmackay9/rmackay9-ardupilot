@@ -53,4 +53,18 @@ void AP_VisualOdom_MAV::handle_vision_position_estimate(uint64_t remote_time_us,
     _last_update_ms = AP_HAL::millis();
 }
 
+void AP_VisualOdom_MAV::handle_vision_speed_estimate(uint64_t remote_time_us, uint32_t time_ms, const Vector3f &vel, uint8_t reset_counter)
+{
+    const float scale_factor =  _frontend.get_pos_scale();
+    const Vector3f scaled_vel = vel * scale_factor;
+
+    // send velocity to EKF
+    AP::ahrs().writeExtNavVelData(scaled_vel, time_ms, _frontend.get_delay_ms());
+
+    // record time for health monitoring
+    _last_update_ms = AP_HAL::millis();
+
+    AP::logger().Write_VisualVelocity(remote_time_us, time_ms, scaled_vel, reset_counter);
+}
+
 #endif

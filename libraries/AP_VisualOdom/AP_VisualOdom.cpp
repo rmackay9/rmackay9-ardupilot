@@ -70,7 +70,7 @@ const AP_Param::GroupInfo AP_VisualOdom::var_info[] = {
 
     // @Param: _SCALE
     // @DisplayName: Visual odometry scaling factor
-    // @Description: Visual odometry scaling factor applied to position estimates from sensor
+    // @Description: Visual odometry scaling factor applied to position and/or velocity estimates from sensor
     // @User: Advanced
     AP_GROUPINFO("_SCALE", 3, AP_VisualOdom, _pos_scale, 1.0f),
 

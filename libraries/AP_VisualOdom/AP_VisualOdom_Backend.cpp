@@ -72,16 +72,6 @@ void AP_VisualOdom_Backend::handle_vision_position_delta_msg(const mavlink_messa
                                   packet.confidence);
 }
 
-void AP_VisualOdom_Backend::handle_vision_speed_estimate(uint64_t remote_time_us, uint32_t time_ms, const Vector3f &vel, uint8_t reset_counter)
-{
-    AP::ahrs().writeExtNavVelData(vel, time_ms, _frontend.get_delay_ms());
-
-    // record time for health monitoring
-    _last_update_ms = AP_HAL::millis();
-
-    AP::logger().Write_VisualVelocity(remote_time_us, time_ms, vel, reset_counter);
-}
-
 // returns the system time of the last reset if reset_counter has not changed
 // updates the reset timestamp to the current system time if the reset_counter has changed
 uint32_t AP_VisualOdom_Backend::get_reset_timestamp_ms(uint8_t reset_counter)
