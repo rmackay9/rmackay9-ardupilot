@@ -65,10 +65,8 @@ void AP_VisualOdom_IntelT265::handle_vision_position_estimate(uint64_t remote_ti
 // consume vision velocity estimate data and send to EKF, velocity in NED meters per second
 void AP_VisualOdom_IntelT265::handle_vision_speed_estimate(uint64_t remote_time_us, uint32_t time_ms, const Vector3f &vel, uint8_t reset_counter)
 {
-    const float scale_factor =  _frontend.get_pos_scale();
-    Vector3f vel_corrected = vel * scale_factor;
-
     // rotate velocity to align with vehicle
+    Vector3f vel_corrected = vel;
     rotate_velocity(vel_corrected);
 
     // send velocity to EKF
