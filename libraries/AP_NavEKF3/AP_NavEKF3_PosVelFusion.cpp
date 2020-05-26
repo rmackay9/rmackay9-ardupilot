@@ -45,7 +45,7 @@ void NavEKF3_core::ResetVelocity(void)
             // clear the timeout flags and counters
             velTimeout = false;
             lastVelPassTime_ms = imuSampleTime_ms;
-        } else if (imuSampleTime_ms - extNavVelMeasTime_ms < 250 || velResetSource == EXTNAV) {
+        } else if ((imuSampleTime_ms - extNavVelMeasTime_ms < 250 && posResetSource == DEFAULT) || velResetSource == EXTNAV) {
             // use external nav data as the 2nd preference
             // correct for antenna position
             ext_nav_vel_elements extNavVelCorrected = extNavVelDelayed;

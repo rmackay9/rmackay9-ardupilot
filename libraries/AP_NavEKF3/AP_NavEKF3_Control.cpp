@@ -361,7 +361,7 @@ void NavEKF3_core::setAidingMode()
             } else if (readyToUseExtNav()) {
                 // we are commencing aiding using external nav
                 posResetSource = EXTNAV;
-                velResetSource = EXTNAV;
+                velResetSource = DEFAULT;
                 gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u is using external nav data",(unsigned)imu_index);
                 gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u initial pos NED = %3.1f,%3.1f,%3.1f (m)",(unsigned)imu_index,(double)extNavDataDelayed.pos.x,(double)extNavDataDelayed.pos.y,(double)extNavDataDelayed.pos.z);
                 // handle height reset as special case
