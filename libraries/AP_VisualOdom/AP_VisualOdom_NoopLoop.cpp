@@ -169,9 +169,9 @@ void AP_VisualOdom_NoopLoop::parse_msgbuf()
     const Vector3f pos_m {pos_x * 0.001f, pos_y * 0.001f, pos_z * 0.001f};
 
     // x,y,z velocity in m/s*10000
-    const int32_t vel_x = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX] << 8) >> 8;
-    const int32_t vel_y = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY] << 8) >> 8;
-    const int32_t vel_z = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ] << 8) >> 8;
+    const int32_t vel_x = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX] << 8) >> 8;
+    const int32_t vel_y = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY] << 8) >> 8;
+    const int32_t vel_z = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ] << 8) >> 8;
 
     // velocity scaled to m/s
     const Vector3f vel_ms {vel_x * 0.0001f, vel_y * 0.0001f, vel_z * 0.0001f};
