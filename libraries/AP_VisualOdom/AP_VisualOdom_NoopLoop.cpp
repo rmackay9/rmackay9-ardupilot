@@ -190,18 +190,21 @@ void AP_VisualOdom_NoopLoop::parse_msgbuf()
     AP::logger().Write_VisualVelocity(remote_systime_us, now_ms, vel_ms, reset_counter);
 
     // debug
-    static uint8_t counter = 0;
+    /*static uint8_t counter = 0;
     counter++;
-    if (counter >= 5) {
+    if (counter >= 10) {
         counter = 0;
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"x:%ld y:%ld z:%ld vx:%ld vy:%ld vz:%ld",
-                    (long)pos_x,
-                    (long)pos_y,
-                    (long)pos_z,
-                    (long)vel_x,
-                    (long)vel_y,
-                    (long)vel_z);
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"t:%llu, x:%4.2f y:%4.2f z:%4.2f vx:%4.2f vy:%4.2f vz:%4.2f",
+                    //(unsigned long long)remote_systime_ms,
+                    (unsigned long long)remote_systime_us,
+                    (double)pos_m.x,
+                    (double)pos_m.y,
+                    (double)pos_m.z,
+                    (double)vel_ms.x,
+                    (double)vel_ms.y,
+                    (double)vel_ms.z);
     }
+    */
 }
 
 // returns false if we fail arming checks, in which case the buffer will be populated with a failure message
