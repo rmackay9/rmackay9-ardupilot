@@ -165,88 +165,43 @@ void AP_VisualOdom_NoopLoop::parse_msgbuf()
     const int32_t pos_y = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSY+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSY+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSY] << 8) >> 8;
     const int32_t pos_z = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSZ+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSZ+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSZ] << 8) >> 8;
 
-    // position scaled to meters and rotated using ORIENT parameter
-    Vector3f pos_m {pos_x * 0.001f, pos_y * 0.001f, pos_z * 0.001f};
-    const enum Rotation rot = _frontend.get_orientation();
-    pos_m.rotate_inverse(_frontend.get_orientation());
+    // position scaled to meters
+    const Vector3f pos_m {pos_x * 0.001f, pos_y * 0.001f, pos_z * 0.001f};
 
     // x,y,z velocity in m/s*10000
     const int32_t vel_x = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX] << 8) >> 8;
     const int32_t vel_y = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY] << 8) >> 8;
     const int32_t vel_z = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ] << 8) >> 8;
 
-    // velocity scaled to m/s and rotated using ORIENT parameter
-    Vector3f vel_ms {vel_x * 0.0001f, vel_y * 0.0001f, vel_z * 0.0001f};
-    vel_ms.rotate_inverse(_frontend.get_orientation());
+    // velocity scaled to m/s
+    const Vector3f vel_ms {vel_x * 0.0001f, vel_y * 0.0001f, vel_z * 0.0001f};
 
-    // euler angles roll, pitch, yaw in degrees * 100
-    const int16_t roll_cd = (int16_t)_msgbuf[NOOPLOOP_NODE_FRAME2_ROLL+1] << 8 | (int16_t)_msgbuf[NOOPLOOP_NODE_FRAME2_ROLL];
-    const int16_t pitch_cd = (int16_t)_msgbuf[NOOPLOOP_NODE_FRAME2_PITCH+1] << 8 | (int16_t)_msgbuf[NOOPLOOP_NODE_FRAME2_PITCH];
-    const int16_t yaw_cd = (int16_t)_msgbuf[NOOPLOOP_NODE_FRAME2_YAW+1] << 8 | (int16_t)_msgbuf[NOOPLOOP_NODE_FRAME2_YAW];
-
-    // rotate attitude based on ORIENT parameter
-    Quaternion att;
-    att.from_euler(radians(roll_cd * 0.01f), radians(pitch_cd * 0.01f), radians(yaw_cd * 0.01f));
-    att.rotate_inverse(rot);
-    float roll_rad, pitch_rad, yaw_rad;
-    att.to_euler(roll_rad, pitch_rad, yaw_rad);
-    _attitude_last = att;
-
-    // sensor does not provide attitude error nor position resets
+    // sensor does not provide accurate attitude or reset information
+    const Quaternion att_none;
     const float att_err = 0.0f;
     const uint8_t reset_counter = 0;
 
     // write data to EKF
-    AP::ahrs().writeExtNavData(pos_m, _attitude_last, pos_err, att_err, now_ms, _frontend.get_delay_ms(), reset_counter);
+    AP::ahrs().writeExtNavData(pos_m, att_none, pos_err, att_err, now_ms, _frontend.get_delay_ms(), reset_counter);
     AP::ahrs().writeExtNavVelData(vel_ms, now_ms, _frontend.get_delay_ms());
 
     // log sensor data
-    AP::logger().Write_VisualPosition(remote_systime_us, now_ms, pos_m.x, pos_m.y, pos_m.z, degrees(roll_rad), degrees(pitch_rad), wrap_360(degrees(yaw_rad)), reset_counter);
+    AP::logger().Write_VisualPosition(remote_systime_us, now_ms, pos_m.x, pos_m.y, pos_m.z, 0.0f, 0.0f, 0.0f, reset_counter);
     AP::logger().Write_VisualVelocity(remote_systime_us, now_ms, vel_ms, reset_counter);
 
     // debug
-    /*gcs().send_text(MAV_SEVERITY_CRITICAL,"x:%ld y:%ld z:%ld vx:%ld vy:%ld vz:%ld",
-                (long)pos_x,
-                (long)pos_y,
-                (long)pos_z,
-                (long)vel_x,
-                (long)vel_y,
-                (long)vel_z);*/
     static uint8_t counter = 0;
     counter++;
     if (counter >= 5) {
         counter = 0;
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"r:%4.1f p:%4.1f y:%4.1f",
-                        (double)roll_cd * 0.01,
-                        (double)pitch_cd * 0.01,
-                        (double)yaw_cd * 0.01);
-                        //(double)degrees(roll_rad),
-                        //(double)degrees(pitch_rad),
-                        //(double)degrees(yaw_rad));
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"x:%ld y:%ld z:%ld vx:%ld vy:%ld vz:%ld",
+                    (long)pos_x,
+                    (long)pos_y,
+                    (long)pos_z,
+                    (long)vel_x,
+                    (long)vel_y,
+                    (long)vel_z);
     }
-
-    /*
-    gcs().send_text(MAV_SEVERITY_CRITICAL,"px:%d py:%d pz:%d",
-            (unsigned int)precision_x,
-            (unsigned int)precision_y,
-            (unsigned int)precision_z);
-
-    gcs().send_text(MAV_SEVERITY_CRITICAL,"time:%ld 0:%ld 1:%ld 2:%ld 3:%ld",
-            (long)remote_systime,
-            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME],
-            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+1],
-            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+2],
-            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+3]);
-
-    gcs().send_text(MAV_SEVERITY_CRITICAL,"x:%ld y:%ld z:%ld r:%d p:%d y:%d time:%lu",
-            (long)pos_x,
-            (long)pos_y,
-            (long)pos_z,
-            (int)roll_deg,
-            (int)pitch_deg,
-            (int)yaw_deg,
-            (unsigned long)remote_systime);
-    */
 }
 
 // returns false if we fail arming checks, in which case the buffer will be populated with a failure message
@@ -260,37 +215,6 @@ bool AP_VisualOdom_NoopLoop::pre_arm_check(char *failure_msg, uint8_t failure_ms
     // exit immediately if not healthy
     if (!healthy()) {
         hal.util->snprintf(failure_msg, failure_msg_len, "not healthy");
-        return false;
-    }
-
-    // check for unsupported orientation
-    if (_error_orientation) {
-        hal.util->snprintf(failure_msg, failure_msg_len, "check VISO_ORIENT parameter");
-        return false;
-    }
-
-    // get ahrs attitude
-    Quaternion ahrs_quat;
-    if (!AP::ahrs().get_quaternion(ahrs_quat)) {
-        hal.util->snprintf(failure_msg, failure_msg_len, "waiting for AHRS attitude");
-        return false;
-    }
-
-    // get angular difference between AHRS and camera attitude
-    Vector3f angle_diff;
-    _attitude_last.angular_difference(ahrs_quat).to_axis_angle(angle_diff);
-
-    // check if roll and pitch is different by > 10deg (using NED so cannot determine whether roll or pitch specifically)
-    const float rp_diff_deg = degrees(safe_sqrt(sq(angle_diff.x)+sq(angle_diff.y)));
-    if (rp_diff_deg > 10.0f) {
-        hal.util->snprintf(failure_msg, failure_msg_len, "roll/pitch diff %4.1f deg (>10)",(double)rp_diff_deg);
-        return false;
-    }
-
-    // check if yaw is different by > 10deg
-    const float yaw_diff_deg = degrees(fabsf(angle_diff.z));
-    if (yaw_diff_deg > 10.0f) {
-        hal.util->snprintf(failure_msg, failure_msg_len, "yaw diff %4.1f deg (>10)",(double)yaw_diff_deg);
         return false;
     }
 

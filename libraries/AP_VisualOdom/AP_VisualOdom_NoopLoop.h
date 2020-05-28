@@ -57,8 +57,6 @@ protected:
     uint8_t _msg_len;                           // number of bytes received from the current message (may be larger than size of _msgbuf)
     uint16_t _frame_len;                        // message supplied frame length
     uint8_t _crc_expected;                      // calculated crc which is compared against actual received crc
-    bool _error_orientation;                    // true if the orientation is not supported
-    Quaternion _attitude_last;                  // last attitude received from camera (used for arming checks)
 };
 
 #endif
