@@ -77,6 +77,9 @@ public:
     // rotate this quaternion by the given rotation
     void        rotate(enum Rotation rotation);
 
+    // rotate this quaternion by the inverse of the given rotation
+    void        rotate_inverse(enum Rotation rotation);
+
     // convert a vector from earth to body frame
     void        earth_to_body(Vector3f &v) const;
 
