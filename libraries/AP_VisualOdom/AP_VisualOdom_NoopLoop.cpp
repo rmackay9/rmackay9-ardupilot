@@ -24,20 +24,38 @@
 #include <GCS_MAVLink/GCS.h>
 
 #define NOOPLOOP_HEADER             0x55    // message header
-#define NOOPLOOP_TAG_FRAME_LEN      128     // Tag_Frame0 is 128bytes (including header and crc)
-#define NOOPLOOP_TAG_FRAME_POSX     4       // start of 3 bytes holding x position in m*1000
-#define NOOPLOOP_TAG_FRAME_POSY     7       // start of 3 bytes holding y position in m*1000
-#define NOOPLOOP_TAG_FRAME_POSZ     10      // start of 3 bytes holding z position in m*1000
-#define NOOPLOOP_TAG_FRAME_VELX     13      // start of 3 bytes holding x velocity in m/s*10000
-#define NOOPLOOP_TAG_FRAME_VELY     16      // start of 3 bytes holding y velocity in m/s*10000
-#define NOOPLOOP_TAG_FRAME_VELZ     19      // start of 3 bytes holding z velocity in m/s*10000
-#define NOOPLOOP_TAG_FRAME_ROLL     82      // start of 2 bytes holding roll lean angle in degrees
-#define NOOPLOOP_TAG_FRAME_PITCH    84      // start of 2 bytes holding pitch lean angle in degrees
-#define NOOPLOOP_TAG_FRAME_YAW      86      // start of 2 bytes holding yaw lean angle in degrees
-#define NOOPLOOP_TAG_FRAME_SYSTIME  112     // start of 4 bytes holding system time in ms
-#define NOOPLOOP_TAG_FRAME_POSERR_X 117     // start of 1 byte holding precision in m*100 in x axis
-#define NOOPLOOP_TAG_FRAME_POSERR_Y 118     // start of 1 byte holding precision in m*100 in y axis
-#define NOOPLOOP_TAG_FRAME_POSERR_Z 118     // start of 1 byte holding precision in m*100 in y axis
+
+/*
+#define NOOPLOOP_TAG_FRAME0_LEN      128    // Tag_Frame0 is 128bytes (including header and crc)
+#define NOOPLOOP_TAG_FRAME0_POSX     4      // start of 3 bytes holding x position in m*1000
+#define NOOPLOOP_TAG_FRAME0_POSY     7      // start of 3 bytes holding y position in m*1000
+#define NOOPLOOP_TAG_FRAME0_POSZ     10     // start of 3 bytes holding z position in m*1000
+#define NOOPLOOP_TAG_FRAME0_VELX     13     // start of 3 bytes holding x velocity in m/s*10000
+#define NOOPLOOP_TAG_FRAME0_VELY     16     // start of 3 bytes holding y velocity in m/s*10000
+#define NOOPLOOP_TAG_FRAME0_VELZ     19     // start of 3 bytes holding z velocity in m/s*10000
+#define NOOPLOOP_TAG_FRAME0_ROLL     82     // start of 2 bytes holding roll lean angle in degrees
+#define NOOPLOOP_TAG_FRAME0_PITCH    84     // start of 2 bytes holding pitch lean angle in degrees
+#define NOOPLOOP_TAG_FRAME0_YAW      86     // start of 2 bytes holding yaw lean angle in degrees
+#define NOOPLOOP_TAG_FRAME0_SYSTIME  112    // start of 4 bytes holding system time in ms
+#define NOOPLOOP_TAG_FRAME0_POSERR_X 117    // start of 1 byte holding precision in m*100 in x axis
+#define NOOPLOOP_TAG_FRAME0_POSERR_Y 118    // start of 1 byte holding precision in m*100 in y axis
+#define NOOPLOOP_TAG_FRAME0_POSERR_Z 119    // start of 1 byte holding precision in m*100 in y axis
+*/
+
+#define NOOPLOOP_NODE_FRAME2_FRAMELEN_MAX   4096    // frames should be less than 4k bytes
+#define NOOPLOOP_NODE_FRAME2_SYSTIME        6       // start of 4 bytes holding system time in ms
+#define NOOPLOOP_NODE_FRAME2_PRECISION_X    10      // start of 1 byte holding precision in m*100 in x axis
+#define NOOPLOOP_NODE_FRAME2_PRECISION_Y    11      // start of 1 byte holding precision in m*100 in y axis
+#define NOOPLOOP_NODE_FRAME2_PRECISION_Z    12      // start of 1 byte holding precision in m*100 in y axis
+#define NOOPLOOP_NODE_FRAME2_POSX           13      // start of 3 bytes holding x position in m*1000
+#define NOOPLOOP_NODE_FRAME2_POSY           16      // start of 3 bytes holding y position in m*1000
+#define NOOPLOOP_NODE_FRAME2_POSZ           19      // start of 3 bytes holding z position in m*1000
+#define NOOPLOOP_NODE_FRAME2_VELX           22      // start of 3 bytes holding x velocity in m/s*10000
+#define NOOPLOOP_NODE_FRAME2_VELY           25      // start of 3 bytes holding y velocity in m/s*10000
+#define NOOPLOOP_NODE_FRAME2_VELZ           28      // start of 3 bytes holding z velocity in m/s*10000
+#define NOOPLOOP_NODE_FRAME2_ROLL           76      // start of 2 bytes holding roll lean angle in degrees
+#define NOOPLOOP_NODE_FRAME2_PITCH          78      // start of 2 bytes holding pitch lean angle in degrees
+#define NOOPLOOP_NODE_FRAME2_YAW            80      // start of 2 bytes holding yaw lean angle in degrees
 
 extern const AP_HAL::HAL& hal;
 
@@ -55,6 +73,15 @@ AP_VisualOdom_NoopLoop::AP_VisualOdom_NoopLoop(AP_VisualOdom &frontend) :
 // consume vision position estimate data and send to EKF. distances in meters
 void AP_VisualOdom_NoopLoop::update()
 {
+    // debug
+    /*static uint32_t bytes_total = 0;
+    static uint16_t counter = 0;
+    counter++;
+    if (counter > 400) {
+        counter = 0;
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"tb:%lu",(unsigned long)bytes_total);
+    }*/
+
     // return immediately if not serial port
     if (_uart == nullptr) {
         return;
@@ -70,6 +97,7 @@ void AP_VisualOdom_NoopLoop::update()
         if (parse_byte((uint8_t)r)) {
             parse_msgbuf();
         }
+        //bytes_total++;
     }
 }
 
@@ -84,30 +112,63 @@ bool AP_VisualOdom_NoopLoop::parse_byte(uint8_t b)
     case ParseState::HEADER:
         if (b == NOOPLOOP_HEADER) {
             _msgbuf[0] = b;
-            _msgbuf_len = 1;
+            _msg_len = 1;
             _crc_expected = b;
             _state = ParseState::FUNCTION_MARK;
         }
         break;
 
     case ParseState::FUNCTION_MARK:
-        if (b == (uint8_t)FunctionMark::TAG_FRAME0) {
-            _msgbuf[_msgbuf_len] = b;
-            _msgbuf_len++;
+        if (b == (uint8_t)FunctionMark::NODE_FRAME2) {
+            _msgbuf[_msg_len] = b;
+            _msg_len++;
             _crc_expected += b;
-            _state = ParseState::PAYLOAD;
+            _state = ParseState::LEN_L;
         } else {
             _state = ParseState::HEADER;
+            // debug
+            //gcs().send_text(MAV_SEVERITY_CRITICAL,"fm:%d", (int)b);
+        }
+        break;
+
+    case ParseState::LEN_L:
+        _msgbuf[_msg_len] = b;
+        _msg_len++;
+        _crc_expected += b;
+        _state = ParseState::LEN_H;
+        break;
+
+    case ParseState::LEN_H:
+        // extract and sanity check frame length
+        _frame_len = (uint16_t)b << 8 | _msgbuf[_msg_len-1];
+        if (_frame_len > NOOPLOOP_NODE_FRAME2_FRAMELEN_MAX) {
+            _state = ParseState::HEADER;
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"invalid len:%d", (int)_frame_len);
+        } else {
+            _msgbuf[_msg_len] = b;
+            _msg_len++;
+            _crc_expected += b;
+            _state = ParseState::PAYLOAD;
+            //gcs().send_text(MAV_SEVERITY_CRITICAL,"len:%d", (int)_frame_len);
         }
         break;
 
     case ParseState::PAYLOAD:
-        _msgbuf[_msgbuf_len] = b;
-        _msgbuf_len++;
-        _crc_expected += b;
-        if (_msgbuf_len >= NOOPLOOP_TAG_FRAME_LEN) {
+        // add byte to buffer if there is room
+        if (_msg_len < msgbuf_len_max) {
+            _msgbuf[_msg_len] = b;
+        }
+        _msg_len++;
+        if (_msg_len >= _frame_len) {
             _state = ParseState::HEADER;
-            return (_crc_expected == b);
+            // debug
+            if (b != _crc_expected) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"crc:%d expected:%d", (int)b, (int)_crc_expected);
+            }
+            // check crc
+            return (b == _crc_expected);
+        } else {
+            _crc_expected += b;
         }
         break;
     }
@@ -118,48 +179,68 @@ bool AP_VisualOdom_NoopLoop::parse_byte(uint8_t b)
 // parse msgbuf and update the EKF
 void AP_VisualOdom_NoopLoop::parse_msgbuf()
 {
+    //gcs().send_text(MAV_SEVERITY_CRITICAL,"got message!");
+
     // a message has been received
     const uint32_t now_ms = AP_HAL::millis();
     _last_update_ms = now_ms;
 
-    // x,y,z position in m*100
-    const int32_t pos_x = _msgbuf[NOOPLOOP_TAG_FRAME_POSX+2] << 16 | _msgbuf[NOOPLOOP_TAG_FRAME_POSX+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_POSX];
-    const int32_t pos_y = _msgbuf[NOOPLOOP_TAG_FRAME_POSY+2] << 16 | _msgbuf[NOOPLOOP_TAG_FRAME_POSY+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_POSY];
-    const int32_t pos_z = _msgbuf[NOOPLOOP_TAG_FRAME_POSZ+2] << 16 | _msgbuf[NOOPLOOP_TAG_FRAME_POSZ+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_POSZ];
-
-    // x,y,z velocity in m/s*10000
-    const int32_t vel_x = _msgbuf[NOOPLOOP_TAG_FRAME_VELX+2] << 16 | _msgbuf[NOOPLOOP_TAG_FRAME_VELX+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_VELX];
-    const int32_t vel_y = _msgbuf[NOOPLOOP_TAG_FRAME_VELY+2] << 16 | _msgbuf[NOOPLOOP_TAG_FRAME_VELY+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_VELY];
-    const int32_t vel_z = _msgbuf[NOOPLOOP_TAG_FRAME_VELZ+2] << 16 | _msgbuf[NOOPLOOP_TAG_FRAME_VELZ+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_VELZ];
-
-    // euler angles roll, pitch, yaw in degrees
-    const int16_t roll_deg = _msgbuf[NOOPLOOP_TAG_FRAME_ROLL+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_ROLL];
-    const int16_t pitch_deg = _msgbuf[NOOPLOOP_TAG_FRAME_PITCH+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_PITCH];
-    const int16_t yaw_deg = _msgbuf[NOOPLOOP_TAG_FRAME_YAW+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_YAW];
-
-    // system time in milliseconds
-    const uint32_t remote_systime = _msgbuf[NOOPLOOP_TAG_FRAME_SYSTIME+3] << 24 | _msgbuf[NOOPLOOP_TAG_FRAME_SYSTIME+2] << 16 | _msgbuf[NOOPLOOP_TAG_FRAME_SYSTIME+1] << 8 | _msgbuf[NOOPLOOP_TAG_FRAME_SYSTIME];
+    // remote system time in milliseconds
+    //const uint32_t remote_systime = (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+3] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+2] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+1] << 8 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME];
 
     // estimated precision for x,y,z position in m*100
-    const uint8_t precision_x = _msgbuf[NOOPLOOP_TAG_FRAME_POSERR_X];
-    const uint8_t precision_y = _msgbuf[NOOPLOOP_TAG_FRAME_POSERR_Y];
-    const uint8_t precision_z = _msgbuf[NOOPLOOP_TAG_FRAME_POSERR_Z];
+    //const uint8_t precision_x = _msgbuf[NOOPLOOP_NODE_FRAME2_PRECISION_X];
+    //const uint8_t precision_y = _msgbuf[NOOPLOOP_NODE_FRAME2_PRECISION_Y];
+    //const uint8_t precision_z = _msgbuf[NOOPLOOP_NODE_FRAME2_PRECISION_Z];
+
+    // x,y,z position in m*1000
+    _msgbuf[NOOPLOOP_NODE_FRAME2_POSX+2] = 0xFF;
+    _msgbuf[NOOPLOOP_NODE_FRAME2_POSX+1] = 0xFC;
+    _msgbuf[NOOPLOOP_NODE_FRAME2_POSX] = 0x18;
+    const int32_t pos_x = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSX+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSX+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSX] << 8) >> 8;
+    const int32_t pos_y = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSY+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSY+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSY] << 8) >> 8;
+    const int32_t pos_z = ((int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSZ+2] << 24 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSZ+1] << 16 | (int32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_POSZ] << 8) >> 8;
+
+    // x,y,z velocity in m/s*10000
+    const int32_t vel_x = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELX] << 8) >> 8;
+    const int32_t vel_y = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELY] << 8) >> 8;
+    const int32_t vel_z = ((uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+2] << 24 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ+1] << 16 | (uint32_t)_msgbuf[NOOPLOOP_NODE_FRAME2_VELZ] << 8) >> 8;
+
+    // euler angles roll, pitch, yaw in degrees
+    //const int16_t roll_deg = _msgbuf[NOOPLOOP_NODE_FRAME2_ROLL+1] << 8 | _msgbuf[NOOPLOOP_NODE_FRAME2_ROLL];
+    //const int16_t pitch_deg = _msgbuf[NOOPLOOP_NODE_FRAME2_PITCH+1] << 8 | _msgbuf[NOOPLOOP_NODE_FRAME2_PITCH];
+    //const int16_t yaw_deg = _msgbuf[NOOPLOOP_NODE_FRAME2_YAW+1] << 8 | _msgbuf[NOOPLOOP_NODE_FRAME2_YAW];
 
     // write data to EKF
     //AP::ahrs().writeExtNavData(pos, att, posErr, angErr, time_ms, _frontend.get_delay_ms(), get_reset_timestamp_ms(reset_counter));
     //AP::ahrs().writeExtNavVelData(vel_corrected, time_ms, _frontend.get_delay_ms());
 
     // debug
-    gcs().send_text(MAV_SEVERITY_CRITICAL,"x:%ld y:%ld z:%ld vx:%ld vy:%ld vz:%ld ex:%d ey:%d ez:%d",
-            (long)pos_x,
-            (long)pos_y,
-            (long)pos_z,
-            (long)vel_x,
-            (long)vel_y,
-            (long)vel_z,
-            (int)precision_x,
-            (int)precision_y,
-            (int)precision_z);
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"x:%ld y:%ld z:%ld vx:%ld vy:%ld vz:%ld",
+                (long)pos_x,
+                (long)pos_y,
+                (long)pos_z,
+                (long)vel_x,
+                (long)vel_y,
+                (long)vel_z);
+    /*gcs().send_text(MAV_SEVERITY_CRITICAL,"r:%4.1f p:%4.1f y:%4.1f",
+                (double)(roll_deg * 0.01f),
+                (double)(pitch_deg * 0.01f),
+                (double)(yaw_deg * 0.01f));
+    */
+    /*
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"px:%d py:%d pz:%d",
+            (unsigned int)precision_x,
+            (unsigned int)precision_y,
+            (unsigned int)precision_z);
+
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"time:%ld 0:%ld 1:%ld 2:%ld 3:%ld",
+            (long)remote_systime,
+            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME],
+            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+1],
+            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+2],
+            (unsigned long)_msgbuf[NOOPLOOP_NODE_FRAME2_SYSTIME+3]);
+
     gcs().send_text(MAV_SEVERITY_CRITICAL,"x:%ld y:%ld z:%ld r:%d p:%d y:%d time:%lu",
             (long)pos_x,
             (long)pos_y,
@@ -168,6 +249,7 @@ void AP_VisualOdom_NoopLoop::parse_msgbuf()
             (int)pitch_deg,
             (int)yaw_deg,
             (unsigned long)remote_systime);
+    */
 }
 
 /*
