@@ -478,6 +478,16 @@ void Copter::three_hz_loop()
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
+    // debug
+    if (!motors->armed()) {
+        char fail_msg[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1];
+        if (!esc_telem.post_arm_check(fail_msg, ARRAY_SIZE(fail_msg))) {
+            char taggedfmt[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1];
+            hal.util->snprintf(taggedfmt, sizeof(taggedfmt), "PostArm: %s", fail_msg);
+            gcs().send_text(MAV_SEVERITY_CRITICAL, taggedfmt);
+        }
+    }
+
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap.value);
     }
