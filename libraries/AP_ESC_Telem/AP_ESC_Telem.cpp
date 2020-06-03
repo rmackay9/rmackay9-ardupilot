@@ -54,6 +54,24 @@ bool AP_ESC_Telem::get_usage_seconds(uint8_t esc_id, uint32_t& usage_sec) const
     return false;
 }
 
+// returns false if post-arm checks fail, in which case the buffer will be populated with a failure message
+// normally checks if all motors are spinning
+bool AP_ESC_Telem::post_arm_check(char *failure_msg, uint8_t failure_msg_len) const
+{
+#if HAL_WITH_UAVCAN
+    const uint8_t num_drivers = AP::can().get_num_drivers();
+    for (uint8_t i = 0; i < num_drivers; i++) {
+        if (AP::can().get_protocol_type(i) == AP_BoardConfig_CAN::Protocol_Type_ToshibaCAN) {
+            AP_ToshibaCAN *tcan = AP_ToshibaCAN::get_tcan(i);
+            if (tcan != nullptr) {
+                return tcan->post_arm_check(failure_msg, failure_msg_len);
+            }
+        }
+    }
+#endif
+    return true;
+}
+
 AP_ESC_Telem *AP_ESC_Telem::_singleton = nullptr;
 
 /*
