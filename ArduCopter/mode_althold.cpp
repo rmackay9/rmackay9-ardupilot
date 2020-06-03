@@ -44,6 +44,13 @@ void ModeAltHold::run()
     // Alt Hold State Machine Determination
     AltHoldModeState althold_state = get_alt_hold_state(target_climb_rate);
 
+    // debug
+    static AltHoldModeState prev_althold_state = AltHoldModeState::AltHold_MotorStopped;
+    if (althold_state != prev_althold_state) {
+        prev_althold_state = althold_state;
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"state:%u",(unsigned)althold_state);
+    }
+
     // Alt Hold State Machine
     switch (althold_state) {
 
