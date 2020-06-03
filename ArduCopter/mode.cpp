@@ -431,25 +431,6 @@ void Mode::get_pilot_desired_lean_angles(float &roll_out, float &pitch_out, floa
     // roll_out and pitch_out are returned
 }
 
-bool Mode::_TakeOff::triggered(const float target_climb_rate) const
-{
-    if (!copter.ap.land_complete) {
-        // can't take off if we're already flying
-        return false;
-    }
-    if (target_climb_rate <= 0.0f) {
-        // can't takeoff unless we want to go up...
-        return false;
-    }
-
-    if (copter.motors->get_spool_state() != AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
-        // hold aircraft on the ground until rotor speed runup has finished
-        return false;
-    }
-
-    return true;
-}
-
 bool Mode::is_disarmed_or_landed() const
 {
     if (!motors->armed() || !copter.ap.auto_armed || copter.ap.land_complete) {
