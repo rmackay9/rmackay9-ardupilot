@@ -26,6 +26,9 @@ public:
     bool disarm(AP_Arming::Method method) override;
     bool arm(AP_Arming::Method method, bool do_arming_checks=true) override;
 
+    // run post_arm_check, returns false on failure and displays reason to use if display_failure is true
+    bool post_arm_check(bool display_failure);
+
 protected:
 
     bool pre_arm_checks(bool display_failure) override;

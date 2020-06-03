@@ -3,6 +3,7 @@
 #if HAL_WITH_UAVCAN
  #include <AP_ToshibaCAN/AP_ToshibaCAN.h>
 #endif
+#include <AP_ESC_Telem/AP_ESC_Telem.h>
 
 // performs pre-arm checks. expects to be called at 1hz.
 void AP_Arming_Copter::update(void)
@@ -878,5 +879,33 @@ bool AP_Arming_Copter::disarm(const AP_Arming::Method method)
 
     copter.ap.in_arming_delay = false;
 
+    return true;
+}
+
+// run post_arm_check, returns false on failure and displays reason to use if display_failure is true
+bool AP_Arming_Copter::post_arm_check(bool display_failure)
+{
+    // checks pass if no esc telemetry available
+    AP_ESC_Telem* esc_telem_ptr = AP_ESC_Telem::get_singleton();
+    if (esc_telem_ptr == nullptr) {
+        return true;
+    }
+
+    // check ESCs are spinning
+    char fail_msg[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1];
+    if (!esc_telem_ptr->post_arm_check(fail_msg, ARRAY_SIZE(fail_msg))) {
+        if (display_failure) {
+            // print failure reason at 1hz
+            static uint32_t last_print_ms = 0;
+            uint32_t now_ms = AP_HAL::millis();
+            if (now_ms - last_print_ms > 1000) {
+                last_print_ms = now_ms;
+                char taggedfmt[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1];
+                hal.util->snprintf(taggedfmt, sizeof(taggedfmt), "PostArm: %s", fail_msg);
+                gcs().send_text(MAV_SEVERITY_CRITICAL, taggedfmt);
+            }
+        }
+        return false;
+    }
     return true;
 }
