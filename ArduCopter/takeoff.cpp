@@ -157,6 +157,11 @@ bool Mode::_TakeOff::triggered(const float target_climb_rate) const
         return false;
     }
 
+    // check ESCs are spinning
+    if (!copter.arming.post_arm_check(true)) {
+        return false;
+    }
+
     return true;
 }
 
