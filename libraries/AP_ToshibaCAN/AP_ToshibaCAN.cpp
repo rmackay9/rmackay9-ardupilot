@@ -563,6 +563,35 @@ uint32_t AP_ToshibaCAN::get_usage_seconds(uint8_t esc_id) const
     return _telemetry[esc_id].usage_sec;
 }
 
+// returns false if post-arm checks fail, in which case the buffer will be populated with a failure message
+// normally checks if all motors are spinning
+bool AP_ToshibaCAN::post_arm_check(char *failure_msg, uint8_t failure_msg_len) const
+{
+    // return true if no ESCs have been found
+    // we assume this is normal because issues should have been caught in pre-arm checks
+    if (_esc_present_bitmask == 0) {
+        return true;
+    }
+
+    // check each ESCs is spinning
+    bool spinning = true;
+    uint8_t failed_esc = 0;
+    for (uint8_t i=0; i<TOSHIBACAN_MAX_NUM_ESCS; i++) {
+        if (spinning && BIT_IS_SET(_esc_present_bitmask, i) && (_telemetry[i].rpm == 0)) {
+            spinning = false;
+            failed_esc = i;
+        }
+    }
+
+    // fill in failure message
+    if (!spinning) {
+        hal.util->snprintf(failure_msg, failure_msg_len, "ESC%u not healthy", (unsigned)failed_esc+1);
+        return false;
+    }
+
+    return true;
+}
+
 // helper function to create motor_request_data_cmd_t
 AP_ToshibaCAN::motor_request_data_cmd_t AP_ToshibaCAN::get_motor_request_data_cmd(uint8_t request_id) const
 {

@@ -47,6 +47,10 @@ public:
     // return total usage time in seconds
     uint32_t get_usage_seconds(uint8_t esc_id) const;
 
+    // returns false if post-arm checks fail, in which case the buffer will be populated with a failure message
+    // normally checks if all motors are spinning
+    bool post_arm_check(char *failure_msg, uint8_t failure_msg_len) const;
+
 private:
 
     // loop to send output to ESCs in background thread
