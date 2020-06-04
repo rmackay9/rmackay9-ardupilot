@@ -570,6 +570,7 @@ bool AP_ToshibaCAN::post_arm_check(char *failure_msg, uint8_t failure_msg_len) c
     // return true if no ESCs have been found
     // we assume this is normal because issues should have been caught in pre-arm checks
     if (_esc_present_bitmask == 0) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"no escs");
         return true;
     }
 
@@ -589,6 +590,7 @@ bool AP_ToshibaCAN::post_arm_check(char *failure_msg, uint8_t failure_msg_len) c
         return false;
     }
 
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"at end");
     return true;
 }
 
