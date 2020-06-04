@@ -888,6 +888,7 @@ bool AP_Arming_Copter::post_arm_check(bool display_failure)
     // checks pass if no esc telemetry available
     AP_ESC_Telem* esc_telem_ptr = AP_ESC_Telem::get_singleton();
     if (esc_telem_ptr == nullptr) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"none!");
         return true;
     }
 
@@ -905,7 +906,10 @@ bool AP_Arming_Copter::post_arm_check(bool display_failure)
                 gcs().send_text(MAV_SEVERITY_CRITICAL, taggedfmt);
             }
         }
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"fail1");
         return false;
     }
+
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"pass2");
     return true;
 }
