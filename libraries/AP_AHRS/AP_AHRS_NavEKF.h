@@ -299,6 +299,9 @@ public:
     // request EKF yaw reset to try and avoid the need for an EKF lane switch or failsafe
     void request_yaw_reset(void) override;
 
+    // set position source to either 0=primary or 1=secondary
+    void set_position_source(uint8_t source_idx) override;
+
     void Log_Write();
 
     // check whether external navigation is providing yaw.  Allows compass pre-arm checks to be bypassed

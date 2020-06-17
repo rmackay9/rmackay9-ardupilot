@@ -2339,6 +2339,15 @@ void AP_AHRS_NavEKF::request_yaw_reset(void)
     }
 }
 
+// set position source to either 0=primary or 1=secondary
+void AP_AHRS_NavEKF::set_position_source(uint8_t source_idx)
+{
+#if HAL_NAVEKF3_AVAILABLE
+    // set position source to either 0=primary or 1=secondary
+    EKF3.setPositionSource(source_idx);
+#endif
+}
+
 void AP_AHRS_NavEKF::Log_Write()
 {
 #if HAL_NAVEKF2_AVAILABLE
