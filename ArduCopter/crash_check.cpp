@@ -81,8 +81,8 @@ void Copter::thrust_loss_check()
         return;
     }
 
-    // return immediately if disarmed
-    if (!motors->armed() || ap.land_complete) {
+    // return immediately if disarmed, landed or motors cannot spin because of interlock
+    if (!motors->armed() || ap.land_complete || !motors->get_interlock()) {
         thrust_loss_counter = 0;
         return;
     }
