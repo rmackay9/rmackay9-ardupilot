@@ -324,6 +324,12 @@ void AP_ToshibaCAN::loop()
                         }
                         _telemetry[esc_id].last_update_ms = now_ms;
                         _esc_present_bitmask_recent |= ((uint32_t)1 << esc_id);
+                        // debug
+                        static uint32_t last_send_ms = 0;
+                        if (now_ms - last_send_ms > 1000) {
+                            last_send_ms = now_ms;
+                            gcs().send_text(MAV_SEVERITY_CRITICAL,"esc%d state:%d",(int)esc_id,(int)be16toh(reply_data.state));
+                        }
                     }
                 }
 
