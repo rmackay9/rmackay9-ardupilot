@@ -310,7 +310,7 @@ void AP_ToshibaCAN::loop()
                     const uint8_t esc_id = recv_frame.id - MOTOR_DATA1;
                     if (esc_id < TOSHIBACAN_MAX_NUM_ESCS) {
                         WITH_SEMAPHORE(_telem_sem);
-                        _telemetry[esc_id].rpm = be16toh(reply_data.rpm);
+                        _telemetry[esc_id].rpm = MAX(0, (int16_t)be16toh(reply_data.rpm));
                         _telemetry[esc_id].current_ca = MAX((int16_t)be16toh(reply_data.current_ma), 0) * (4.0f * 0.1f);    // milli-amps to centi-amps
                         _telemetry[esc_id].voltage_cv = be16toh(reply_data.voltage_mv) * 0.1f;  // millivolts to centi-volts
                         _telemetry[esc_id].count++;
