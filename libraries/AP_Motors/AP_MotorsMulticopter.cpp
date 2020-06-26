@@ -540,7 +540,7 @@ void AP_MotorsMulticopter::update_throttle_hover(float dt)
 void AP_MotorsMulticopter::output_logic()
 {
     if (_flags.armed) {
-        if (_disarm_disable_pwm && (_disarm_safe_timer < _safe_time)) {
+        if (_disarm_safe_timer < _safe_time) {
             _disarm_safe_timer += 1.0f/_loop_rate;
         } else {
             _disarm_safe_timer = _safe_time;
@@ -572,7 +572,7 @@ void AP_MotorsMulticopter::output_logic()
         limit.throttle_lower = true;
         limit.throttle_upper = true;
 
-        // make sure the motors are spooling in the correct direction
+        // allow progressing to GROUND_IDLE after _safe_time has elapsed
         if (_spool_desired != DesiredSpoolState::SHUT_DOWN && _disarm_safe_timer >= _safe_time.get()) {
             _spool_state = SpoolState::GROUND_IDLE;
             break;
