@@ -330,11 +330,8 @@ void Copter::set_mode_SmartRTL_or_RTL(ModeReason reason)
     }
 }
 
-bool Copter::should_disarm_on_failsafe() {
-    if (ap.in_arming_delay) {
-        return true;
-    }
-
+bool Copter::should_disarm_on_failsafe()
+{
     switch (control_mode) {
         case Mode::Number::STABILIZE:
         case Mode::Number::ACRO:

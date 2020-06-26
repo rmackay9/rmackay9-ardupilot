@@ -48,10 +48,6 @@
 
 #define MAGNETOMETER ENABLED
 
-#ifndef ARMING_DELAY_SEC
-    # define ARMING_DELAY_SEC 2.0f
-#endif
-
 //////////////////////////////////////////////////////////////////////////////
 // FRAME_CONFIG
 //

@@ -147,11 +147,6 @@ void Copter::motors_output()
     }
 #endif
 
-    // Update arming delay state
-    if (ap.in_arming_delay && (!motors->armed() || millis()-arm_time_ms > ARMING_DELAY_SEC*1.0e3f || control_mode == Mode::Number::THROW)) {
-        ap.in_arming_delay = false;
-    }
-
     // output any servo channels
     SRV_Channels::calc_pwm();
 
@@ -165,7 +160,7 @@ void Copter::motors_output()
     if (ap.motor_test) {
         motor_test_output();
     } else {
-        bool interlock = motors->armed() && !ap.in_arming_delay && (!ap.using_interlock || ap.motor_interlock_switch) && !SRV_Channels::get_emergency_stop();
+        bool interlock = motors->armed() && (!ap.using_interlock || ap.motor_interlock_switch) && !SRV_Channels::get_emergency_stop();
         if (!motors->get_interlock() && interlock) {
             motors->set_interlock(true);
             AP::logger().Write_Event(LogEvent::MOTORS_INTERLOCK_ENABLED);

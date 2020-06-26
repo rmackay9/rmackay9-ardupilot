@@ -810,9 +810,6 @@ bool AP_Arming_Copter::arm(const AP_Arming::Method method, const bool do_arming_
     // Log time stamp of arming event
     copter.arm_time_ms = millis();
 
-    // Start the arming delay
-    copter.ap.in_arming_delay = true;
-
     // assumed armed without a arming, switch. Overridden in switches.cpp
     copter.ap.armed_with_switch = false;
 
@@ -875,8 +872,6 @@ bool AP_Arming_Copter::disarm(const AP_Arming::Method method)
     // disable gps velocity based centrefugal force compensation
     ahrs.set_correct_centrifugal(false);
     hal.util->set_soft_armed(false);
-
-    copter.ap.in_arming_delay = false;
 
     return true;
 }
