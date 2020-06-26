@@ -906,10 +906,8 @@ bool AP_Arming_Copter::post_arm_check(bool display_failure)
                 gcs().send_text(MAV_SEVERITY_CRITICAL, taggedfmt);
             }
         }
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"fail1");
         return false;
     }
 
-    gcs().send_text(MAV_SEVERITY_CRITICAL,"pass2");
     return true;
 }
