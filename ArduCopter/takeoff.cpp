@@ -172,18 +172,24 @@ void Mode::auto_takeoff_run()
     // set motors to full range
     motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
+    // aircraft stays in landed state until rotor speed runup has finished
+    if (motors->get_spool_state() != AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
+        wp_nav->shift_wp_origin_to_current_pos();
+        attitude_control->reset_rate_controller_I_terms();
+        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(0.0f, 0.0f, 0.0f);
+        pos_control->relax_alt_hold_controllers(0.0f);   // forces throttle output to go to zero
+        pos_control->update_z_controller();
+        return;
+    }
+
+    // rotor speed runup has finished, aircraft can takeoff
+    set_land_complete(false);
+
     // process pilot's yaw input
     float target_yaw_rate = 0;
     if (!copter.failsafe.radio) {
         // get pilot's desired yaw rate
         target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
-    }
-
-    // aircraft stays in landed state until rotor speed runup has finished
-    if (motors->get_spool_state() == AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
-        set_land_complete(false);
-    } else {
-        wp_nav->shift_wp_origin_to_current_pos();
     }
 
     // check if we are not navigating because of low altitude
