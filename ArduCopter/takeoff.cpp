@@ -141,6 +141,25 @@ void Mode::_TakeOff::get_climb_rates(float& pilot_climb_rate,
     }
 }
 
+bool Mode::_TakeOff::triggered(const float target_climb_rate) const
+{
+    if (!copter.ap.land_complete) {
+        // can't take off if we're already flying
+        return false;
+    }
+    if (target_climb_rate <= 0.0f) {
+        // can't takeoff unless we want to go up...
+        return false;
+    }
+
+    if (copter.motors->get_spool_state() != AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
+        // hold aircraft on the ground until rotor speed runup has finished
+        return false;
+    }
+
+    return true;
+}
+
 void Mode::auto_takeoff_run()
 {
     // if not armed set throttle to zero and exit immediately
