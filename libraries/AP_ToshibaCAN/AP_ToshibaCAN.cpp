@@ -328,7 +328,7 @@ void AP_ToshibaCAN::loop()
                         static uint32_t last_send_ms = 0;
                         if (now_ms - last_send_ms > 1000) {
                             last_send_ms = now_ms;
-                            gcs().send_text(MAV_SEVERITY_CRITICAL,"esc%d state:%d",(int)esc_id,(int)be16toh(reply_data.state));
+                            gcs().send_text(MAV_SEVERITY_CRITICAL,"esc%d step:%d state:%d",(int)esc_id,(int)reply_data.stepout, (int)reply_data.state);
                         }
                     }
                 }
@@ -596,7 +596,6 @@ bool AP_ToshibaCAN::post_arm_check(char *failure_msg, uint8_t failure_msg_len) c
         return false;
     }
 
-    gcs().send_text(MAV_SEVERITY_CRITICAL,"at end");
     return true;
 }
 
