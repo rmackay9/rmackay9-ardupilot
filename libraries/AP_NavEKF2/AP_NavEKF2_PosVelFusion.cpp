@@ -327,16 +327,13 @@ void NavEKF2_core::CorrectGPSForAntennaOffset(gps_elements &gps_data) const
         return;
     }
 
-    // Don't fuse velocity data if GPS doesn't support it
-    if (fuseVelData) {
-        // TODO use a filtered angular rate with a group delay that matches the GPS delay
-        Vector3f angRate = imuDataDelayed.delAng * (1.0f/imuDataDelayed.delAngDT);
-        Vector3f velOffsetBody = angRate % posOffsetBody;
-        Vector3f velOffsetEarth = prevTnb.mul_transpose(velOffsetBody);
-        gps_data.vel.x -= velOffsetEarth.x;
-        gps_data.vel.y -= velOffsetEarth.y;
-        gps_data.vel.z -= velOffsetEarth.z;
-    }
+    // TODO use a filtered angular rate with a group delay that matches the GPS delay
+    Vector3f angRate = imuDataDelayed.delAng * (1.0f/imuDataDelayed.delAngDT);
+    Vector3f velOffsetBody = angRate % posOffsetBody;
+    Vector3f velOffsetEarth = prevTnb.mul_transpose(velOffsetBody);
+    gps_data.vel.x -= velOffsetEarth.x;
+    gps_data.vel.y -= velOffsetEarth.y;
+    gps_data.vel.z -= velOffsetEarth.z;
 
     Vector3f posOffsetEarth = prevTnb.mul_transpose(posOffsetBody);
     gps_data.pos.x -= posOffsetEarth.x;
