@@ -23,6 +23,7 @@
 #include <AP_HAL/utility/sparse-endian.h>
 #include <AP_Math/crc.h>
 #include <ctype.h>
+#include <GCS_MAVLink/GCS.h>
 #include <AP_Logger/AP_Logger.h>
 
 extern const AP_HAL::HAL& hal;
@@ -326,6 +327,24 @@ bool AP_RangeFinder_LightWareSerial::advanced_process_message(int16_t &distance_
         _advanced_distance_output.last_strength_pct = buff_to_int16(_advanced_msg.payload[10], _advanced_msg.payload[11]);
         _advanced_distance_output.noise = buff_to_int16(_advanced_msg.payload[12], _advanced_msg.payload[13]);
         _advanced_distance_output.temp_cd = buff_to_int16(_advanced_msg.payload[14], _advanced_msg.payload[15]);
+
+#ifndef HAL_BUILD_AP_PERIPH
+        // debug
+        static uint32_t last_print_ms = 0;
+        uint32_t now_ms = AP_HAL::millis();
+        if (now_ms - last_print_ms > 1000) {
+            last_print_ms = now_ms;
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"first raw:%d filt:%d str:%d",
+                    (int)_advanced_distance_output.first_dist_raw_cm,
+                    (int)_advanced_distance_output.first_dist_filt_cm,
+                    (int)_advanced_distance_output.first_strength_pct);
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"last raw:%d filt:%d str:%d",
+                    (int)_advanced_distance_output.last_dist_raw_cm,
+                    (int)_advanced_distance_output.last_dist_filt_cm,
+                    (int)_advanced_distance_output.last_strength_pct);
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"noise:%d, temp:%d", (int)_advanced_distance_output.noise, (int)_advanced_distance_output.temp_cd);
+        }
+#endif
 
         // return first distance (filtered)
         distance_cm = _advanced_distance_output.first_dist_filt_cm;
