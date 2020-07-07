@@ -840,6 +840,23 @@ struct PACKED log_RFND {
 };
 
 /*
+  rangefinder extra distances
+ */
+struct PACKED log_RFNE {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t instance;
+    int16_t first_dist_raw_cm;
+    int16_t first_dist_filt_cm;
+    int16_t first_strength_pct;
+    int16_t last_dist_raw_cm;
+    int16_t last_dist_filt_cm;
+    int16_t last_strength_pct;
+    int16_t noise;
+    int16_t temp_cd;
+};
+
+/*
   terrain log structure
  */
 struct PACKED log_TERRAIN {
@@ -2071,6 +2088,19 @@ struct PACKED log_Arm_Disarm {
 // @Field: Stat: Sensor state
 // @Field: Orient: Sensor orientation
 
+// @LoggerMessage: RFNE
+// @Description: Rangefinder Extra Information
+// @Field: TimeUS: Time since system startup
+// @Field: Instance: rangefinder instance
+// @Field: FDRaw: First Distance (Raw)
+// @Field: FDFlt: First Distance (Filtered)
+// @Field: FStr: First Strength
+// @Field: LDRaw: Last Distance (Raw)
+// @Field: LDFlt: Last Distance (Filtered)
+// @Field: LStr: Last Strength
+// @Field: Noise: Noise
+// @Field: Temp: Temperature
+
 // @LoggerMessage: RPM
 // @Description: Data from RPM sensors
 // @Field: TimeUS: Time since system startup
@@ -2422,6 +2452,8 @@ struct PACKED log_Arm_Disarm {
       "MODE", "QMBB",         "TimeUS,Mode,ModeNum,Rsn", "s---", "F---" }, \
     { LOG_RFND_MSG, sizeof(log_RFND), \
       "RFND", "QBCBB", "TimeUS,Instance,Dist,Stat,Orient", "s#m--", "F-B--" }, \
+    { LOG_RFNE_MSG, sizeof(log_RFNE), \
+      "RFNE", "QBhhhhhhhh", "TimeUS,Instance,FDRaw,FDFlt,FStr,LDRaw,LDFlt,LStr,Noise,Temp", "s#mm%mm%-O", "F-BB-BB--B" }, \
     { LOG_MAV_STATS, sizeof(log_MAV_Stats), \
       "DMS", "QIIIIBBBBBBBBB",         "TimeUS,N,Dp,RT,RS,Fa,Fmn,Fmx,Pa,Pmn,Pmx,Sa,Smn,Smx", "s-------------", "F-------------" }, \
     { LOG_BEACON_MSG, sizeof(log_Beacon), \
@@ -2689,6 +2721,7 @@ enum LogMessages : uint8_t {
     LOG_GPA2_MSG,
     LOG_GPAB_MSG,
     LOG_RFND_MSG,
+    LOG_RFNE_MSG,
     LOG_BAR3_MSG,
     LOG_MAV_STATS,
     LOG_FORMAT_UNITS_MSG,
