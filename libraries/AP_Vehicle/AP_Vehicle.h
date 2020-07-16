@@ -107,6 +107,9 @@ public:
         AP_Int16 angle_max;
     };
 
+    // returns true if the vehicle has crashed
+    virtual bool is_crashed() const { return false; }
+
 protected:
 
     // board specific config
