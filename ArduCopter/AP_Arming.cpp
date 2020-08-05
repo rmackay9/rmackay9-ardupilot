@@ -779,6 +779,10 @@ bool AP_Arming_Copter::arm(const AP_Arming::Method method, const bool do_arming_
     // assumed armed without a arming, switch. Overridden in switches.cpp
     copter.ap.armed_with_switch = false;
 
+    // uncrash the vehicle on the assumption that if we pass the
+    // arming checks things must generally be OK:
+    _is_crashed = false;
+
     // return success
     return true;
 }

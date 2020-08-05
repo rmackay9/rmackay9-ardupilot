@@ -706,6 +706,7 @@ private:
 
     // crash_check.cpp
     void crash_check();
+    bool is_crashed() const override { return _is_crashed; }
     void thrust_loss_check();
     void parachute_check();
     void parachute_release();
@@ -1000,6 +1001,8 @@ private:
     // mode.cpp
     Mode *mode_from_mode_num(const Mode::Number mode);
     void exit_mode(Mode *&old_flightmode, Mode *&new_flightmode);
+
+    bool _is_crashed;
 
 public:
     void mavlink_delay_cb();    // GCS_Mavlink.cpp

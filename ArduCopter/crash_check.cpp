@@ -68,6 +68,7 @@ void Copter::crash_check()
         gcs().send_text(MAV_SEVERITY_EMERGENCY,"Crash: Disarming");
         // disarm motors
         copter.arming.disarm();
+        _is_crashed = true;
     }
 }
 
