@@ -62,6 +62,7 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
     'AP_ICEngine',
     'AP_Frsky_Telem',
     'AP_FlashStorage',
+    'AP_Generator',
     'AP_Relay',
     'AP_ServoRelayEvents',
     'AP_Volz_Protocol',
