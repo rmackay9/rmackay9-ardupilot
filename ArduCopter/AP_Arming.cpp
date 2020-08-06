@@ -798,7 +798,7 @@ bool AP_Arming_Copter::arm(const AP_Arming::Method method, const bool do_arming_
 
     // uncrash the vehicle on the assumption that if we pass the
     // arming checks things must generally be OK:
-    _is_crashed = false;
+    copter._is_crashed = false;
 
     // return success
     return true;
