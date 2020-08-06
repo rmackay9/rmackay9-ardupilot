@@ -26,6 +26,7 @@
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
 #include <AP_Button/AP_Button.h>
 #include <AP_GPS/AP_GPS.h>
+#include <AP_Generator/AP_Generator_RichenPower.h>
 #include <AP_Logger/AP_Logger.h>
 #include <AP_Notify/AP_Notify.h>                    // Notify library
 #include <AP_Param/AP_Param.h>
@@ -146,6 +147,10 @@ protected:
 
     // called from each vehicle
     void vehicle_setup(void);
+
+#if GENERATOR_ENABLED
+    AP_Generator_RichenPower generator;
+#endif
 
 private:
 
