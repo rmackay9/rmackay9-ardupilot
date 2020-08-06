@@ -235,12 +235,13 @@ def start_SITL(binary,
                home=None,
                model=None,
                speedup=1,
-               defaults_file=None,
+               defaults_filepath=None,
                unhide_parameters=False,
                gdbserver=False,
                breakpoints=[],
                disable_breakpoints=False,
                vicon=False,
+               customisations=[],
                lldb=False):
     """Launch a SITL instance."""
     cmd = []
@@ -314,12 +315,13 @@ def start_SITL(binary,
         cmd.extend(['--model', model])
     if speedup != 1:
         cmd.extend(['--speedup', str(speedup)])
-    if defaults_file is not None:
-        cmd.extend(['--defaults', defaults_file])
+    if defaults_filepath is not None:
+        cmd.extend(['--defaults', defaults_filepath])
     if unhide_parameters:
         cmd.extend(['--unhide-groups'])
     if vicon:
         cmd.extend(["--uartF=sim:vicon:"])
+    cmd.extend(customisations)
 
     if gdb and not os.getenv('DISPLAY'):
         subprocess.Popen(cmd)

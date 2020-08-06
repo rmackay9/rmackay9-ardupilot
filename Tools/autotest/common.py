@@ -446,6 +446,29 @@ class AutoTest(ABC):
         self.set_streamrate(self.sitl_streamrate())
         self.progress("Reboot complete")
 
+    def customise_SITL_commandline(self, customisations, model=None, defaults_filepath=None, wipe=False):
+        '''customisations could be "--uartF=sim:nmea" '''
+        self.contexts[-1].sitl_commandline_customised = True
+        self.stop_SITL()
+        self.start_SITL(model=model,
+                        defaults_filepath=defaults_filepath,
+                        customisations=customisations,
+                        wipe=wipe)
+        self.wait_heartbeat(drain_mav=True)
+        # MAVProxy only checks the streamrates once every 15 seconds.
+        # Encourage it:
+        self.set_streamrate(self.sitl_streamrate()+1)
+        self.set_streamrate(self.sitl_streamrate())
+        # we also need to wait for MAVProxy to requests streams again
+        # - in particular, RC_CHANNELS.
+        m = self.mav.recv_match(type='RC_CHANNELS', blocking=True, timeout=15)
+        if m is None:
+            raise NotAchievedException("No RC_CHANNELS message after restarting SITL")
+
+    def stop_SITL(self):
+        self.progress("Stopping SITL")
+        util.pexpect_close(self.sitl)
+
     def close(self):
         """Tidy up after running all tests."""
         if self.use_map:
@@ -2281,6 +2304,29 @@ class AutoTest(ABC):
         self.progress("Waiting for Parameters")
         self.mavproxy.expect('Received [0-9]+ parameters')
 
+    def start_SITL(self, **sitl_args):
+        start_sitl_args = {
+            "breakpoints": self.breakpoints,
+            "disable_breakpoints": self.disable_breakpoints,
+            "gdb": self.gdb,
+            "gdbserver": self.gdbserver,
+            "lldb": self.lldb,
+            "home": self.sitl_home(),
+            "speedup": self.speedup,
+            "valgrind": self.valgrind,
+            "vicon": self.uses_vicon(),
+            "wipe": True,
+        }
+        start_sitl_args.update(**sitl_args)
+        if ("defaults_filepath" not in start_sitl_args or
+            start_sitl_args["defaults_filepath"] is None):
+            start_sitl_args["defaults_filepath"] = self.defaults_filepath()
+
+        if "model" not in start_sitl_args or start_sitl_args["model"] is None:
+            start_sitl_args["model"] = self.frame
+        self.progress("Starting SITL")
+        self.sitl = util.start_SITL(self.binary, **start_sitl_args)
+
     def init(self):
         """Initilialize autotest feature."""
         self.check_test_syntax(test_file=self.test_filepath())
@@ -2294,7 +2340,7 @@ class AutoTest(ABC):
         self.sitl = util.start_SITL(self.binary,
                                     breakpoints=self.breakpoints,
                                     disable_breakpoints=self.disable_breakpoints,
-                                    defaults_file=self.defaults_filepath(),
+                                    defaults_filepath=self.defaults_filepath(),
                                     gdb=self.gdb,
                                     gdbserver=self.gdbserver,
                                     lldb=self.lldb,
@@ -2946,6 +2992,8 @@ class AutoTest(ABC):
 
     def set_message_rate_hz(self, id, rate_hz):
         '''set a message rate in Hz; 0 for original, -1 to disable'''
+        if type(id) == str:
+            id = eval("mavutil.mavlink.MAVLINK_MSG_ID_%s" % id)
         if rate_hz == 0 or rate_hz == -1:
             set_interval = rate_hz
         else:
