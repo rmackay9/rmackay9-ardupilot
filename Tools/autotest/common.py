@@ -1405,6 +1405,8 @@ class AutoTest(ABC):
                 target_compid=None,
                 timeout=10,
                 quiet=False):
+        self.drain_mav_unparsed()
+        self.get_sim_time() # required for timeout in run_cmd_get_ack to work
         self.send_cmd(command,
                       p1,
                       p2,
