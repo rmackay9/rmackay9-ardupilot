@@ -30,6 +30,7 @@
 #include <AP_Airspeed/AP_Airspeed.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Baro/AP_Baro.h>
+#include <AP_Generator/AP_Generator_RichenPower.h>
 #include <AP_RangeFinder/AP_RangeFinder.h>
 #include <AP_Terrain/AP_Terrain.h>
 #include <AP_Scripting/AP_Scripting.h>
@@ -810,6 +811,22 @@ bool AP_Arming::fence_checks(bool display_failure)
     return false;
 }
 
+bool AP_Arming::generator_checks(bool display_failure) const
+{
+#if GENERATOR_ENABLED
+    const AP_Generator_RichenPower *generator = AP::generator();
+    if (generator == nullptr) {
+        return true;
+    }
+    char failure_msg[50] = {};
+    if (!generator->pre_arm_check(failure_msg, sizeof(failure_msg))) {
+        check_failed(display_failure, "Generator: %s", failure_msg);
+        return false;
+    }
+#endif
+    return true;
+}
+
 bool AP_Arming::pre_arm_checks(bool report)
 {
 #if !APM_BUILD_TYPE(APM_BUILD_ArduCopter)
@@ -833,6 +850,7 @@ bool AP_Arming::pre_arm_checks(bool report)
         &  servo_checks(report)
         &  board_voltage_checks(report)
         &  system_checks(report)
+        &  generator_checks(report)
         &  can_checks(report)
         &  proximity_checks(report);
 }

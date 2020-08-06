@@ -124,6 +124,8 @@ protected:
 
     bool fence_checks(bool report);
 
+    bool generator_checks(bool report) const;
+
     virtual bool system_checks(bool report);
 
     bool can_checks(bool report);
