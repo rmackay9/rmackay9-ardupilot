@@ -197,6 +197,9 @@ const AP_Param::GroupInfo SITL::var_info2[] = {
 
     AP_GROUPINFO("MAG_SCALING",    60, SITL,  mag_scaling, 1),
 
+    // @Path: ./SIM_RichenPower.cpp
+    AP_SUBGROUPINFO(richenpower_sim, "RICH_", 61, SITL, RichenPower),
+
     AP_GROUPEND
 
 };
