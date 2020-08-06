@@ -223,6 +223,9 @@ int SITL_State::sim_fd(const char *name, const char *arg)
         }
         vicon = new SITL::Vicon();
         return vicon->fd();
+    } else if (streq(name, "richenpower")) {
+        sitl_model->set_richenpower(&_sitl->richenpower_sim);
+        return _sitl->richenpower_sim.fd();
     }
     AP_HAL::panic("unknown simulated device: %s", name);
 }

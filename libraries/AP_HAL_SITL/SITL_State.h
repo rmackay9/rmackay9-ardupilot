@@ -26,6 +26,8 @@
 #include <SITL/SIM_Vicon.h>
 #include <AP_HAL/utility/Socket.h>
 
+#include <SITL/SIM_RichenPower.h>
+
 class HAL_SITL;
 
 class HALSITL::SITL_State {
