@@ -1279,6 +1279,9 @@ void Copter::convert_pid_parameters(void)
 
     // make any SRV_Channel upgrades needed
     SRV_Channels::upgrade_parameters();
+
+    // convert AHRS parameters
+    AP::ahrs().convert_parameters();
 }
 
 /*
