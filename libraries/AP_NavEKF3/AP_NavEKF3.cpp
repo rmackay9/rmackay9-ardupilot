@@ -1591,6 +1591,98 @@ bool NavEKF3::getDataEKFGSF(int8_t instance, float &yaw_composite, float &yaw_co
     return false;
 }
 
+// parameter conversion of EKF3 parameters
+void NavEKF3::convert_parameters()
+{
+    // exit immediately if param conversion has been done before
+    if (_sources.params_configured_in_storage()) {
+        return;
+    }
+
+    // find EKF3's top level key
+    uint16_t k_param_ekf3;
+    if (!AP_Param::find_top_level_key_by_pointer(this, k_param_ekf3)) {
+        return;
+    }
+
+    // use EK3_GPS_TYPE to set EK3_SRC_POSXY, EK3_SRC_VELXY, EK3_SRC_VELZ
+    const AP_Param::ConversionInfo gps_type_info = {k_param_ekf3, 1, AP_PARAM_INT8, "EK3_GPS_TYPE"};
+    AP_Int8 gps_type_old;
+    if (AP_Param::find_old_parameter(&gps_type_info, &gps_type_old)) {
+        switch (gps_type_old.get()) {
+        case 0:
+            // EK3_GPS_TYPE == 0 (GPS 3D Vel and 2D Pos) then EK3_SRC_POSXY = GPS(1), EK3_SRC_VELXY = GPS(1), EK3_SRC_VELZ = GPS(3)
+            AP_Param::set_and_save_by_name("EK3_SRC_POSXY", (int8_t)AP_NavEKF_Source::SourceXY::GPS);
+            AP_Param::set_and_save_by_name("EK3_SRC_VELXY", (int8_t)AP_NavEKF_Source::SourceXY::GPS);
+            AP_Param::set_and_save_by_name("EK3_SRC_VELZ", (int8_t)AP_NavEKF_Source::SourceZ::GPS);
+            break;
+        case 1:
+            // EK3_GPS_TYPE == 1 (GPS 2D Vel and 2D Pos) then EK3_SRC_POSXY = GPS(1), EK3_SRC_VELXY = GPS(1), EK3_SRC_VELZ = NONE(0)
+            AP_Param::set_and_save_by_name("EK3_SRC_POSXY", (int8_t)AP_NavEKF_Source::SourceXY::GPS);
+            AP_Param::set_and_save_by_name("EK3_SRC_VELXY", (int8_t)AP_NavEKF_Source::SourceXY::GPS);
+            AP_Param::set_and_save_by_name("EK3_SRC_VELZ", (int8_t)AP_NavEKF_Source::SourceZ::NONE);
+            break;
+        case 2:
+            // EK3_GPS_TYPE == 2 (GPS 2D Pos) then EK3_SRC_POSXY = GPS(1), EK3_SRC_VELXY = None(0), EK3_SRC_VELZ = NONE(0)
+            AP_Param::set_and_save_by_name("EK3_SRC_POSXY", (int8_t)AP_NavEKF_Source::SourceXY::GPS);
+            AP_Param::set_and_save_by_name("EK3_SRC_VELXY", (int8_t)AP_NavEKF_Source::SourceXY::NONE);
+            AP_Param::set_and_save_by_name("EK3_SRC_VELZ", (int8_t)AP_NavEKF_Source::SourceZ::NONE);
+            break;
+        case 3:
+        default:
+            // EK3_GPS_TYPE == 3 (No GPS) we don't know what to do, could be optical flow or external nav so leave unchanged
+            break;
+        }
+    }
+
+    // use EK3_ALT_SOURCE to set EK3_SRC_POSZ
+    const AP_Param::ConversionInfo alt_source_info = {k_param_ekf3, 9, AP_PARAM_INT8, "EK3_ALT_SOURCE"};
+    AP_Int8 alt_source_old;
+    if (AP_Param::find_old_parameter(&alt_source_info, &alt_source_old)) {
+        switch (alt_source_old.get()) {
+        case 0:
+            // EK3_ALT_SOURCE = BARO, the default so do nothing
+            break;
+        case 1:
+            // EK3_ALT_SOURCE == 1 (RangeFinder)
+            AP_Param::set_and_save_by_name("EK3_SRC_POSZ", (int8_t)AP_NavEKF_Source::SourceZ::RANGEFINDER);
+            break;
+        case 2:
+            // EK3_ALT_SOURCE == 2 (GPS)
+            AP_Param::set_and_save_by_name("EK3_SRC_POSZ", (int8_t)AP_NavEKF_Source::SourceZ::GPS);
+            break;
+        case 3:
+            // EK3_ALT_SOURCE == 3 (Beacon)
+            AP_Param::set_and_save_by_name("EK3_SRC_POSZ", (int8_t)AP_NavEKF_Source::SourceZ::BEACON);
+            break;
+        case 4:
+            // EK3_ALT_SOURCE == 4 (ExtNav)
+            AP_Param::set_and_save_by_name("EK3_SRC_POSZ", (int8_t)AP_NavEKF_Source::SourceZ::EXTNAV);
+            break;
+        default:
+            // do nothing
+            break;
+        }
+    }
+
+    // use EK3_MAG_CAL to set EK3_SRC_YAW
+    switch (_magCal.get()) {
+    case 5:
+        // EK3_MAG_CAL = 5 (External Yaw sensor)
+        AP_Param::set_and_save_by_name("EK3_SRC_YAW", (int8_t)AP_NavEKF_Source::SourceYaw::EXTERNAL);
+        _magCal.set_and_save((int8_t)NavEKF3_core::MagCal::NEVER);
+        break;
+    case 6:
+        // EK3_MAG_CAL = 6 (ExtYUaw with Compass fallback)
+        AP_Param::set_and_save_by_name("EK3_SRC_YAW", (int8_t)AP_NavEKF_Source::SourceYaw::EXTERNAL_COMPASS_FALLBACK);
+        _magCal.set_and_save((int8_t)NavEKF3_core::MagCal::NEVER);
+        break;
+    default:
+        // do nothing
+        break;
+    }
+}
+
 // return data for debugging range beacon fusion
 bool NavEKF3::getRangeBeaconDebug(int8_t instance, uint8_t &ID, float &rng, float &innov, float &innovVar, float &testRatio, Vector3f &beaconPosNED,
                                   float &offsetHigh, float &offsetLow, Vector3f &posNED) const
