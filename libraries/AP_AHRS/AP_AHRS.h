@@ -595,6 +595,9 @@ public:
         return _rsem;
     }
 
+    // parameter conversion
+    virtual void convert_parameters() {};
+
     // for holding parameters
     static const struct AP_Param::GroupInfo var_info[];
 

@@ -2387,4 +2387,12 @@ void AP_AHRS_NavEKF::set_alt_measurement_noise(float noise)
 #endif
 }
 
+// parameter conversion
+void AP_AHRS_NavEKF::convert_parameters()
+{
+#if HAL_NAVEKF3_AVAILABLE
+    EKF3.convert_parameters();
+#endif
+}
+
 #endif // AP_AHRS_NAVEKF_AVAILABLE

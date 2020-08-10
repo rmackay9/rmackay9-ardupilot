@@ -307,6 +307,9 @@ public:
     // set and save the ALT_M_NSE parameter value
     void set_alt_measurement_noise(float noise) override;
 
+    // parameter conversion
+    void convert_parameters() override;
+
     // these are only out here so vehicles can reference them for parameters
 #if HAL_NAVEKF2_AVAILABLE
     NavEKF2 EKF2;
