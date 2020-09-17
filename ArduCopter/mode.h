@@ -423,7 +423,7 @@ private:
     void loiter_run();
     void loiter_to_alt_run();
 
-    Location loc_from_cmd(const AP_Mission::Mission_Command& cmd) const;
+    Location loc_from_cmd(const AP_Mission::Mission_Command& cmd, const Location& default_loc) const;
 
     void payload_place_start(const Vector3f& destination);
     void payload_place_run();

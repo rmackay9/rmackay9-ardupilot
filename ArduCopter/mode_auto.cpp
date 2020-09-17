@@ -1014,25 +1014,25 @@ void ModeAuto::do_takeoff(const AP_Mission::Mission_Command& cmd)
     takeoff_start(cmd.content.location);
 }
 
-Location ModeAuto::loc_from_cmd(const AP_Mission::Mission_Command& cmd) const
+Location ModeAuto::loc_from_cmd(const AP_Mission::Mission_Command& cmd, const Location& default_loc) const
 {
     Location ret(cmd.content.location);
 
     // use current lat, lon if zero
     if (ret.lat == 0 && ret.lng == 0) {
-        ret.lat = copter.current_loc.lat;
-        ret.lng = copter.current_loc.lng;
+        ret.lat = default_loc.lat;
+        ret.lng = default_loc.lng;
     }
     // use current altitude if not provided
     if (ret.alt == 0) {
-        // set to current altitude but in command's alt frame
-        int32_t curr_alt;
-        if (copter.current_loc.get_alt_cm(ret.get_alt_frame(),curr_alt)) {
-            ret.set_alt_cm(curr_alt, ret.get_alt_frame());
+        // set to default_loc's altitude but in command's alt frame
+        // note that this may use the terrain database when
+        int32_t default_alt;
+        if (default_loc.get_alt_cm(ret.get_alt_frame(), default_alt)) {
+            ret.set_alt_cm(default_alt, ret.get_alt_frame());
         } else {
-            // default to current altitude as alt-above-home
-            ret.set_alt_cm(copter.current_loc.alt,
-                           copter.current_loc.get_alt_frame());
+            // default to default_loc's altitude and frame
+            ret.set_alt_cm(default_loc.alt, default_loc.get_alt_frame());
         }
     }
     return ret;
@@ -1042,7 +1042,7 @@ Location ModeAuto::loc_from_cmd(const AP_Mission::Mission_Command& cmd) const
 void ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
 {
     _mode = Auto_WP;
-    Location dest_loc = loc_from_cmd(cmd);
+    Location dest_loc = loc_from_cmd(cmd, copter.current_loc);
     wp_nav->set_wp_destination_loc(dest_loc);
 
     // this will be used to remember the time in millis after we reach or pass the WP.
@@ -1085,24 +1085,13 @@ void ModeAuto::do_spline_wp(const AP_Mission::Mission_Command& cmd)
 // get_spline_from_cmd - Calculates the spline type for a given spline waypoint mission command
 void ModeAuto::get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, Location& dest_loc, Location& next_dest_loc, bool& spline_at_end)
 {
-    dest_loc = loc_from_cmd(cmd);
+    dest_loc = loc_from_cmd(cmd, copter.current_loc);
 
     // if there is no delay at the end of this segment get next nav command
     AP_Mission::Mission_Command temp_cmd;
     if (cmd.p1 == 0 && mission.get_next_nav_cmd(cmd.index+1, temp_cmd)) {
-        next_dest_loc = temp_cmd.content.location;
-        // default lat, lon to first waypoint's lat, lon
-        if (next_dest_loc.lat == 0 && next_dest_loc.lng == 0) {
-            next_dest_loc = dest_loc;
-            spline_at_end = false;
-        } else {
-            next_dest_loc = loc_from_cmd(temp_cmd);
-            if (temp_cmd.id == MAV_CMD_NAV_WAYPOINT) {
-                spline_at_end = false;
-            } else {
-                spline_at_end = true;
-            }
-        }
+        next_dest_loc = loc_from_cmd(temp_cmd, dest_loc);
+        spline_at_end = temp_cmd.id == MAV_CMD_NAV_SPLINE_WAYPOINT;
     } else {
         next_dest_loc = dest_loc;
         spline_at_end = false;
@@ -1112,7 +1101,7 @@ void ModeAuto::get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, Locat
 // do_next_wp - checks the next waypoint and adds it if needed
 void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd)
 {
-    // if no delay as well as not final waypoint set the waypoint as "fast"
+    // if no delay get next command
     AP_Mission::Mission_Command temp_cmd;
     if (cmd.p1 == 0 && mission.get_next_nav_cmd(cmd.index+1, temp_cmd)) {
 
@@ -1122,21 +1111,19 @@ void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd)
             case MAV_CMD_NAV_LOITER_UNLIM:
             case MAV_CMD_NAV_LOITER_TURNS:
             case MAV_CMD_NAV_LOITER_TIME:
-            case MAV_CMD_NAV_LAND:
-                // if next command's lat, lon is specified then provide as next destination
-                if ((temp_cmd.content.location.lat != 0) || (temp_cmd.content.location.lng != 0)) {
-                    wp_nav->set_wp_destination_loc_next(loc_from_cmd(temp_cmd));
-                }
+            case MAV_CMD_NAV_LAND: {
+                const Location dest_loc = loc_from_cmd(cmd, copter.current_loc);
+                const Location next_loc = loc_from_cmd(temp_cmd, dest_loc);
+                wp_nav->set_wp_destination_loc_next(next_loc);
                 break;
-            case MAV_CMD_NAV_SPLINE_WAYPOINT:
-                // if next command's lat, lon is specified then provide as next destination
-                if ((temp_cmd.content.location.lat != 0) || (temp_cmd.content.location.lng != 0)) {
-                    Location dest_loc, next_dest_loc;
-                    bool spline_at_end;
-                    get_spline_from_cmd(temp_cmd, dest_loc, next_dest_loc, spline_at_end);
-                    wp_nav->set_spline_destination_next_loc(dest_loc, next_dest_loc, spline_at_end);
-                }
+            }
+            case MAV_CMD_NAV_SPLINE_WAYPOINT: {
+                Location dest_loc, next_dest_loc;
+                bool spline_at_end;
+                get_spline_from_cmd(temp_cmd, dest_loc, next_dest_loc, spline_at_end);
+                wp_nav->set_spline_destination_next_loc(dest_loc, next_dest_loc, spline_at_end);
                 break;
+            }
             case MAV_CMD_NAV_RETURN_TO_LAUNCH:
             case MAV_CMD_NAV_TAKEOFF:
             default:
@@ -1206,7 +1193,7 @@ void ModeAuto::do_loiter_unlimited(const AP_Mission::Mission_Command& cmd)
 // do_circle - initiate moving in a circle
 void ModeAuto::do_circle(const AP_Mission::Mission_Command& cmd)
 {
-    const Location circle_center = loc_from_cmd(cmd);
+    const Location circle_center = loc_from_cmd(cmd, copter.current_loc);
 
     // calculate radius
     uint8_t circle_radius_m = HIGHBYTE(cmd.p1); // circle radius held in high byte of p1
