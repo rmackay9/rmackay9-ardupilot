@@ -1110,8 +1110,7 @@ void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd)
             case MAV_CMD_NAV_WAYPOINT:
             case MAV_CMD_NAV_LOITER_UNLIM:
             case MAV_CMD_NAV_LOITER_TURNS:
-            case MAV_CMD_NAV_LOITER_TIME:
-            case MAV_CMD_NAV_LAND: {
+            case MAV_CMD_NAV_LOITER_TIME: {
                 const Location dest_loc = loc_from_cmd(cmd, copter.current_loc);
                 const Location next_loc = loc_from_cmd(temp_cmd, dest_loc);
                 wp_nav->set_wp_destination_loc_next(next_loc);
@@ -1124,6 +1123,8 @@ void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd)
                 wp_nav->set_spline_destination_next_loc(dest_loc, next_dest_loc, spline_at_end);
                 break;
             }
+            case MAV_CMD_NAV_LAND:
+                // stop because we may change between rel,abs and terrain alt types
             case MAV_CMD_NAV_RETURN_TO_LAUNCH:
             case MAV_CMD_NAV_TAKEOFF:
             default:
