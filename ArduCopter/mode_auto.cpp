@@ -1042,7 +1042,15 @@ Location ModeAuto::loc_from_cmd(const AP_Mission::Mission_Command& cmd, const Lo
 void ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
 {
     _mode = Auto_WP;
-    Location dest_loc = loc_from_cmd(cmd, copter.current_loc);
+
+    // calculate default location used when lat, lon or alt is zero
+    Location default_loc = copter.current_loc;
+    if (wp_nav->is_active() && wp_nav->reached_wp_destination()) {
+        wp_nav->get_wp_destination_loc(default_loc);
+    }
+
+    // get waypoint's location from command and send to wp_nav
+    Location dest_loc = loc_from_cmd(cmd, default_loc);
     wp_nav->set_wp_destination_loc(dest_loc);
 
     // this will be used to remember the time in millis after we reach or pass the WP.
@@ -1050,7 +1058,8 @@ void ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
     // this is the delay, stored in seconds
     loiter_time_max = cmd.p1;
 
-    do_next_wp(cmd);
+    // set wp_nav's next destination if necessary
+    do_next_wp(cmd, dest_loc);
 
     // initialise yaw
     // To-Do: reset the yaw only when the previous navigation command is not a WP.  this would allow removing the special check for ROI
@@ -1063,9 +1072,17 @@ void ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
 void ModeAuto::do_spline_wp(const AP_Mission::Mission_Command& cmd)
 {
     _mode = Auto_WP;
+
+    // calculate default location used when lat, lon or alt is zero
+    Location default_loc = copter.current_loc;
+    if (wp_nav->is_active() && wp_nav->reached_wp_destination()) {
+        wp_nav->get_wp_destination_loc(default_loc);
+    }
+
+    // get spline's location and next location from command and send to wp_nav
     Location dest_loc, next_dest_loc;
     bool spline_at_end;
-    get_spline_from_cmd(cmd, dest_loc, next_dest_loc, spline_at_end);
+    get_spline_from_cmd(cmd, default_loc, dest_loc, next_dest_loc, spline_at_end);
     wp_nav->set_spline_destination_loc(dest_loc, next_dest_loc, spline_at_end);
 
     // this will be used to remember the time in millis after we reach or pass the WP.
@@ -1073,7 +1090,8 @@ void ModeAuto::do_spline_wp(const AP_Mission::Mission_Command& cmd)
     // this is the delay, stored in seconds
     loiter_time_max = cmd.p1;
 
-    do_next_wp(cmd);
+    // set wp_nav's next destination if necessary
+    do_next_wp(cmd, dest_loc);
 
     // initialise yaw
     // To-Do: reset the yaw only when the previous navigation command is not a WP.  this would allow removing the special check for ROI
@@ -1083,9 +1101,9 @@ void ModeAuto::do_spline_wp(const AP_Mission::Mission_Command& cmd)
 }
 
 // get_spline_from_cmd - Calculates the spline type for a given spline waypoint mission command
-void ModeAuto::get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, Location& dest_loc, Location& next_dest_loc, bool& spline_at_end)
+void ModeAuto::get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, const Location& default_loc, Location& dest_loc, Location& next_dest_loc, bool& spline_at_end)
 {
-    dest_loc = loc_from_cmd(cmd, copter.current_loc);
+    dest_loc = loc_from_cmd(cmd, default_loc);
 
     // if there is no delay at the end of this segment get next nav command
     AP_Mission::Mission_Command temp_cmd;
@@ -1099,7 +1117,7 @@ void ModeAuto::get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, Locat
 }
 
 // do_next_wp - checks the next waypoint and adds it if needed
-void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd)
+void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd, const Location& default_loc)
 {
     // if no delay get next command
     AP_Mission::Mission_Command temp_cmd;
@@ -1111,7 +1129,7 @@ void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd)
             case MAV_CMD_NAV_LOITER_UNLIM:
             case MAV_CMD_NAV_LOITER_TURNS:
             case MAV_CMD_NAV_LOITER_TIME: {
-                const Location dest_loc = loc_from_cmd(cmd, copter.current_loc);
+                const Location dest_loc = loc_from_cmd(cmd, default_loc);
                 const Location next_loc = loc_from_cmd(temp_cmd, dest_loc);
                 wp_nav->set_wp_destination_loc_next(next_loc);
                 break;
@@ -1119,7 +1137,7 @@ void ModeAuto::do_next_wp(const AP_Mission::Mission_Command& cmd)
             case MAV_CMD_NAV_SPLINE_WAYPOINT: {
                 Location dest_loc, next_dest_loc;
                 bool spline_at_end;
-                get_spline_from_cmd(temp_cmd, dest_loc, next_dest_loc, spline_at_end);
+                get_spline_from_cmd(temp_cmd, default_loc, dest_loc, next_dest_loc, spline_at_end);
                 wp_nav->set_spline_destination_next_loc(dest_loc, next_dest_loc, spline_at_end);
                 break;
             }
