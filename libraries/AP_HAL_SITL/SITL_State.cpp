@@ -226,6 +226,9 @@ int SITL_State::sim_fd(const char *name, const char *arg)
     } else if (streq(name, "richenpower")) {
         sitl_model->set_richenpower(&_sitl->richenpower_sim);
         return _sitl->richenpower_sim.fd();
+    } else if (streq(name, "ie24")) {
+        sitl_model->set_ie24(&_sitl->ie24_sim);
+        return _sitl->ie24_sim.fd();
     }
 
     AP_HAL::panic("unknown simulated device: %s", name);
@@ -237,6 +240,10 @@ int SITL_State::sim_fd_write(const char *name)
             AP_HAL::panic("No vicon created");
         }
         return vicon->write_fd();
+    } else if (streq(name, "richenpower")) {
+        return _sitl->richenpower_sim.write_fd();
+    } else if (streq(name, "ie24")) {
+        return _sitl->ie24_sim.write_fd();
     }
     AP_HAL::panic("unknown simulated device: %s", name);
 }
