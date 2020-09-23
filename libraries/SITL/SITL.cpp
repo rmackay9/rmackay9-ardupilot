@@ -200,6 +200,9 @@ const AP_Param::GroupInfo SITL::var_info2[] = {
     // @Path: ./SIM_RichenPower.cpp
     AP_SUBGROUPINFO(richenpower_sim, "RICH_", 61, SITL, RichenPower),
 
+    // @Path: ./SIM_IntelligentEnergy24.cpp
+    AP_SUBGROUPINFO(ie24_sim, "IE24_", 62, SITL, IntelligentEnergy24),
+
     AP_GROUPEND
 
 };
