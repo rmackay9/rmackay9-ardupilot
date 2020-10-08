@@ -9,6 +9,7 @@
 #include "AP_OpticalFlow_HereFlow.h"
 #include "AP_OpticalFlow_MSP.h"
 #include <AP_Logger/AP_Logger.h>
+#include <GCS_MAVLink/GCS.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -165,6 +166,21 @@ void OpticalFlow::update(void)
 
     // only healthy if the data is less than 0.5s old
     _flags.healthy = (AP_HAL::millis() - _last_update_ms < 500);
+
+    // update calibrator and save resulting scaling
+    if (_calibrator.update()) {
+        Vector2f scaling;
+        if (_calibrator.get_scaling(scaling)) {
+            const int16_t scaler_x = _flowScalerX.get() * scaling.x;
+            const int16_t scaler_y = _flowScalerY.get() * scaling.y;
+            if ((abs(scaler_x) <= 200) && (abs(scaler_y) <= 200)) {
+                _flowScalerX.set_and_save(scaler_x);
+                _flowScalerY.set_and_save(scaler_y);
+            } else {
+                gcs().send_text(MAV_SEVERITY_INFO, "FlowCal: scalers out-of-range x:%d y:%d", (int)scaler_x, (int)scaler_y);
+            }
+        }
+    }
 }
 
 void OpticalFlow::handle_msg(const mavlink_message_t &msg)
@@ -193,6 +209,18 @@ void OpticalFlow::handle_msp(const MSP::msp_opflow_data_message_t &pkt)
 }
 #endif //HAL_MSP_OPTICALFLOW_ENABLED
 
+// start calibration
+void OpticalFlow::start_calibration()
+{
+    _calibrator.start();
+}
+
+// stop calibration
+void OpticalFlow::stop_calibration()
+{
+    _calibrator.stop();
+}
+
 void OpticalFlow::update_state(const OpticalFlow_state &state)
 {
     _state = state;
@@ -204,6 +232,10 @@ void OpticalFlow::update_state(const OpticalFlow_state &state)
                                        _state.bodyRate,
                                        _last_update_ms,
                                        get_pos_offset());
+
+    // send sample to calibrator
+    _calibrator.new_sample(_state.flowRate, _state.bodyRate);
+
     Log_Write_Optflow();
 }
 

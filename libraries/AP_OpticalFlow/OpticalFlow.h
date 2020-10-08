@@ -23,7 +23,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
-
+#include "AP_OpticalFlow_Calibrator.h"
 
 #ifndef HAL_MSP_OPTICALFLOW_ENABLED
 #define HAL_MSP_OPTICALFLOW_ENABLED HAL_MSP_ENABLED && !HAL_MINIMIZE_FEATURES
@@ -103,6 +103,10 @@ public:
         return _pos_offset;
     }
 
+    // start or stop calibration
+    void start_calibration();
+    void stop_calibration();
+
     // parameter var info table
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -135,6 +139,8 @@ private:
     void Log_Write_Optflow();
     uint32_t _log_bit = -1;     // bitmask bit which indicates if we should log.  -1 means we always log
 
+    // calibrator
+    AP_OpticalFlow_Calibrator _calibrator;
 };
 
 namespace AP {
