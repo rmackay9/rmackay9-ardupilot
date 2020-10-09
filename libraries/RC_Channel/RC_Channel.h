@@ -187,6 +187,7 @@ public:
         CROW_SELECT =         87, // select CROW mode for diff spoilers;high disables,mid forces progressive
         SOARING =             88, // three-position switch to set soaring mode
         LANDING_FLARE =       89, // force flare, throttle forced idle, pitch to LAND_PITCH_CD, tilts up
+        OPTFLOW_CAL =         91, // optical flow calibration
 
         // entries from 100 onwards are expected to be developer
         // options used for testing

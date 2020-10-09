@@ -42,6 +42,7 @@ extern const AP_HAL::HAL& hal;
 #include <AP_Avoidance/AP_Avoidance.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AC_Fence/AC_Fence.h>
+#include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_VisualOdom/AP_VisualOdom.h>
 #include <AP_AHRS/AP_AHRS.h>
 
@@ -482,6 +483,7 @@ void RC_Channel::init_aux_function(const aux_func_t ch_option, const AuxSwitchPo
     case AUX_FUNC::SCRIPTING_6:
     case AUX_FUNC::SCRIPTING_7:
     case AUX_FUNC::SCRIPTING_8:
+    case AUX_FUNC::OPTFLOW_CAL:
         break;
     case AUX_FUNC::AVOID_ADSB:
     case AUX_FUNC::AVOID_PROXIMITY:
@@ -547,6 +549,7 @@ const RC_Channel::LookupTable RC_Channel::lookuptable[] = {
     { AUX_FUNC::VISODOM_CALIBRATE,"VisodomCalibrate"},
     { AUX_FUNC::GENERATOR,"Generator"},
     { AUX_FUNC::CAM_MODE_TOGGLE,"CamModeToggle"},
+    { AUX_FUNC::OPTFLOW_CAL, "OptFlowCal" },
 };
 
 /* lookup the announcement for switch change */
@@ -1016,6 +1019,20 @@ void RC_Channel::do_aux_function(const aux_func_t ch_option, const AuxSwitchPos 
         }
 #endif
         break;
+
+    case AUX_FUNC::OPTFLOW_CAL: {
+        OpticalFlow *optflow = AP::opticalflow();
+        if (optflow == nullptr) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "OptFlow Cal: failed sensor not enabled");
+            return;
+        }
+        if (ch_flag == AuxSwitchPos::HIGH) {
+            optflow->start_calibration();
+        } else {
+            optflow->stop_calibration();
+        }
+        break;
+    }
 
 #if !HAL_MINIMIZE_FEATURES
     case AUX_FUNC::KILL_IMU1:
