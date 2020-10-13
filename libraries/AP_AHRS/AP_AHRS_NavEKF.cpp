@@ -2129,6 +2129,37 @@ bool AP_AHRS_NavEKF::get_variances(float &velVar, float &posVar, float &hgtVar, 
     return false;
 }
 
+// get a source's velocity innovations for the specified instance.  Set instance to -1 for the primary instance
+// returns true on success and results are placed in innovations and variances arguments
+bool AP_AHRS_NavEKF::get_vel_innovations_and_variances_by_source(uint8_t source, Vector3f &innovations, Vector3f &variances) const
+{
+    switch (ekf_type()) {
+    case EKFType::NONE:
+        // We are not using an EKF so no data
+        return false;
+
+#if HAL_NAVEKF2_AVAILABLE
+    case EKFType::TWO:
+        // EKF2 does not support source level variances
+        return false;
+#endif
+
+#if HAL_NAVEKF3_AVAILABLE
+    case EKFType::THREE:
+        // use EKF to get variance
+        return EKF3.getVelInnovationsAndVariancesBySource(-1, (AP_NavEKF_Source::SourceXY)source, innovations, variances);
+#endif
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    case EKFType::SITL:
+        // EKF2 does not support source level variances
+        return false;
+#endif
+    }
+
+    return false;
+}
+
 void AP_AHRS_NavEKF::setTakeoffExpected(bool val)
 {
     switch (takeoffExpectedState) {
