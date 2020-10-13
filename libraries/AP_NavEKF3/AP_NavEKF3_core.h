@@ -1174,6 +1174,8 @@ private:
     uint32_t lastInnovPassTime_ms;  // last time in msec the GPS innovations passed
     uint32_t lastInnovFailTime_ms;  // last time in msec the GPS innovations failed
     bool gpsAccuracyGood;           // true when the GPS accuracy is considered to be good enough for safe flight.
+    Vector3f gpsVelInnov;           // external nav velocity innovations
+    Vector3f gpsVelVarInnov;        // external nav velocity innovation variances
 
     // variables added for optical flow fusion
     obs_ring_buffer_t<of_elements> storedOF;    // OF data buffer

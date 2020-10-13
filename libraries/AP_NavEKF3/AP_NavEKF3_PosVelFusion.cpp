@@ -441,6 +441,8 @@ void NavEKF3_core::SelectVelPosFusion()
     gpsDataToFuse = storedGPS.recall(gpsDataDelayed,imuDataDelayed.time_ms);
     if (gpsDataToFuse) {
         CorrectGPSForAntennaOffset(gpsDataDelayed);
+        // calculate innovations and variances for reporting purposes only
+        CalculateVelInnovationsAndVariances(gpsDataDelayed.vel, frontend->_gpsHorizVelNoise, frontend->gpsNEVelVarAccScale, gpsVelInnov, gpsVelVarInnov);
     }
 
     // detect position source changes
