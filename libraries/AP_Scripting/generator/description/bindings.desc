@@ -42,6 +42,7 @@ singleton AP_AHRS method body_to_earth Vector3f Vector3f
 singleton AP_AHRS method get_EAS2TAS float
 singleton AP_AHRS method get_variances boolean float'Null float'Null float'Null Vector3f'Null float'Null
 singleton AP_AHRS method set_position_source void uint8_t 0 2
+singleton AP_AHRS method get_vel_innovations_and_variances_by_source boolean uint8_t 3 6 Vector3f'Null Vector3f'Null
 
 include AP_Arming/AP_Arming.h
 
