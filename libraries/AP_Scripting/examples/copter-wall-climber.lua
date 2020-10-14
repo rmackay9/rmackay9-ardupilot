@@ -20,7 +20,7 @@ local update_rate_ms = 10           -- script updates at 100hz
 local update_rate_dt = update_rate_ms / 1000.0 -- update rate in seconds
 local copter_guided_mode_num = 4    -- Copter's guided flight mode is mode 4
 local aux_switch_function = 61      -- auxiliary switch function controlling mode.  61 is ZIGZAG_SaveWP
-local climb_accel_max = 0.5           -- climb rate acceleration max in m/s/s
+local climb_accel_max = 0.5         -- climb rate acceleration max in m/s/s
 local climb_rate_max = 2            -- climb rate max in m/s
 local climb_rate_chg_max = climb_accel_max * update_rate_dt -- max change in climb rate in a single iteration
 local roll_pitch_speed_max = 2      -- horizontal speed max in m/s
@@ -68,11 +68,11 @@ function update()
     climb_total = 0
     climb_pause_counter = 0
     climb_interval_total = 0
-	roll_speed = 0
+    roll_speed = 0
     pitch_speed = 0
     lane_number = 0
     lane_shift_counter = 0
-	lane_climb_rate = math.abs(lane_climb_rate)
+    lane_climb_rate = math.abs(lane_climb_rate)
     return update, update_rate_ms
   end
 
@@ -85,20 +85,20 @@ function update()
   local aux_switch = rc:find_channel_for_option(aux_switch_function)
   if aux_switch then
     local sw_pos = aux_switch:get_aux_switch_pos()
-	if (sw_pos ~= aux_sw_pos_prev) then
-	  -- only process input if switch position changed
-	  aux_sw_pos_prev = sw_pos
+    if (sw_pos ~= aux_sw_pos_prev) then
+      -- only process input if switch position changed
+      aux_sw_pos_prev = sw_pos
       if (sw_pos == 0) then
         -- pilot has selected manual mode
         if (climb_mode ~= 0) then
           gcs:send_text(0, "WallClimb: pilot switch to Manual")
-	      climb_mode = 0
+          climb_mode = 0
         end
       elseif (sw_pos == 2) then
         -- pilot has selected auto mode
         if (climb_mode ~= 1) then
           gcs:send_text(0, "WallClimb: pilot switch to Auto")
-	      climb_mode = 1
+          climb_mode = 1
         end
       end
     end
@@ -160,8 +160,8 @@ function update()
         -- determine if we should move to next lane
         if ((climb_total > climb_dist_max) or (climb_total <= 0)) then
           lane_number = lane_number + 1
-		  lane_climb_rate = -lane_climb_rate
-		  lane_shift_counter = lane_shift_counter_max
+          lane_climb_rate = -lane_climb_rate
+          lane_shift_counter = lane_shift_counter_max
           gcs:send_text(0, "WallClimb: starting lane " .. tostring(lane_number))
         end
       end
@@ -173,13 +173,13 @@ function update()
       if (climb_pause_counter > 0) then
         climb_pause_counter = climb_pause_counter - 1
         climb_rate_target = 0
-		if (climb_pause_counter == 0) then
+        if (climb_pause_counter == 0) then
           gcs:send_text(0, "WallClimb: restarting")
         end
       end
 
       -- if shifting lanes pause climb and roll right
-	  if (lane_shift_counter > 0) then
+      if (lane_shift_counter > 0) then
         lane_shift_counter = lane_shift_counter - 1
         wall_roll_speed = lane_shift_roll_speed
         climb_rate_target = 0
