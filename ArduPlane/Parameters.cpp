@@ -1439,6 +1439,9 @@ void Plane::load_parameters(void)
         }
     }
 
+    // convert AHRS parameters
+    AP::ahrs().convert_parameters();
+
     hal.console->printf("load_all took %uus\n", (unsigned)(micros() - before));
 }
 
