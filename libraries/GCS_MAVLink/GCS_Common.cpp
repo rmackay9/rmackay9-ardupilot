@@ -924,17 +924,6 @@ ap_message GCS_MAVLINK::next_deferred_bucket_message_to_send()
     return (ap_message)next;
 }
 
-void GCS_MAVLINK::send_generator_status() const
-{
-#if GENERATOR_ENABLED
-    AP_Generator_RichenPower *generator = AP::generator();
-    if (generator == nullptr) {
-        return;
-    }
-    generator->send_generator_status(*this);
-#endif
-}
-
 // call try_send_message if appropriate.  Incorporates debug code to
 // record how long it takes to send a message.  try_send_message is
 // expected to be overridden, not this function.
@@ -4195,6 +4184,17 @@ void GCS_MAVLINK::send_set_position_target_global_int(uint8_t target_system, uin
             0,0,0,  // vx, vy, vz
             0,0,0,  // ax, ay, az
             0,0);   // yaw, yaw_rate
+}
+
+void GCS_MAVLINK::send_generator_status() const
+{
+#if GENERATOR_ENABLED
+    AP_Generator *generator = AP::generator();
+    if (generator == nullptr) {
+        return;
+    }
+    generator->send_generator_status(*this);
+#endif
 }
 
 bool GCS_MAVLINK::try_send_message(const enum ap_message id)
