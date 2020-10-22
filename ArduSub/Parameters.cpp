@@ -724,4 +724,7 @@ void Sub::convert_old_parameters()
     }
 
     SRV_Channels::upgrade_parameters();
+
+    // convert AHRS parameters
+    AP::ahrs().convert_parameters();
 }
