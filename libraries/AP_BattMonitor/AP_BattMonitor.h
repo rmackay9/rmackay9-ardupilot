@@ -73,7 +73,8 @@ public:
         SUI6                       = 14,
         NeoDesign                  = 15,
         MAXELL                     = 16,
-        Generator                  = 17,
+        GENERATOR_ELEC             = 17,
+        GENERATOR_FUEL             = 18,
     };
 
     FUNCTOR_TYPEDEF(battery_failsafe_handler_fn_t, void, const char *, const int8_t);
