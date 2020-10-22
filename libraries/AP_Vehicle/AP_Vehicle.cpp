@@ -7,6 +7,12 @@
  */
 const AP_Param::GroupInfo AP_Vehicle::var_info[] = {
 
+#if GENERATOR_ENABLED
+    // @Group: GEN_
+    // @Path: ../AP_Generator/AP_Generator.cpp
+    AP_SUBGROUPINFO(generator, "GEN_", 7, AP_Vehicle, AP_Generator),
+#endif
+
     AP_GROUPEND
 };
 
@@ -23,6 +29,9 @@ extern AP_Vehicle& vehicle;
   and the maximum time they are expected to take (in microseconds)
  */
 const AP_Scheduler::Task AP_Vehicle::scheduler_tasks[] = {
+#if GENERATOR_ENABLED
+    SCHED_TASK_CLASS(AP_Generator, &vehicle.generator,      update,                   10,  50),
+#endif
 };
 
 void AP_Vehicle::get_common_scheduler_tasks(const AP_Scheduler::Task*& tasks, uint8_t& num_tasks)
@@ -33,6 +42,9 @@ void AP_Vehicle::get_common_scheduler_tasks(const AP_Scheduler::Task*& tasks, ui
 
 // initialize the vehicle
 void AP_Vehicle::init_vehicle() {
+#if GENERATOR_ENABLED
+    generator.init();
+#endif
 }
 
 AP_Vehicle *AP_Vehicle::_singleton = nullptr;
