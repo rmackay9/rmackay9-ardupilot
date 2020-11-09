@@ -40,7 +40,11 @@ public:
 
     void handle_message(const log_RVOH &msg) {
         RVOH = msg;
-   }
+    }
+
+    // update position offsets to align to AHRS position
+    // should only be called when this library is not being used as the position source
+    void align_position_to_ahrs(bool align_xy, bool align_z);
 
 private:
 

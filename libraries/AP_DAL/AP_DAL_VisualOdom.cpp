@@ -23,4 +23,17 @@ void AP_DAL_VisualOdom::start_frame()
     WRITE_REPLAY_BLOCK_IFCHANGED(RVOH, RVOH, old);
 }
 
+/* update position offsets to align to AHRS position
+   should only be called when this library is not being used as the position source
+   This function does not change EKF state, so does not need to be logged
+*/
+void AP_DAL_VisualOdom::align_position_to_ahrs(bool align_xy, bool align_z)
+{
+#ifndef HAL_NO_GCS
+    // use HAL_NO_GCS to avoid breaking AP_DAL_Standalone.
+    auto *vo = AP::visualodom();
+    vo->align_position_to_ahrs(align_xy, align_z);
+#endif
+}
+
 #endif // HAL_VISUALODOM_ENABLED
