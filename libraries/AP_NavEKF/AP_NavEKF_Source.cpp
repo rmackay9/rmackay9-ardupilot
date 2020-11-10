@@ -13,15 +13,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
-#include <AP_Baro/AP_Baro.h>
-#include <AP_Beacon/AP_Beacon.h>
-#include <AP_Compass/AP_Compass.h>
-#include <AP_GPS/AP_GPS.h>
-#include <AP_OpticalFlow/AP_OpticalFlow.h>
-#include <AP_RangeFinder/AP_RangeFinder.h>
-#include <AP_VisualOdom/AP_VisualOdom.h>
+#include <AP_DAL/AP_DAL.h>
 #include "AP_NavEKF_Source.h"
 
 extern const AP_HAL::HAL& hal;
@@ -199,8 +192,8 @@ void AP_NavEKF_Source::align_inactive_sources()
                              (getPosZSource() == SourceZ::GPS) || (getPosZSource() == SourceZ::BEACON));
 
     if (align_posxy || align_posz) {
-        AP_VisualOdom *visual_odom = AP::visualodom();
-        if ((visual_odom != nullptr) && visual_odom->enabled()) {
+        auto *visual_odom = AP::dal().visualodom();
+        if (visual_odom && visual_odom->enabled()) {
             if (align_posxy || align_posz) {
                 visual_odom->align_position_to_ahrs(align_posxy, align_posz);
             }
@@ -231,6 +224,7 @@ bool AP_NavEKF_Source::params_configured_in_storage() const
 // returns false if we fail arming checks, in which case the buffer will be populated with a failure message
 bool AP_NavEKF_Source::pre_arm_check(char *failure_msg, uint8_t failure_msg_len) const
 {
+    auto &dal = AP::dal();
     bool baro_required = false;
     bool beacon_required = false;
     bool compass_required = false;
@@ -349,32 +343,32 @@ bool AP_NavEKF_Source::pre_arm_check(char *failure_msg, uint8_t failure_msg_len)
 
     // check all required sensor are available
     const char* ekf_requires_msg = "EK3_SRC requires %s";
-    if (baro_required && (AP::baro().num_instances() == 0)) {
+    if (baro_required && (dal.baro().num_instances() == 0)) {
         hal.util->snprintf(failure_msg, failure_msg_len, ekf_requires_msg, "Baro");
         return false;
     }
 
-    if (beacon_required && (AP::beacon() == nullptr || !AP::beacon()->enabled())) {
+    if (beacon_required && (dal.beacon() == nullptr || !dal.beacon()->enabled())) {
         hal.util->snprintf(failure_msg, failure_msg_len, ekf_requires_msg, "Beacon");
         return false;
     }
 
-    if (compass_required && AP::compass().get_num_enabled() == 0) {
+    if (compass_required && dal.compass().get_num_enabled() == 0) {
         hal.util->snprintf(failure_msg, failure_msg_len, ekf_requires_msg, "Compass");
         return false;
     }
 
-    if (gps_required && (AP::gps().num_sensors() == 0)) {
+    if (gps_required && (dal.gps().num_sensors() == 0)) {
         hal.util->snprintf(failure_msg, failure_msg_len, ekf_requires_msg, "GPS");
         return false;
     }
 
-    if (optflow_required && (AP::opticalflow() == nullptr || !AP::opticalflow()->enabled())) {
+    if (optflow_required && !dal.opticalflow_enabled()) {
         hal.util->snprintf(failure_msg, failure_msg_len, ekf_requires_msg, "OpticalFlow");
         return false;
     }
 
-    if (rangefinder_required && (AP::rangefinder() == nullptr || AP::rangefinder()->num_sensors() == 0)) {
+    if (rangefinder_required && (dal.rangefinder() == nullptr || !dal.rangefinder()->has_orientation(ROTATION_PITCH_270))) {
         hal.util->snprintf(failure_msg, failure_msg_len, ekf_requires_msg, "RangeFinder");
         return false;
     }
@@ -382,7 +376,8 @@ bool AP_NavEKF_Source::pre_arm_check(char *failure_msg, uint8_t failure_msg_len)
     if (visualodom_required) {
         bool visualodom_available = false;
 #if HAL_VISUALODOM_ENABLED
-        visualodom_available = (AP::visualodom() != nullptr) && AP::visualodom()->enabled();
+        auto *vo = AP::dal().visualodom();
+        visualodom_available = vo && vo->enabled();
 #endif
         if (!visualodom_available) {
             hal.util->snprintf(failure_msg, failure_msg_len, ekf_requires_msg, "VisualOdom");
