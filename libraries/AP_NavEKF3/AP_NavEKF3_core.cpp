@@ -7,6 +7,8 @@
 #include <AP_Logger/AP_Logger.h>
 #include <AP_DAL/AP_DAL.h>
 
+extern const AP_HAL::HAL& hal;
+
 // constructor
 NavEKF3_core::NavEKF3_core(NavEKF3 *_frontend) :
     frontend(_frontend),
@@ -14,11 +16,34 @@ NavEKF3_core::NavEKF3_core(NavEKF3 *_frontend) :
 {
     firstInitTime_ms = 0;
     lastInitFailReport_ms = 0;
+    constructor_run = true;
 }
 
 // setup this core backend
 bool NavEKF3_core::setup_core(uint8_t _imu_index, uint8_t _core_index)
 {
+    if (!constructor_run) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"core:%d run before constructor IMU%d",(int)_core_index, (int)_imu_index);
+        hal.scheduler->delay(1000);
+        AP_HAL::panic("core:%d run before constructor IMU%d",(int)_core_index, (int)_imu_index);
+    }
+    //gcs().send_text(MAV_SEVERITY_CRITICAL,"core:%d IMU%d dal is %p",(int)_core_index, (int)_imu_index, &dal);
+    if (&dal == nullptr) {
+        hal.scheduler->delay(1000);
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"core:%d IMU%d dal is nullptr",(int)_core_index, (int)_imu_index);
+        AP_HAL::panic("core:%d IMU%d dal is nullptr",(int)_core_index, (int)_imu_index);
+    }
+    for (uint8_t i=0; i<ARRAY_SIZE(canary_array1); i++) {
+        if (canary_array1[i] != i) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"canary array1 mismatch i:%d val:%d", (int)i, (int)canary_array1[i]);
+            AP_HAL::panic("canary array mismatch i:%d val:%d", (int)i, (int)canary_array1[i]);
+        }
+        if (canary_array2[i] != i) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"canary array2 mismatch i:%d val:%d", (int)i, (int)canary_array2[i]);
+            AP_HAL::panic("canary array mismatch i:%d val:%d", (int)i, (int)canary_array2[i]);
+        }
+    }
+
     imu_index = _imu_index;
     gyro_index_active = imu_index;
     accel_index_active = imu_index;

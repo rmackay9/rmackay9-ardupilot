@@ -450,7 +450,10 @@ public:
     
 private:
     EKFGSF_yaw *yawEstimator;
+
+    uint8_t canary_array1[10] = {0,1,2,3,4,5,6,7,8,9};
     AP_DAL &dal;
+    uint8_t canary_array2[10] = {0,1,2,3,4,5,6,7,8,9};
 
     // Reference to the global EKF frontend for parameters
     class NavEKF3 *frontend;
@@ -1492,4 +1495,7 @@ private:
     bool pos_source_reset;                  // true when the position source has changed but the position has not yet been reset
     AP_NavEKF_Source::SourceYaw yaw_source_last;    // yaw source on previous iteration (used to detect a change)
     bool yaw_source_reset;                          // true when the yaw source has changed but the yaw has not yet been reset
+
+    // debug
+    bool constructor_run = false;
 };
