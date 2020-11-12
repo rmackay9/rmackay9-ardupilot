@@ -25,13 +25,13 @@ bool NavEKF3_core::setup_core(uint8_t _imu_index, uint8_t _core_index)
     if (!constructor_run) {
         gcs().send_text(MAV_SEVERITY_CRITICAL,"core:%d run before constructor IMU%d",(int)_core_index, (int)_imu_index);
         hal.scheduler->delay(1000);
-        AP_HAL::panic("core:%d run before constructor IMU%d",(int)_core_index, (int)_imu_index);
+        //AP_HAL::panic("core:%d run before constructor IMU%d",(int)_core_index, (int)_imu_index);
     }
     //gcs().send_text(MAV_SEVERITY_CRITICAL,"core:%d IMU%d dal is %p",(int)_core_index, (int)_imu_index, &dal);
     if (&dal == nullptr) {
-        hal.scheduler->delay(1000);
         gcs().send_text(MAV_SEVERITY_CRITICAL,"core:%d IMU%d dal is nullptr",(int)_core_index, (int)_imu_index);
-        AP_HAL::panic("core:%d IMU%d dal is nullptr",(int)_core_index, (int)_imu_index);
+        hal.scheduler->delay(1000);
+        //AP_HAL::panic("core:%d IMU%d dal is nullptr",(int)_core_index, (int)_imu_index);
     }
     bool canary_failed = false;
     for (uint8_t i=0; i<ARRAY_SIZE(canary_array1); i++) {
@@ -64,9 +64,11 @@ bool NavEKF3_core::setup_core(uint8_t _imu_index, uint8_t _core_index)
         gcs().send_text(MAV_SEVERITY_CRITICAL,"canary2d %d %d %d %d %d %d %d %d %d %d",
                     (int)canary_array2[30], (int)canary_array2[31], (int)canary_array2[32], (int)canary_array2[33], (int)canary_array2[34],
                     (int)canary_array2[35], (int)canary_array2[36], (int)canary_array2[37], (int)canary_array2[38],  (int)canary_array2[39]);
-        AP_HAL::panic("canary1a mismatch %d %d %d %d %d %d %d %d %d %d",
+        hal.scheduler->delay(1000);
+        /*AP_HAL::panic("canary1a mismatch %d %d %d %d %d %d %d %d %d %d",
                     (int)canary_array1[0], (int)canary_array1[1], (int)canary_array1[2], (int)canary_array1[3], (int)canary_array1[4],
                     (int)canary_array1[5], (int)canary_array1[6], (int)canary_array1[7], (int)canary_array1[8],  (int)canary_array1[9]);
+                    */
     }
 
     imu_index = _imu_index;
