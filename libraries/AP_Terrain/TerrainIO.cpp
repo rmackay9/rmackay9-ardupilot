@@ -168,18 +168,17 @@ void AP_Terrain::open_file(void)
     // thinks there are more digits than there can be so says there's
     // a buffer overflow in the snprintf.  Constrain it long-form:
     uint32_t lat_tmp = abs((int32_t)block.lat_degrees);
-    if (lat_tmp > 99U) {
-        lat_tmp = 99U;
-    }
     uint32_t lon_tmp = abs((int32_t)block.lon_degrees);
-    if (lon_tmp > 999U) {
-        lon_tmp = 999;
-    }
+#pragma GCC diagnostic push
+    // gcc 9.3.1 gives a spurious format truncation error here
+#pragma GCC diagnostic ignored "-Wformat-truncation"
     snprintf(p, 13, "/%c%02u%c%03u.DAT",
              block.lat_degrees<0?'S':'N',
-             (unsigned)lat_tmp,
+             MIN(unsigned(lat_tmp), 100U),
              block.lon_degrees<0?'W':'E',
-             (unsigned)lon_tmp);
+             MIN(unsigned(lon_tmp), 1000U));
+#pragma GCC diagnostic pop
+
 
     // create directory if need be
     if (!directory_created) {
