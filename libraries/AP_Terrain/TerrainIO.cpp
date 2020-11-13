@@ -171,7 +171,7 @@ void AP_Terrain::open_file(void)
     uint32_t lon_tmp = abs((int32_t)block.lon_degrees);
 #pragma GCC diagnostic push
     // gcc 9.3.1 gives a spurious format truncation error here
-#pragma GCC diagnostic ignored "-Wformat-truncation"
+//#pragma GCC diagnostic ignored "-Wformat-truncation"
     snprintf(p, 13, "/%c%02u%c%03u.DAT",
              block.lat_degrees<0?'S':'N',
              MIN(unsigned(lat_tmp), 100U),
