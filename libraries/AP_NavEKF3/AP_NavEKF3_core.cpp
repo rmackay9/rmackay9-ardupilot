@@ -40,28 +40,36 @@ bool NavEKF3_core::setup_core(uint8_t _imu_index, uint8_t _core_index)
         }
     }
     if (canary_failed) {
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary1a %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can1a c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array1[0], (int)canary_array1[1], (int)canary_array1[2], (int)canary_array1[3], (int)canary_array1[4],
                     (int)canary_array1[5], (int)canary_array1[6], (int)canary_array1[7], (int)canary_array1[8],  (int)canary_array1[9]);
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary1b %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can1b c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array1[10], (int)canary_array1[11], (int)canary_array1[12], (int)canary_array1[13], (int)canary_array1[14],
                     (int)canary_array1[15], (int)canary_array1[16], (int)canary_array1[17], (int)canary_array1[18],  (int)canary_array1[19]);
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary1c %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can1c c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array1[20], (int)canary_array1[21], (int)canary_array1[22], (int)canary_array1[23], (int)canary_array1[24],
                     (int)canary_array1[25], (int)canary_array1[26], (int)canary_array1[27], (int)canary_array1[28],  (int)canary_array1[29]);
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary1d %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can1d c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array1[30], (int)canary_array1[31], (int)canary_array1[32], (int)canary_array1[33], (int)canary_array1[34],
                     (int)canary_array1[35], (int)canary_array1[36], (int)canary_array1[37], (int)canary_array1[38],  (int)canary_array1[39]);
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary2a %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can2a c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array2[0], (int)canary_array2[1], (int)canary_array2[2], (int)canary_array2[3], (int)canary_array2[4],
                     (int)canary_array2[5], (int)canary_array2[6], (int)canary_array2[7], (int)canary_array2[8],  (int)canary_array2[9]);
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary2b %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can2b c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array2[10], (int)canary_array2[11], (int)canary_array2[12], (int)canary_array2[13], (int)canary_array2[14],
                     (int)canary_array2[15], (int)canary_array2[16], (int)canary_array2[17], (int)canary_array2[18],  (int)canary_array2[19]);
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary2c %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can2c c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array2[20], (int)canary_array2[21], (int)canary_array2[22], (int)canary_array2[23], (int)canary_array2[24],
                     (int)canary_array2[25], (int)canary_array2[26], (int)canary_array2[27], (int)canary_array2[28],  (int)canary_array2[29]);
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"canary2d %d %d %d %d %d %d %d %d %d %d",
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"can2d c:%d %d %d %d %d %d %d %d %d %d %d",
+                    (int)_core_index,
                     (int)canary_array2[30], (int)canary_array2[31], (int)canary_array2[32], (int)canary_array2[33], (int)canary_array2[34],
                     (int)canary_array2[35], (int)canary_array2[36], (int)canary_array2[37], (int)canary_array2[38],  (int)canary_array2[39]);
         hal.scheduler->delay(1000);
