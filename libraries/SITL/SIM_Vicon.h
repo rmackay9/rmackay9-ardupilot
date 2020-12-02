@@ -38,6 +38,8 @@ public:
     // to the device can be written
     int fd() { return fd_their_end; }
 
+    int write_fd() { return 0; }
+
 private:
 
     SITL *_sitl;
