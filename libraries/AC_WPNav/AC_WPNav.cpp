@@ -841,7 +841,7 @@ void AC_WPNav::wp_speed_update(float dt)
     _pos_control.set_max_speed_xy(curr_max_speed_xy_cms);
 }
 
-/// update scruve with acceleration and velocity limits
+/// update scurve with acceleration and velocity limits
 void AC_WPNav::set_kinematic_limits(scurves &scurve_leg, const Vector3f &origin, const Vector3f &destination)
 {
     float accel_max, vel_max;

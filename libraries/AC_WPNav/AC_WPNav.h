@@ -246,7 +246,7 @@ protected:
     void set_yaw_cd(float heading_cd);
     void set_yaw_rate_cds(float yaw_rate_cds);
 
-    /// update scruve with acceleration and velocity limits
+    /// update scurve with acceleration and velocity limits
     void set_kinematic_limits(scurves &scurve_leg, const Vector3f &origin, const Vector3f &destination);
 
     // references and pointers to external libraries
