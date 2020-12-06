@@ -418,6 +418,15 @@ Matrix3<T> Vector3<T>::mul_rowcol(const Vector3<T> &v2) const
                       v1.z * v2.x, v1.z * v2.y, v1.z * v2.z);
 }
 
+// extrapolate position given bearing and pitch (in degrees) and distance
+template <typename T>
+void Vector3<T>::offset_bearing(float bearing, float pitch, float distance)
+{
+    y += cosf(radians(pitch)) * sinf(radians(bearing)) * distance;
+    x += cosf(radians(pitch)) * cosf(radians(bearing)) * distance;
+    z += sinf(radians(pitch)) * distance;
+}
+
 // distance from the tip of this vector to a line segment specified by two vectors
 template <typename T>
 float Vector3<T>::distance_to_segment(const Vector3<T> &seg_start, const Vector3<T> &seg_end) const
@@ -492,6 +501,7 @@ template bool Vector3<float>::operator !=(const Vector3<float> &v) const;
 template bool Vector3<float>::is_nan(void) const;
 template bool Vector3<float>::is_inf(void) const;
 template float Vector3<float>::angle(const Vector3<float> &v) const;
+template void Vector3<float>::offset_bearing(float bearing, float pitch, float distance);
 template float Vector3<float>::distance_to_segment(const Vector3<float> &seg_start, const Vector3<float> &seg_end) const;
 template float Vector3<float>::closest_distance_between_line_and_point(const Vector3<float> &w1, const Vector3<float> &w2, const Vector3<float> &p);
 // define needed ops for Vector3l
