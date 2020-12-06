@@ -219,8 +219,55 @@ void AC_Loiter::update()
     _pos_control.set_max_speed_xy(_speed_cms);
     _pos_control.set_max_accel_xy(_accel_cmss);
 
-    calc_desired_velocity(dt);
+    Vector2f desired_vel_2d;
+    calc_desired_velocity_xy(dt, desired_vel_2d);
+    
+    // Limit the velocity to prevent fence violations
+    // TODO: We need to also limit the _desired_accel
+    // TODO: Need to convert AC_Loiter to 3D
+    AC_Avoid *_avoid = AP::ac_avoid();
+    if (_avoid != nullptr) {
+        Vector3f avoidance_vel_3d(desired_vel_2d.x, desired_vel_2d.y, 0.0f);
+        _avoid->adjust_velocity(_pos_control.get_pos_xy_p().kP(), _accel_cmss, avoidance_vel_3d, _pos_control.get_pos_z_p().kP(), _pos_control.get_max_accel_z(), dt);
+        desired_vel_2d = Vector2f(avoidance_vel_3d.x, avoidance_vel_3d.y);
+    }
+
+    // send adjusted feed forward acceleration and velocity back to the Position Controller
+    _pos_control.set_desired_accel_xy(_desired_accel.x, _desired_accel.y);
+    _pos_control.set_desired_velocity_xy(desired_vel_2d.x, desired_vel_2d.y);
     _pos_control.update_xy_controller();
+}
+
+void AC_Loiter::update_3D(float target_climb_rate, float G_Dt)
+{
+    // calculate dt
+    float dt = _pos_control.time_since_last_xy_update();
+    if (dt >= 0.2f) {
+        dt = 0.0f;
+    }
+
+    // initialise pos controller speed and acceleration
+    _pos_control.set_max_speed_xy(_speed_cms);
+    _pos_control.set_max_accel_xy(_accel_cmss);
+
+    Vector2f desired_vel_2d;
+    calc_desired_velocity_xy(dt, desired_vel_2d);
+    
+    AC_Avoid *_avoid = AP::ac_avoid();
+    if (_avoid != nullptr) {
+        Vector3f avoidance_vel_3d(desired_vel_2d.x, desired_vel_2d.y, target_climb_rate);
+        _avoid->adjust_velocity(_pos_control.get_pos_xy_p().kP(), _accel_cmss, avoidance_vel_3d, _pos_control.get_pos_z_p().kP(), _pos_control.get_max_accel_z(), dt);
+        desired_vel_2d = Vector2f(avoidance_vel_3d.x, avoidance_vel_3d.y);
+        target_climb_rate = avoidance_vel_3d.z;
+    }
+
+    _pos_control.set_alt_target_from_climb_rate_ff(target_climb_rate, G_Dt, false);
+    
+    // send adjusted feed forward acceleration and velocity back to the Position Controller
+    _pos_control.set_desired_accel_xy(_desired_accel.x, _desired_accel.y);
+    _pos_control.set_desired_velocity_xy(desired_vel_2d.x, desired_vel_2d.y);
+    _pos_control.update_xy_controller();
+    _pos_control.update_z_controller();
 }
 
 // sanity check parameters
@@ -232,7 +279,7 @@ void AC_Loiter::sanity_check_params()
 
 /// calc_desired_velocity - updates desired velocity (i.e. feed forward) with pilot requested acceleration and fake wind resistance
 ///		updated velocity sent directly to position controller
-void AC_Loiter::calc_desired_velocity(float nav_dt)
+void AC_Loiter::calc_desired_velocity_xy(float nav_dt, Vector2f &desired_vel)
 {
     float ekfGndSpdLimit, ekfNavVelGainScaler;
     AP::ahrs_navekf().getEkfControlLimits(ekfGndSpdLimit, ekfNavVelGainScaler);
@@ -255,7 +302,7 @@ void AC_Loiter::calc_desired_velocity(float nav_dt)
 
     // get loiters desired velocity from the position controller where it is being stored.
     const Vector3f &desired_vel_3d = _pos_control.get_desired_velocity();
-    Vector2f desired_vel(desired_vel_3d.x,desired_vel_3d.y);
+    desired_vel = Vector2f{desired_vel_3d.x,desired_vel_3d.y};
 
     // update the desired velocity using our predicted acceleration
     desired_vel.x += _predicted_accel.x * nav_dt;
@@ -302,15 +349,4 @@ void AC_Loiter::calc_desired_velocity(float nav_dt)
         desired_vel.x = desired_vel.x * gnd_speed_limit_cms / horizSpdDem;
         desired_vel.y = desired_vel.y * gnd_speed_limit_cms / horizSpdDem;
     }
-
-    // Limit the velocity to prevent fence violations
-    // TODO: We need to also limit the _desired_accel
-    AC_Avoid *_avoid = AP::ac_avoid();
-    if (_avoid != nullptr) {
-        _avoid->adjust_velocity(_pos_control.get_pos_xy_p().kP(), _accel_cmss, desired_vel, nav_dt);
-    }
-
-    // send adjusted feed forward acceleration and velocity back to the Position Controller
-    _pos_control.set_desired_accel_xy(_desired_accel.x, _desired_accel.y);
-    _pos_control.set_desired_velocity_xy(desired_vel.x, desired_vel.y);
 }

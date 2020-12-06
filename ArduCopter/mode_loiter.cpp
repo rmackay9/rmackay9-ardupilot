@@ -171,20 +171,15 @@ void ModeLoiter::run()
         }
 #endif
 
-        // run loiter controller
-        loiter_nav->update();
-
         // call attitude controller
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(loiter_nav->get_roll(), loiter_nav->get_pitch(), target_yaw_rate);
 
         // adjust climb rate using rangefinder
         target_climb_rate = copter.surface_tracking.adjust_climb_rate(target_climb_rate);
 
-        // get avoidance adjusted climb rate
-        target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
+        // run loiter controller
+        loiter_nav->update_3D(target_climb_rate, G_Dt);
 
-        pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate, G_Dt, false);
-        pos_control->update_z_controller();
         break;
     }
 }

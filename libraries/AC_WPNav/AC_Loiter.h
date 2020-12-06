@@ -50,6 +50,7 @@ public:
     /// run the loiter controller
     void update();
 
+    void update_3D(float target_climb_rate, float G_Dt);
     /// get desired roll, pitch which should be fed into stabilize controllers
     float get_roll() const { return _pos_control.get_roll(); }
     float get_pitch() const { return _pos_control.get_pitch(); }
@@ -63,7 +64,7 @@ protected:
 
     /// updates desired velocity (i.e. feed forward) with pilot requested acceleration and fake wind resistance
     ///		updated velocity sent directly to position controller
-    void calc_desired_velocity(float nav_dt);
+    void calc_desired_velocity_xy(float nav_dt, Vector2f &desired_vel_2d);
 
     // references and pointers to external libraries
     const AP_InertialNav&   _inav;
