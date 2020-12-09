@@ -122,12 +122,12 @@ public:
 
     // returns object avoidance adjusted destination which is always the same as get_wp_destination
     // having this function unifies the AC_WPNav_OA and AC_WPNav interfaces making vehicle code simpler
-    virtual bool get_oa_wp_destination(Location& destination) const { return get_wp_destination_loc(destination); }
+    virtual bool get_oa_wp_destination(Location& destination) const WARN_IF_UNUSED { return get_wp_destination_loc(destination); }
 
     /// set_wp_destination waypoint using position vector (distance from ekf origin in cm)
     ///     terrain_alt should be true if destination.z is a desired altitude above terrain
     virtual bool set_wp_destination(const Vector3f& destination, bool terrain_alt = false);
-    bool set_wp_destination_next(const Vector3f& destination, bool terrain_alt = false);
+    bool set_wp_destination_next(const Vector3f& destination, bool terrain_alt = false) WARN_IF_UNUSED;
 
     /// set waypoint destination using NED position vector from ekf origin in meters
     ///     provide next_destination_NED if known
@@ -193,8 +193,8 @@ public:
     ///     next_destination should be set to the next segment's destination
     ///     next_terrain_alt should be true if next_destination.z is a desired altitude above terrain (false if its desired altitudes above ekf origin)
     ///     next_destination.z  must be in the same "frame" as destination.z (i.e. if destination is a alt-above-terrain, next_destination should be too)
-    bool set_spline_destination(const Vector3f& destination, bool terrain_alt, const Vector3f& next_destination, bool next_terrain_alt, bool next_is_spline);
-    bool set_spline_destination_next(const Vector3f& destination, bool terrain_alt, const Vector3f& next_destination, bool next_terrain_alt, bool next_is_spline);
+    bool set_spline_destination(const Vector3f& destination, bool terrain_alt, const Vector3f& next_destination, bool next_terrain_alt, bool next_is_spline) WARN_IF_UNUSED;
+    bool set_spline_destination_next(const Vector3f& destination, bool terrain_alt, const Vector3f& next_destination, bool next_terrain_alt, bool next_is_spline) WARN_IF_UNUSED;
 
     ///
     /// shared methods
@@ -205,7 +205,7 @@ public:
     float get_pitch() const { return _pos_control.get_pitch(); }
 
     /// advance_wp_target_along_track - move target location along track from origin to destination
-    bool advance_wp_target_along_track(float dt);
+    bool advance_wp_target_along_track(float dt) WARN_IF_UNUSED;
 
     /// return the crosstrack_error - horizontal error of the actual position vs the desired position
     float crosstrack_error() const { return _track_error_xy;}
@@ -236,11 +236,11 @@ protected:
     void wp_speed_update(float dt);
 
     // get terrain's altitude (in cm above the ekf origin) at the current position (+ve means terrain below vehicle is above ekf origin's altitude)
-    bool get_terrain_offset(float& offset_cm);
+    bool get_terrain_offset(float& offset_cm) WARN_IF_UNUSED;
 
     // convert location to vector from ekf origin.  terrain_alt is set to true if resulting vector's z-axis should be treated as alt-above-terrain
     //      returns false if conversion failed (likely because terrain data was not available)
-    bool get_vector_NEU(const Location &loc, Vector3f &vec, bool &terrain_alt);
+    bool get_vector_NEU(const Location &loc, Vector3f &vec, bool &terrain_alt) WARN_IF_UNUSED;
 
     // set heading used for spline and waypoint navigation
     void set_yaw_cd(float heading_cd);
