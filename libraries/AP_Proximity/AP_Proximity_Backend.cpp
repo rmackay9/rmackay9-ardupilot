@@ -39,10 +39,9 @@ bool AP_Proximity_Backend::get_horizontal_distances(AP_Proximity::Proximity_Dist
     bool valid_distances = false;
     for (uint8_t i=0; i<PROXIMITY_MAX_DIRECTION; i++) {
         prx_dist_array.orientation[i] = i;
-        const boundary_location bnd_loc{i};
-        if (boundary.check_distance_valid(bnd_loc)) {
+        const AP_Proximity_Boundary_3D::Face face(0, i);
+        if (boundary.get_distance(face, prx_dist_array.distance[i])) {
             valid_distances = true;
-            prx_dist_array.distance[i] = boundary.get_distance(bnd_loc);
         } else {
             prx_dist_array.distance[i] = distance_max();
         }
