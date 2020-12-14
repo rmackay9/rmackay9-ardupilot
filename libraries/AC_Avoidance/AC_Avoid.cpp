@@ -1049,7 +1049,7 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector3f &d
     // rotate velocity vector from earth frame to body-frame since obstacles are in body-frame
     Vector2f safe_vel_2d = _ahrs.earth_to_body2D(Vector2f{desired_vel_cms.x, desired_vel_cms.y});
     safe_vel = Vector3f{safe_vel_2d.x, safe_vel_2d.y, desired_vel_cms.z};
-        
+
     // calc margin in cm
     const float margin_cm = MAX(_margin * 100.0f, 0.0f);
     Vector3f stopping_point_plus_margin; 
@@ -1058,14 +1058,14 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector3f &d
         const float speed = safe_vel.length();
         stopping_point_plus_margin = safe_vel*((2.0f + margin_cm + get_stopping_distance(kP, accel_cmss, speed))/speed);
     }
-    
+
     // get total number of obstacles
     const uint8_t obstacle_num = _proximity.get_obstacle_count();
     if (obstacle_num == 0) {
         // no obstacles
         return;
     }
- 
+
     for (uint8_t i = 0; i<obstacle_num; i++) {
         // get obstacle from proximity library
         Vector3f vector_to_obstacle;
@@ -1084,7 +1084,7 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector3f &d
             const float z_back_dist = margin_vector.z;
             calc_backup_velocity_3D(kP, accel_cmss, quad_1_back_vel, quad_2_back_vel, quad_3_back_vel, quad_4_back_vel, xy_back_dist, vector_to_obstacle, kP_z, accel_cmss_z, z_back_dist, min_back_vel_z, max_back_vel_z, dt);
         }
-        
+
         if (desired_vel_cms.is_zero()) {
             // cannot limit velocity if there is nothing to limit
             // backing up (if needed) has already been done
