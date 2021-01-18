@@ -13,8 +13,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
-  support for autotune of multirotors. Based on original autotune code from ArduCopter, written by Leonard Hall
-  Converted to a library by Andrew Tridgell
+  support for autotune of helicopters
  */
 
 #pragma once
@@ -33,32 +32,54 @@ public:
     void save_tuning_gains() override;
 
 protected:
-    void test_init() override;
-    void test_run(AxisType test_axis, const float dir_sign) override;
-    void do_gcs_announcements() override;
+
     void load_test_gains() override;
 
-    // generic method used to update gains for the rate p up tune type
+    // get intra test rate I gain for the specified axis
+    float get_intra_test_ri(AxisType test_axis) override { return 0.0f; }
+
+    // get tuned rate I gain for the specified axis
+    float get_tuned_ri(AxisType test_axis) override { return 0.0f; }
+
+    // get tuned yaw rate d gain
+    float get_tuned_yaw_rd() override { return tune_yaw_rd; }
+
+    void test_init() override;
+    void test_run(AxisType test_axis, const float dir_sign) override;
+
+    // update gains for the rate p up tune type
     void updating_rate_p_up_all(AxisType test_axis) override {};
-    // generic method used to update gains for the rate p down tune type
+
+    // update gains for the rate p down tune type
     void updating_rate_p_down_all(AxisType test_axis) override {};
-    // generic method used to update gains for the rate d up tune type
+
+    // update gains for the rate d up tune type
     void updating_rate_d_up_all(AxisType test_axis) override {};
-    // generic method used to update gains for the rate d down tune type
+
+    // update gains for the rate d down tune type
     void updating_rate_d_down_all(AxisType test_axis) override {};
-    // generic method used to update gains for the angle p up tune type
+
+    // update gains for the angle p up tune type
     void updating_angle_p_up_all(AxisType test_axis) override {};
-    // generic method used to update gains for the angle p down tune type
+
+    // update gains for the angle p down tune type
     void updating_angle_p_down_all(AxisType test_axis) override {};
+
+    // get minimum rate P (for any axis)
+    float get_rp_min() const override { return 0.0f; }
+
+    // get minimum angle P (for any axis)
+    float get_sp_min() const override { return 0.0f; }
+
+    // get minimum rate Yaw filter value
+    float get_yaw_rate_filt_min() const override { return 0.0f; }
 
     void Log_AutoTune() override {};
     void Log_AutoTuneDetails() override {};
-    bool allow_zero_rate_p() override {return true;}
-    float get_intra_test_ri(AxisType test_axis) override {return 0.0f;}
-    float get_load_tuned_ri(AxisType test_axis) override {return 0.0f;}
-    float get_load_tuned_yaw_rd() override {return tune_yaw_rd;}
-    float get_rp_min() const override {return 0.0f;}
-    float get_sp_min() const override {return 0.0f;}
-    float get_rlpf_min() const override {return 0.0f;}
 
+    // returns true if rate P gain of zero is acceptable for this vehicle
+    bool allow_zero_rate_p() override { return true; }
+
+    // send intermittant updates to user on status of tune
+    void do_gcs_announcements() override;
 };

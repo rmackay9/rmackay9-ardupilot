@@ -17,6 +17,8 @@
   Converted to a library by Andrew Tridgell, and rewritten to include helicopters by Bill Geyer
  */
 
+#include "AC_AutoTune_Heli.h"
+
 #define AUTOTUNE_HELI_TARGET_ANGLE_RLLPIT_CD     2000   // target roll/pitch angle during AUTOTUNE FeedForward rate test
 #define AUTOTUNE_HELI_TARGET_RATE_RLLPIT_CDS     5000   // target roll/pitch rate during AUTOTUNE FeedForward rate test
 #define AUTOTUNE_FFI_RATIO_FOR_TESTING     0.5f     // I is set 2x smaller than VFF during testing
@@ -35,6 +37,4 @@
 #define AUTOTUNE_SP_MAX                   10.0f     // maximum Stab P value
 #define AUTOTUNE_SP_MIN                    0.5f     // maximum Stab P value
 #define AUTOTUNE_D_UP_DOWN_MARGIN          0.2f     // The margin below the target that we tune D in
-
-#include "AC_AutoTune_Heli.h"
 
