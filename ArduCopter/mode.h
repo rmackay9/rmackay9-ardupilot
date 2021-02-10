@@ -820,7 +820,16 @@ public:
 
     bool do_user_takeoff_start(float takeoff_alt_cm) override;
 
-    GuidedMode mode() const { return guided_mode; }
+    // sub modes
+    enum class GuidedSubMode {
+        Guided_TakeOff,
+        Guided_WP,
+        Guided_Velocity,
+        Guided_PosVel,
+        Guided_Angle,
+    };
+
+    GuidedSubMode mode() const { return guided_mode; }
 
     void angle_control_start();
     void angle_control_run();
@@ -854,8 +863,7 @@ private:
     void set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_angle);
     bool use_pilot_yaw(void) const;
 
-    // controls which controller is run (pos or vel):
-    GuidedMode guided_mode = Guided_TakeOff;
+    GuidedSubMode guided_mode;      // controls which controller is run (pos, vel, etc):
 
 };
 
