@@ -13,32 +13,6 @@
 #define GUIDED_POSVEL_TIMEOUT_MS    3000    // guided mode's position-velocity controller times out after 3seconds with no new updates
 #define GUIDED_ATTITUDE_TIMEOUT_MS  1000    // guided mode's attitude controller times out after 1 second with no new updates
 
-static Vector3f guided_pos_target_cm;       // position target (used by posvel controller only)
-static Vector3f guided_vel_target_cms;      // velocity target (used by velocity controller and posvel controller)
-static uint32_t posvel_update_time_ms;      // system time of last target update to posvel controller (i.e. position and velocity update)
-static uint32_t vel_update_time_ms;         // system time of last target update to velocity controller
-
-struct {
-    uint32_t update_time_ms;
-    float roll_cd;
-    float pitch_cd;
-    float yaw_cd;
-    float yaw_rate_cds;
-    float climb_rate_cms;   // climb rate in cms.  Used if use_thrust is false
-    float thrust;           // thrust from -1 to 1.  Used if use_thrust is true
-    bool use_yaw_rate;
-    bool use_thrust;
-} static guided_angle_state;
-
-struct Guided_Limit {
-    uint32_t timeout_ms;  // timeout (in seconds) from the time that guided is invoked
-    float alt_min_cm;   // lower altitude limit in cm above home (0 = no limit)
-    float alt_max_cm;   // upper altitude limit in cm above home (0 = no limit)
-    float horiz_max_cm; // horizontal position limit in cm from where guided mode was initiated (0 = no limit)
-    uint32_t start_time;// system time in milliseconds that control was handed to the external computer
-    Vector3f start_pos; // start position as a distance from home in cm.  used for checking horiz_max limit
-} guided_limit;
-
 // guided_init - initialise guided controller
 bool ModeGuided::init(bool ignore_checks)
 {
