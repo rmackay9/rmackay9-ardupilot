@@ -872,9 +872,7 @@ private:
     // angle control variables
     struct {
         uint32_t update_time_ms;
-        float roll_cd;
-        float pitch_cd;
-        float yaw_cd;
+        Quaternion att_target;  // attitude target as quaternion
         float yaw_rate_cds;
         float climb_rate_cms;   // climb rate in cms.  Used if use_thrust is false
         float thrust;           // thrust from -1 to 1.  Used if use_thrust is true

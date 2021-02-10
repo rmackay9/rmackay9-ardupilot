@@ -192,10 +192,12 @@ void ModeGuided::angle_control_start()
 
     // initialise targets
     guided_angle_state.update_time_ms = millis();
-    guided_angle_state.roll_cd = ahrs.roll_sensor;
-    guided_angle_state.pitch_cd = ahrs.pitch_sensor;
-    guided_angle_state.yaw_cd = ahrs.yaw_sensor;
+    if (!ahrs.get_quaternion(guided_angle_state.att_target)) {
+        // if we fail to retrieve quaternion from ahrs convert angles to quaternion
+        guided_angle_state.att_target.from_euler(ahrs.roll, ahrs.pitch, ahrs.yaw);
+    }
     guided_angle_state.climb_rate_cms = 0.0f;
+    guided_angle_state.use_thrust = false;
     guided_angle_state.yaw_rate_cds = 0.0f;
     guided_angle_state.use_yaw_rate = false;
 
@@ -333,16 +335,13 @@ bool ModeGuided::set_destination_posvel(const Vector3f& destination, const Vecto
 // set guided mode angle target and climbrate
 void ModeGuided::set_angle(const Quaternion &q, float climb_rate_cms_or_thrust, bool use_yaw_rate, float yaw_rate_rads, bool use_thrust)
 {
-    // check we are in velocity control mode
+    // check we are in angle control mode
     if (guided_mode != GuidedSubMode::Guided_Angle) {
         angle_control_start();
     }
 
-    // convert quaternion to euler angles
-    q.to_euler(guided_angle_state.roll_cd, guided_angle_state.pitch_cd, guided_angle_state.yaw_cd);
-    guided_angle_state.roll_cd = ToDeg(guided_angle_state.roll_cd) * 100.0f;
-    guided_angle_state.pitch_cd = ToDeg(guided_angle_state.pitch_cd) * 100.0f;
-    guided_angle_state.yaw_cd = wrap_180_cd(ToDeg(guided_angle_state.yaw_cd) * 100.0f);
+    // store attitude targets
+    guided_angle_state.att_target = q;
     guided_angle_state.yaw_rate_cds = ToDeg(yaw_rate_rads) * 100.0f;
     guided_angle_state.use_yaw_rate = use_yaw_rate;
 
@@ -358,8 +357,10 @@ void ModeGuided::set_angle(const Quaternion &q, float climb_rate_cms_or_thrust, 
     guided_angle_state.update_time_ms = millis();
 
     // log target
+    float roll_rad, pitch_rad, yaw_rad;
+    q.to_euler(roll_rad, pitch_rad, yaw_rad);
     copter.Log_Write_GuidedTarget((uint8_t)guided_mode,
-                           Vector3f(guided_angle_state.roll_cd, guided_angle_state.pitch_cd, guided_angle_state.yaw_cd),
+                           Vector3f(ToDeg(roll_rad) * 100.0f, ToDeg(pitch_rad) * 100.0f, ToDeg(yaw_rad) * 100.0f),
                            Vector3f(0.0f, 0.0f, climb_rate_cms_or_thrust));
 }
 
@@ -552,20 +553,27 @@ void ModeGuided::posvel_control_run()
 // called from guided_run
 void ModeGuided::angle_control_run()
 {
-    // constrain desired lean angles
-    float roll_in = guided_angle_state.roll_cd;
-    float pitch_in = guided_angle_state.pitch_cd;
-    float total_in = norm(roll_in, pitch_in);
-    float angle_max = MIN(attitude_control->get_althold_lean_angle_max(), copter.aparm.angle_max);
-    if (total_in > angle_max) {
-        float ratio = angle_max / total_in;
-        roll_in *= ratio;
-        pitch_in *= ratio;
+    // calculate maximum lean angle
+    float angle_max_rad = ToRad(MIN(attitude_control->get_althold_lean_angle_max(), copter.aparm.angle_max) * 0.01f);
+
+    // on timeout set maximum roll and pitch angles, yaw rate and climb rate to zero
+    if ((AP_HAL::millis() - guided_angle_state.update_time_ms) > GUIDED_ATTITUDE_TIMEOUT_MS) {
+        angle_max_rad = 0.0f;
+        guided_angle_state.yaw_rate_cds = 0.0f;
+        guided_angle_state.use_yaw_rate = true;
+        guided_angle_state.climb_rate_cms = 0.0f;
+        guided_angle_state.use_thrust = false;
     }
 
-    // wrap yaw request
-    float yaw_in = wrap_180_cd(guided_angle_state.yaw_cd);
-    float yaw_rate_in = wrap_180_cd(guided_angle_state.yaw_rate_cds);
+    float roll_rad, pitch_rad, yaw_rad;
+    guided_angle_state.att_target.to_euler(roll_rad, pitch_rad, yaw_rad);
+    float total_in_rad = norm(roll_rad, pitch_rad);
+    if (total_in_rad > angle_max_rad) {
+        float ratio = angle_max_rad / total_in_rad;
+        roll_rad *= ratio;
+        pitch_rad *= ratio;
+        guided_angle_state.att_target.from_euler(roll_rad, pitch_rad, yaw_rad);
+    }
 
     float climb_rate_cms = 0.0f;
     if (!guided_angle_state.use_thrust) {
@@ -574,16 +582,6 @@ void ModeGuided::angle_control_run()
 
         // get avoidance adjusted climb rate
         climb_rate_cms = get_avoidance_adjusted_climbrate(climb_rate_cms);
-    }
-
-    // check for timeout - set lean angles and climb rate to zero if no updates received for 3 seconds
-    uint32_t tnow = millis();
-    if (tnow - guided_angle_state.update_time_ms > GUIDED_ATTITUDE_TIMEOUT_MS) {
-        roll_in = 0.0f;
-        pitch_in = 0.0f;
-        climb_rate_cms = 0.0f;
-        yaw_rate_in = 0.0f;
-        guided_angle_state.use_thrust = false;
     }
 
     // interpret positive climb rate or thrust as triggering take-off
@@ -615,9 +613,9 @@ void ModeGuided::angle_control_run()
 
     // call attitude controller
     if (guided_angle_state.use_yaw_rate) {
-        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(roll_in, pitch_in, yaw_rate_in);
+        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(ToDeg(roll_rad) * 100.0f, ToDeg(pitch_rad) * 100.0f, guided_angle_state.yaw_rate_cds);
     } else {
-        attitude_control->input_euler_angle_roll_pitch_yaw(roll_in, pitch_in, yaw_in, true);
+        attitude_control->input_quaternion(guided_angle_state.att_target);
     }
 
     // call position controller
