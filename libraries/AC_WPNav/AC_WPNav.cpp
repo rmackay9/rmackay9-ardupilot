@@ -134,7 +134,7 @@ void AC_WPNav::wp_and_spline_init(float speed_cms)
 
     // initialise position controller
     _pos_control.set_desired_accel_xy(0.0f,0.0f);
-    _pos_control.init_xy_controller();
+    _pos_control.init_xyz();
 
     // initialise feed forward velocity to zero
     _pos_control.set_desired_velocity_xy(0.0f, 0.0f);
@@ -143,12 +143,8 @@ void AC_WPNav::wp_and_spline_init(float speed_cms)
     _wp_desired_speed_xy_cms = is_positive(speed_cms) ? speed_cms : _wp_speed_cms;
 
     // initialise position controller speed and acceleration
-    _pos_control.set_max_speed_xy(_wp_desired_speed_xy_cms);
-    _pos_control.set_max_accel_xy(_wp_accel_cmss);
-    _pos_control.set_max_speed_z(-_wp_speed_down_cms, _wp_speed_up_cms);
-    _pos_control.set_max_accel_z(_wp_accel_z_cmss);
-    _pos_control.calc_leash_length_xy();
-    _pos_control.calc_leash_length_z();
+    _pos_control.set_max_speed_accel_xy(_wp_desired_speed_xy_cms, _wp_accel_cmss);
+    _pos_control.set_max_speed_accel_z(-_wp_speed_down_cms, _wp_speed_up_cms, _wp_accel_z_cmss);
 
     // calculate scurve jerk and jerk time
     if (!is_positive(_wp_jerk)) {
@@ -167,7 +163,6 @@ void AC_WPNav::wp_and_spline_init(float speed_cms)
     _accel_terrain_offset = 0.0f;
 
     // set flag so get_yaw() returns current heading target
-    _flags.wp_yaw_set = false;
     _flags.reached_destination = false;
     _flags.fast_waypoint = false;
 
@@ -185,7 +180,7 @@ void AC_WPNav::set_speed_xy(float speed_cms)
     // range check target speed
     if (speed_cms >= WPNAV_WP_SPEED_MIN) {
         _wp_desired_speed_xy_cms = speed_cms;
-        _pos_control.set_max_speed_xy(_wp_desired_speed_xy_cms);
+        _pos_control.set_max_speed_accel_xy(_wp_desired_speed_xy_cms, _wp_accel_cmss);
         update_track_with_speed_accel_limits();
     }
 }
@@ -193,14 +188,14 @@ void AC_WPNav::set_speed_xy(float speed_cms)
 /// set current target climb rate during wp navigation
 void AC_WPNav::set_speed_up(float speed_up_cms)
 {
-    _pos_control.set_max_speed_z(_pos_control.get_max_speed_down(), speed_up_cms);
+    _pos_control.set_max_speed_accel_z(_pos_control.get_max_speed_down(), speed_up_cms, _pos_control.get_max_accel_z());
     update_track_with_speed_accel_limits();
 }
 
 /// set current target descent rate during wp navigation
 void AC_WPNav::set_speed_down(float speed_down_cms)
 {
-    _pos_control.set_max_speed_z(speed_down_cms, _pos_control.get_max_speed_up());
+    _pos_control.set_max_speed_accel_z(speed_down_cms, _pos_control.get_max_speed_up(), _pos_control.get_max_accel_z());
     update_track_with_speed_accel_limits();
 }
 
@@ -319,7 +314,6 @@ bool AC_WPNav::set_wp_destination(const Vector3f& destination, bool terrain_alt)
     _scurve_next_leg.init();
     _flags.fast_waypoint = false;   // default waypoint back to slow
     _flags.reached_destination = false;
-    _flags.wp_yaw_set = false;
 
     return true;
 }
@@ -370,19 +364,15 @@ bool AC_WPNav::set_wp_destination_next_NED(const Vector3f& destination_NED)
 ///     relies on set_wp_destination or set_wp_origin_and_destination having been called first
 void AC_WPNav::shift_wp_origin_to_current_pos()
 {
-    // get current and target locations
-    const Vector3f &curr_pos = _inav.get_position();
+    // Reset position controller to current location
+    _pos_control.init_xyz();
     const Vector3f pos_target = _pos_control.get_pos_target();
 
-    // calculate difference between current position and target
-    Vector3f pos_diff = curr_pos - pos_target;
-
     // shift origin and destination
-    _origin += pos_diff;
-    _destination += pos_diff;
-
-    // move pos controller target and disable feed forward
-    _pos_control.set_pos_target(curr_pos);
+    _origin.x = pos_target.x;
+    _origin.y = pos_target.y;
+    _destination.x = pos_target.x;
+    _destination.y = pos_target.y;
 }
 
 /// shifts the origin and destination horizontally to the current position
@@ -400,7 +390,7 @@ void AC_WPNav::shift_wp_origin_and_destination_to_current_pos_xy()
     _destination.y = curr_pos.y;
 
     // move pos controller target horizontally
-    _pos_control.set_xy_target(curr_pos.x, curr_pos.y);
+    _pos_control.set_target_pos_xy(curr_pos.x, curr_pos.y);
 }
 
 /// shifts the origin and destination horizontally to the achievable stopping point
@@ -423,7 +413,7 @@ void AC_WPNav::shift_wp_origin_and_destination_to_stopping_point_xy()
     _destination.y = stopping_point.y;
 
     // move pos controller target horizontally
-    _pos_control.set_xy_target(stopping_point.x, stopping_point.y);
+    _pos_control.set_target_pos_xy(stopping_point.x, stopping_point.y);
 }
 
 /// get_wp_stopping_point_xy - returns vector to stopping point based on a horizontal position and velocity
@@ -493,8 +483,12 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
     }
 
     // input shape the terrain offset
-    shape_pos_vel(terr_offset, 0.0f, _pos_terrain_offset, _vel_terrain_offset, _accel_terrain_offset, 0.0f, 0.0f, _pos_control.get_max_accel_z(), 0.05f, _track_scalar_dt * dt);
-    update_pos_vel_accel(_pos_terrain_offset, _vel_terrain_offset, _accel_terrain_offset, _track_scalar_dt * dt);
+    shape_pos_vel_accel(terr_offset, 0.0f, 0.0f,
+        _pos_terrain_offset, _vel_terrain_offset, _accel_terrain_offset,
+        0.0f, _pos_control.get_max_speed_down(), _pos_control.get_max_speed_up(),
+        -_pos_control.get_max_accel_z(), _pos_control.get_max_accel_z(), 0.05f, dt);
+
+    update_pos_vel_accel(_pos_terrain_offset, _vel_terrain_offset, _accel_terrain_offset, dt, false, false, 0.0f, 0.0f);
 
     // convert final_target.z to altitude above the ekf origin
     target_pos.z += _pos_terrain_offset;
@@ -566,18 +560,13 @@ bool AC_WPNav::update_wpnav()
     // get dt from pos controller
     float dt = _pos_control.get_dt();
 
-    // allow the accel and speed values to be set without changing
-    // out of auto mode. This makes it easier to tune auto flight
-    _pos_control.set_max_accel_xy(_wp_accel_cmss);
-    _pos_control.set_max_accel_z(_wp_accel_z_cmss);
-
     // advance the target if necessary
     if (!advance_wp_target_along_track(dt)) {
         // To-Do: handle inability to advance along track (probably because of missing terrain data)
         ret = false;
     }
 
-    _pos_control.update_xy_controller();
+    _pos_control.run_xy_controller();
 
     _wp_last_update = AP_HAL::millis();
 
@@ -745,7 +734,6 @@ bool AC_WPNav::set_spline_destination(const Vector3f& destination, bool terrain_
     _spline_this_leg.set_origin_and_destination(_origin, _destination, origin_vector, destination_vector);
     _this_leg_is_spline = true;
     _flags.reached_destination = false;
-    _flags.wp_yaw_set = false;
 
     return true;
 }
