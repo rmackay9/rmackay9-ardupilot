@@ -1,7 +1,9 @@
 #pragma once
 
 #include <AP_Common/AP_Common.h>
+#include <AP_Math/SCurve.h>
 #include <APM_Control/AR_AttitudeControl.h>
+#include <APM_Control/AR_PosControl.h>
 #include <AP_Navigation/AP_Navigation.h>
 #include <AC_Avoidance/AP_OAPathPlanner.h>
 
@@ -11,7 +13,14 @@ class AR_WPNav {
 public:
 
     // constructor
-    AR_WPNav(AR_AttitudeControl& atc, AP_Navigation& nav_controller);
+    AR_WPNav(AR_AttitudeControl& atc, AR_PosControl &psc, AP_Navigation& nav_controller);
+
+    // initialise waypoint controller
+    // speed_max should be the max speed (in m/s) the vehicle will travel to waypoint.  Leave as zero to use the default speed
+    // accel_max should be the max forward-back acceleration (in m/s/s).  Leave as zero to use the attitude controller's default acceleration
+    // lat_accel_max should be the max right-left acceleration (in m/s/s).  Leave as zero to use the attitude controller's default acceleration
+    // jerk_max should be the max forward-back and lateral jerk (in m/s/s/s).  Leave as zero to use the attitude controller's default acceleration
+    void init(float speed_max, float accel_max, float lat_accel_max, float jerk_max);
 
     // update navigation
     void update(float dt);
@@ -36,9 +45,9 @@ public:
     // get desired lateral acceleration (for reporting purposes only because will be zero during pivot turns)
     float get_lat_accel() const { return _desired_lat_accel; }
 
-    // set desired location
-    // next_leg_bearing_cd should be heading to the following waypoint (used to slow the vehicle in order to make the turn)
-    bool set_desired_location(const struct Location& destination, float next_leg_bearing_cd = AR_WPNAV_HEADING_UNKNOWN)  WARN_IF_UNUSED;
+    // set desired location and (optionally) next_destination
+    // next_destination should be provided if known to allow smooth cornering
+    bool set_desired_location(const Location &destination, Location next_destination = Location()) WARN_IF_UNUSED;
 
     // set desired location to a reasonable stopping point, return true on success
     bool set_desired_location_to_stopping_location()  WARN_IF_UNUSED;
@@ -89,8 +98,14 @@ private:
     // true if update has been called recently
     bool is_active() const;
 
+    // move target location along track from origin to destination
+    void advance_wp_target_along_track(const Location &current_loc, float dt);
+
     // update distance and bearing from vehicle's current position to destination
     void update_distance_and_bearing_to_destination();
+
+    // calculate steering and speed to drive along line from origin to destination waypoint
+    void update_steering_and_speed(const Location &current_loc, float dt);
 
     // calculate steering output to drive along line from origin to destination waypoint
     // relies on update_distance_and_bearing_to_destination being called first
@@ -126,7 +141,16 @@ private:
 
     // references
     AR_AttitudeControl& _atc;       // rover attitude control library
+    AR_PosControl &_psc;            // rover position control library
     AP_Navigation& _nav_controller; // navigation controller (aka L1 controller)
+
+    // scurve
+    SCurve _scurve_prev_leg;        // previous scurve trajectory used to blend with current scurve trajectory
+    SCurve _scurve_this_leg;        // current scurve trajectory
+    SCurve _scurve_next_leg;        // next scurve trajectory used to blend with current scurve trajectory
+    float _scurve_jerk;             // scurve jerk max in m/s/s/s
+    float _scurve_jerk_time;        // scurve jerk time (time in seconds for jerk to increase from zero _scurve_jerk)
+    bool _fast_waypoint;            // true if vehicle will stop at the next waypoint
 
     // variables held in vehicle code (for now)
     float _turn_radius;             // vehicle turn radius in meters
