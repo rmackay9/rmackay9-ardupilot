@@ -2,6 +2,7 @@
 
 #include <AP_Common/AP_Common.h>
 #include <APM_Control/AR_AttitudeControl.h>
+#include <APM_Control/AR_PosControl.h>
 #include <AP_Navigation/AP_Navigation.h>
 #include <AC_Avoidance/AP_OAPathPlanner.h>
 
@@ -11,7 +12,7 @@ class AR_WPNav {
 public:
 
     // constructor
-    AR_WPNav(AR_AttitudeControl& atc, AP_Navigation& nav_controller);
+    AR_WPNav(AR_AttitudeControl& atc, AR_PosControl &psc, AP_Navigation& nav_controller);
 
     // update navigation
     void update(float dt);
@@ -92,6 +93,9 @@ private:
     // update distance and bearing from vehicle's current position to destination
     void update_distance_and_bearing_to_destination();
 
+    // calculate steering and speed to drive along line from origin to destination waypoint
+    void update_steering_and_speed(const Location &current_loc, float dt);
+
     // calculate steering output to drive along line from origin to destination waypoint
     // relies on update_distance_and_bearing_to_destination being called first
     void update_steering(const Location& current_loc, float current_speed);
@@ -126,6 +130,7 @@ private:
 
     // references
     AR_AttitudeControl& _atc;       // rover attitude control library
+    AR_PosControl &_psc;            // rover position control library
     AP_Navigation& _nav_controller; // navigation controller (aka L1 controller)
 
     // variables held in vehicle code (for now)

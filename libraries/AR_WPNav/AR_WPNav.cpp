@@ -86,8 +86,9 @@ const AP_Param::GroupInfo AR_WPNav::var_info[] = {
     AP_GROUPEND
 };
 
-AR_WPNav::AR_WPNav(AR_AttitudeControl& atc, AP_Navigation& nav_controller) :
+AR_WPNav::AR_WPNav(AR_AttitudeControl& atc, AR_PosControl &psc, AP_Navigation& nav_controller) :
     _atc(atc),
+    _psc(psc),
     _nav_controller(nav_controller)
 {
     AP_Param::setup_object_defaults(this, var_info);
@@ -171,11 +172,14 @@ void AR_WPNav::update(float dt)
         return;
     }
 
+    // update_steering_and_speed
+    update_steering_and_speed(current_loc, dt);
+
     // calculate the required turn of the wheels
-    update_steering(current_loc, speed);
+    //update_steering(current_loc, speed);
 
     // calculate desired speed
-    update_desired_speed(dt);
+    //update_desired_speed(dt);
 }
 
 // set desired location
@@ -353,6 +357,34 @@ void AR_WPNav::update_distance_and_bearing_to_destination()
         _oa_distance_to_destination = _distance_to_destination;
         _oa_wp_bearing_cd = _wp_bearing_cd;
     }
+}
+
+// calculate steering and speed to drive along line from origin to destination waypoint
+void AR_WPNav::update_steering_and_speed(const Location &current_loc, float dt)
+{
+    // handle pivot turns
+    if (_pivot_active) {
+        _cross_track_error = calc_crosstrack_error(current_loc);
+        _desired_heading_cd = _reversed ? wrap_360_cd(_oa_wp_bearing_cd + 18000) : _oa_wp_bearing_cd;;
+        _desired_lat_accel = 0.0f;
+        _desired_turn_rate_rads = _atc.get_turn_rate_from_heading(radians(_desired_heading_cd * 0.01f), radians(_pivot_rate));
+
+        // update flag so that it can be cleared
+        update_pivot_active_flag();
+        return;
+    }
+
+    // use position controller to get to destination
+    if (!_psc.set_desired_location(_oa_destination)) {
+        _desired_speed_limited = _atc.get_desired_speed_accel_limited(0.0f, dt);
+        _desired_turn_rate_rads = 0.0f;
+        _desired_lat_accel = 0.0f;
+        return;
+    }
+    _psc.update(dt);
+    _desired_speed_limited = _atc.get_desired_speed_accel_limited(_psc.get_desired_speed(), dt);
+    _desired_turn_rate_rads = _psc.get_desired_turn_rate_rads();
+    _desired_lat_accel = _psc.get_desired_lat_accel();
 }
 
 // calculate steering output to drive along line from origin to destination waypoint
