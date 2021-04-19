@@ -651,6 +651,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("FS_OPTIONS", 48, ParametersG2, fs_options, 0),
 
+    // @Group: PSC
+    // @Path: ../libraries/APM_Control/AR_PosControl.cpp
+    AP_SUBGROUPINFO(pos_control, "PSC", 49, ParametersG2, AR_PosControl),
+
     AP_GROUPEND
 };
 
@@ -701,7 +705,8 @@ ParametersG2::ParametersG2(void)
     follow(),
     windvane(),
     airspeed(),
-    wp_nav(attitude_control, rover.L1_controller),
+    pos_control(attitude_control),
+    wp_nav(attitude_control, pos_control, rover.L1_controller),
     sailboat()
 {
     AP_Param::setup_object_defaults(this, var_info);

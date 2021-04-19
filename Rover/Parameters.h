@@ -403,6 +403,9 @@ public:
 
     // FS options
     AP_Int32 fs_options;
+
+    // position controller
+    AR_PosControl pos_control;
 };
 
 extern const AP_Param::Info var_info[];
