@@ -15,6 +15,7 @@
 
 #include <AP_Math/AP_Math.h>
 #include <AP_HAL/AP_HAL.h>
+#include <GCS_MAVLink/GCS.h>
 #include "AR_PosControl.h"
 
 extern const AP_HAL::HAL& hal;
@@ -105,6 +106,14 @@ AR_PosControl::AR_PosControl(AR_AttitudeControl& atc) :
 // update navigation
 void AR_PosControl::update(float dt)
 {
+    static uint32_t last_print_ms = 0;
+    uint32_t now_ms = AP_HAL::millis();
+    bool print_now = false;
+    if (now_ms - last_print_ms > 1000) {
+        print_now = true;
+        last_print_ms = now_ms;
+    }
+
     // exit immediately if no current location, destination or disarmed
     Vector2f curr_pos_NE;
     Vector3f curr_vel_NED;
@@ -113,6 +122,9 @@ void AR_PosControl::update(float dt)
         _desired_speed = _atc.get_desired_speed_accel_limited(0.0f, dt);
         //_desired_lat_accel = 0.0f;
         _desired_turn_rate_rads = 0.0f;
+        if (print_now) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "exit early");
+        }
         return;
     }
 
@@ -160,6 +172,11 @@ void AR_PosControl::update(float dt)
 
     // updated the desired speed using forward-back acceleration
     _desired_speed = _atc.get_desired_speed_accel_limited(_atc.get_desired_speed(), dt);
+
+    // debug
+    if (print_now) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "spd:%4.2f lat:%4.2f tr:%4.2f", (double)_desired_speed, (double)_desired_lat_accel, (double)_desired_turn_rate_rads);
+    }
 }
 
 // set limits
