@@ -199,7 +199,7 @@ bool AR_PosControl::set_desired_location(const Location &destination)
     }
 
     // set position target
-    set_pos_target(pos_NE);
+    set_pos_target(pos_NE * 0.01f);
     return true;
 }
 
