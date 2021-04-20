@@ -156,6 +156,9 @@ void AR_PosControl::update(float dt)
     // calculate desired acceleration
     // To-Do: set limits flag based on whether length is beyond max speed and/or motor outputs?
     Vector2f des_accel_ne = _pid_vel.update_all(des_vel, curr_vel_NE, false);
+    if (_accel_target_valid) {
+        des_accel_ne += _accel_target;
+    }
 
     // convert desired acceleration to desired forward-back speed, desired lateral speed and desired turn rate
 
@@ -209,6 +212,7 @@ void AR_PosControl::set_pos_target(const Vector2f &pos)
     _pos_target = pos;
     _pos_target_valid = true;
     _vel_target_valid = false;
+    _accel_target_valid = false;
 }
 
 // set position and velocity targets
@@ -218,6 +222,18 @@ void AR_PosControl::set_pos_vel_target(const Vector2f &pos, const Vector2f &vel)
     _vel_target = vel;
     _pos_target_valid = true;
     _vel_target_valid = true;
+    _accel_target_valid = false;
+}
+
+// set position, velocity and acceleration targets
+void AR_PosControl::set_pos_vel_accel_target(const Vector2f &pos, const Vector2f &vel, const Vector2f &accel)
+{
+    _pos_target = pos;
+    _vel_target = vel;
+    _accel_target = accel;
+    _pos_target_valid = true;
+    _vel_target_valid = true;
+    _accel_target_valid = true;
 }
 
 // true if update has been called recently

@@ -27,6 +27,9 @@ public:
     // set position and velocity targets
     void set_pos_vel_target(const Vector2f &pos, const Vector2f &vel);
 
+    // set position, velocity and acceleration targets
+    void set_pos_vel_accel_target(const Vector2f &pos, const Vector2f &vel, const Vector2f &accel);
+
     // get outputs for forward-back speed (in m/s), lateral speed (in m/s) and turn rate (in rad/sec)
     float get_desired_speed() const { return _desired_speed; }
     float get_desired_turn_rate_rads() const { return _desired_turn_rate_rads; }
@@ -65,8 +68,10 @@ private:
     // position and velocity targets
     Vector2f _pos_target;           // position target as an offset (in meters) from the EKF origin
     Vector2f _vel_target;           // velocity target in m/s in NE frame
+    Vector2f _accel_target;         // accel target in m/s/s in NE frame
     bool _pos_target_valid;         // true if _pos_target is valid
     bool _vel_target_valid;         // true if _vel_target is valid
+    bool _accel_target_valid;       // true if _accel_target is valid
 
     // variables for navigation
     uint32_t _last_update_ms;       // system time of last call to update
