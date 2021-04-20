@@ -15,6 +15,13 @@ public:
     // constructor
     AR_WPNav(AR_AttitudeControl& atc, AR_PosControl &psc, AP_Navigation& nav_controller);
 
+    // initialise waypoint controller
+    // speed_max should be the max speed (in m/s) the vehicle will travel to waypoint.  Leave as zero to use the default speed
+    // accel_max should be the max forward-back acceleration (in m/s/s).  Leave as zero to use the attitude controller's default acceleration
+    // lat_accel_max should be the max right-left acceleration (in m/s/s).  Leave as zero to use the attitude controller's default acceleration
+    // jerk_max should be the max forward-back and lateral jerk (in m/s/s/s).  Leave as zero to use the attitude controller's default acceleration
+    void init(float speed_max, float accel_max, float lat_accel_max, float jerk_max);
+
     // update navigation
     void update(float dt);
 
@@ -38,9 +45,10 @@ public:
     // get desired lateral acceleration (for reporting purposes only because will be zero during pivot turns)
     float get_lat_accel() const { return _desired_lat_accel; }
 
-    // set desired location
-    // next_leg_bearing_cd should be heading to the following waypoint (used to slow the vehicle in order to make the turn)
-    bool set_desired_location(const struct Location& destination, float next_leg_bearing_cd = AR_WPNAV_HEADING_UNKNOWN)  WARN_IF_UNUSED;
+    // set desired location and (optionally) next_destination
+    // next_destination should be provided if known to allow proper cornering
+    bool set_desired_location(const Location &destination) WARN_IF_UNUSED;
+    bool set_desired_location(const Location &destination, const Location &next_destination) WARN_IF_UNUSED;
 
     // set desired location to a reasonable stopping point, return true on success
     bool set_desired_location_to_stopping_location()  WARN_IF_UNUSED;

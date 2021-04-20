@@ -94,6 +94,48 @@ AR_WPNav::AR_WPNav(AR_AttitudeControl& atc, AR_PosControl &psc, AP_Navigation& n
     AP_Param::setup_object_defaults(this, var_info);
 }
 
+// initialise waypoint controller
+// speed_max should be the max speed (in m/s) the vehicle will travel to waypoint.  Leave as zero to use the default speed
+// accel_max should be the max forward-back acceleration (in m/s/s).  Leave as zero to use the attitude controller's default acceleration
+// lat_accel_max should be the max right-left acceleration (in m/s/s).  Leave as zero to use the attitude controller's default acceleration
+// jerk_max should be the max forward-back and lateral jerk (in m/s/s/s).  Leave as zero to use the attitude controller's default acceleration
+void AR_WPNav::init(float speed_max, float accel_max, float lat_accel_max, float jerk_max)
+{
+    // default max speed and accel
+    if (!is_positive(speed_max)) {
+        speed_max = _speed_max;
+    }
+    if (!is_positive(accel_max)) {
+        accel_max = _atc.get_accel_max();
+    }
+    if (!is_positive(lat_accel_max)) {
+        lat_accel_max = _atc.get_accel_max();
+    }
+    if (!is_positive(jerk_max)) {
+        jerk_max = _atc.get_accel_max();
+    }
+
+    // initialise position controller
+    _psc.set_limits(speed_max, accel_max, lat_accel_max);
+
+    // initialize the desired wp speed if not already done
+    //_wp_desired_speed_xy_cms = is_positive(speed_cms) ? speed_cms : _wp_speed_cms;
+
+    _scurve_prev_leg.init();
+    _scurve_this_leg.init();
+    _scurve_next_leg.init();
+    //_track_scalar_dt = 1.0f;
+
+    // set flag so get_yaw() returns current heading target
+    _reached_destination = false;
+    _fast_waypoint = false;
+
+    // initialise origin and destination to stopping point
+    //Vector3f stopping_point;
+    //get_stopping_point(stopping_point);
+    //_origin = _destination = stopping_point;
+}
+
 // update navigation
 void AR_WPNav::update(float dt)
 {
@@ -185,7 +227,7 @@ void AR_WPNav::update(float dt)
 }
 
 // set desired location
-bool AR_WPNav::set_desired_location(const struct Location& destination, float next_leg_bearing_cd)
+bool AR_WPNav::set_desired_location(const struct Location& destination)
 {
     // set origin to last destination if waypoint controller active
     if (is_active() && _orig_and_dest_valid && _reached_destination) {
@@ -229,6 +271,12 @@ bool AR_WPNav::set_desired_location(const struct Location& destination, float ne
     }
 
     return true;
+}
+
+// set desired location and next_destination
+bool AR_WPNav::set_desired_location(const Location &destination, const Location &next_destination)
+{
+    return set_desired_location(destination);
 }
 
 // set desired location to a reasonable stopping point, return true on success
@@ -344,6 +392,14 @@ void AR_WPNav::advance_wp_target_along_track(const Location &current_loc, float 
         return;
     }
 
+    // exit immediately if we can't convert waypoint origin to offset from ekf origin
+    Vector2f origin_NE;
+    if (!_origin.get_vector_xy_from_origin_NE(origin_NE)) {
+        return;
+    }
+    // convert from cm to meters
+    origin_NE *= 0.01f;
+
     // use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of vehicle
     /*Vector3f curr_target_vel = _pos_control.get_desired_velocity();
     float track_scaler_dt = 1.0f;
@@ -363,10 +419,10 @@ void AR_WPNav::advance_wp_target_along_track(const Location &current_loc, float 
     */
 
     // target position, velocity and acceleration from straight line or spline calculators
-    Vector3f target_pos, target_vel, target_accel;
+    Vector3f target_pos{origin_NE.x, origin_NE.y, 0.0f};
+    Vector3f target_vel, target_accel;
 
     // update target position, velocity and acceleration
-    target_pos = _origin;
     //bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _wp_radius, _flags.fast_waypoint, _track_scalar_dt * dt, target_pos, target_vel, target_accel);
     bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _radius, _fast_waypoint, dt, target_pos, target_vel, target_accel);
 
