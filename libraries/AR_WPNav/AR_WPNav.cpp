@@ -156,6 +156,8 @@ void AR_WPNav::update(float dt)
         }
     }
 
+    advance_wp_target_along_track(current_loc, dt);
+
     // check if vehicle has reached the destination
     const bool near_wp = _distance_to_destination <= _radius;
     const bool past_wp = !_oa_active && current_loc.past_interval_finish_line(_origin, _destination);
@@ -333,23 +335,25 @@ bool AR_WPNav::is_active() const
 }
 
 // move target location along track from origin to destination
-void AR_WPNav::advance_wp_target_along_track(float dt)
+void AR_WPNav::advance_wp_target_along_track(const Location &current_loc, float dt)
 {
-    // get current position and adjust altitude to origin and destination's frame (i.e. _frame)
-    const Vector3f &curr_pos = _inav.get_position();
+    // exit immediately if no current location, destination or disarmed
+    Vector2f curr_pos_NE;
+    Vector3f curr_vel_NED;
+    if (!AP::ahrs().get_relative_position_NE_origin(curr_pos_NE) || !AP::ahrs().get_velocity_NED(curr_vel_NED)) {
+        return;
+    }
 
-    // Use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of aircraft
+    // use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of aircraft
     Vector3f curr_target_vel = _pos_control.get_desired_velocity();
 
-    float track_error = 0.0f;
-    float track_velocity = 0.0f;
     float track_scaler_dt = 1.0f;
     // check target velocity is non-zero
     if (is_positive(curr_target_vel.length())) {
         Vector3f track_direction = curr_target_vel.normalized();
-        track_error = _pos_control.get_pos_error().dot(track_direction);
-        track_velocity = _inav.get_velocity().dot(track_direction);
-        // set time scaler to be consistent with the achievable aircraft speed with a 5% buffer for short term variation.
+        float track_error = _pos_control.get_pos_error().dot(track_direction);
+        float track_velocity = curr_vel_NED.dot(track_direction);
+        // set time scaler to be consistent with the achievable vehicle speed with a 5% buffer for short term variation.
         track_scaler_dt = constrain_float(0.05f + (track_velocity - _pos_control.get_pos_xy_p().kP() * track_error) / curr_target_vel.length(), 0.1f, 1.0f);
     }
     // change s-curve time speed with a time constant of maximum acceleration / maximum jerk
