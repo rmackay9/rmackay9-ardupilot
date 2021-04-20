@@ -15,8 +15,7 @@ public:
     void update(float dt);
 
     // set limits
-    void set_limits(float accel_max, float speed_max, float lat_accel_max,
-                    bool has_lateral);
+    void set_limits(float speed_max, float accel_max, float lat_accel_max);
 
     // set desired location
     bool set_desired_location(const Location &destination)  WARN_IF_UNUSED;

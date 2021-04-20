@@ -183,13 +183,11 @@ void AR_PosControl::update(float dt)
 }
 
 // set limits
-void AR_PosControl::set_limits(float accel_max, float speed_max, float lat_accel_max,
-                               bool has_lateral)
+void AR_PosControl::set_limits(float speed_max, float accel_max, float lat_accel_max)
 {
-    _accel_max = accel_max;
     _speed_max = speed_max;
+    _accel_max = accel_max;
     _lat_accel_max = lat_accel_max;
-    _has_lateral = has_lateral;
 }
 
 // set desired location
