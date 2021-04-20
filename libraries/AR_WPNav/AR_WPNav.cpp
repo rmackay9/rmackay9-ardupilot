@@ -332,6 +332,63 @@ bool AR_WPNav::is_active() const
     return ((AP_HAL::millis() - _last_update_ms) < AR_WPNAV_TIMEOUT_MS);
 }
 
+// move target location along track from origin to destination
+void AR_WPNav::advance_wp_target_along_track(float dt)
+{
+    // get current position and adjust altitude to origin and destination's frame (i.e. _frame)
+    const Vector3f &curr_pos = _inav.get_position();
+
+    // Use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of aircraft
+    Vector3f curr_target_vel = _pos_control.get_desired_velocity();
+
+    float track_error = 0.0f;
+    float track_velocity = 0.0f;
+    float track_scaler_dt = 1.0f;
+    // check target velocity is non-zero
+    if (is_positive(curr_target_vel.length())) {
+        Vector3f track_direction = curr_target_vel.normalized();
+        track_error = _pos_control.get_pos_error().dot(track_direction);
+        track_velocity = _inav.get_velocity().dot(track_direction);
+        // set time scaler to be consistent with the achievable aircraft speed with a 5% buffer for short term variation.
+        track_scaler_dt = constrain_float(0.05f + (track_velocity - _pos_control.get_pos_xy_p().kP() * track_error) / curr_target_vel.length(), 0.1f, 1.0f);
+    }
+    // change s-curve time speed with a time constant of maximum acceleration / maximum jerk
+    float track_scaler_tc = 1.0f;
+    if (!is_zero(_wp_jerk)) {
+        track_scaler_tc = 0.01f * _wp_accel/_wp_jerk;
+    }
+    _track_scalar_dt += (track_scaler_dt - _track_scalar_dt) * (dt / track_scaler_tc);
+
+    // target position, velocity and acceleration from straight line or spline calculators
+    Vector3f target_pos, target_vel, target_accel;
+
+    // update target position, velocity and acceleration
+    target_pos = _origin;
+    bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _wp_radius, _flags.fast_waypoint, _track_scalar_dt * dt, target_pos, target_vel, target_accel);
+
+    // pass new target to the position controller
+    _pos_control.set_pos_vel_accel_target(target_pos, target_vel, target_accel);
+
+    // check if we've reached the waypoint
+    if (!_flags.reached_destination) {
+        if (s_finished) {
+            // "fast" waypoints are complete once the intermediate point reaches the destination
+            if (_flags.fast_waypoint) {
+                _flags.reached_destination = true;
+            } else {
+                // regular waypoints also require the vehicle to be within the waypoint radius
+                const Vector3f dist_to_dest = curr_pos - _destination;
+                if (dist_to_dest.length_squared() <= sq(_wp_radius_cm)) {
+                    _flags.reached_destination = true;
+                }
+            }
+        }
+    }
+
+    // successfully advanced along track
+    return true;
+}
+
 // update distance from vehicle's current position to destination
 void AR_WPNav::update_distance_and_bearing_to_destination()
 {

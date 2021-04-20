@@ -1,6 +1,7 @@
 #pragma once
 
 #include <AP_Common/AP_Common.h>
+#include <AP_Math/SCurve.h>
 #include <APM_Control/AR_AttitudeControl.h>
 #include <APM_Control/AR_PosControl.h>
 #include <AP_Navigation/AP_Navigation.h>
@@ -90,6 +91,9 @@ private:
     // true if update has been called recently
     bool is_active() const;
 
+    // move target location along track from origin to destination
+    void advance_wp_target_along_track(float dt);
+
     // update distance and bearing from vehicle's current position to destination
     void update_distance_and_bearing_to_destination();
 
@@ -132,6 +136,13 @@ private:
     AR_AttitudeControl& _atc;       // rover attitude control library
     AR_PosControl &_psc;            // rover position control library
     AP_Navigation& _nav_controller; // navigation controller (aka L1 controller)
+
+    // scurve
+    SCurve _scurve_prev_leg;            // previous scurve trajectory used to blend with current scurve trajectory
+    SCurve _scurve_this_leg;            // current scurve trajectory
+    SCurve _scurve_next_leg;            // next scurve trajectory used to blend with current scurve trajectory
+    float _scurve_jerk;                 // scurve jerk max in m/s/s/s
+    float _scurve_jerk_time;            // scurve jerk time (time in seconds for jerk to increase from zero _scurve_jerk)
 
     // variables held in vehicle code (for now)
     float _turn_max_mss;            // lateral acceleration maximum in m/s/s
