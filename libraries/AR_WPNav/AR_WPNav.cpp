@@ -344,11 +344,9 @@ void AR_WPNav::advance_wp_target_along_track(const Location &current_loc, float 
         return;
     }
 
-    // use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of aircraft
-    Vector3f curr_target_vel = _pos_control.get_desired_velocity();
-
+    // use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of vehicle
+    /*Vector3f curr_target_vel = _pos_control.get_desired_velocity();
     float track_scaler_dt = 1.0f;
-    // check target velocity is non-zero
     if (is_positive(curr_target_vel.length())) {
         Vector3f track_direction = curr_target_vel.normalized();
         float track_error = _pos_control.get_pos_error().dot(track_direction);
@@ -362,35 +360,34 @@ void AR_WPNav::advance_wp_target_along_track(const Location &current_loc, float 
         track_scaler_tc = 0.01f * _wp_accel/_wp_jerk;
     }
     _track_scalar_dt += (track_scaler_dt - _track_scalar_dt) * (dt / track_scaler_tc);
+    */
 
     // target position, velocity and acceleration from straight line or spline calculators
     Vector3f target_pos, target_vel, target_accel;
 
     // update target position, velocity and acceleration
     target_pos = _origin;
-    bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _wp_radius, _flags.fast_waypoint, _track_scalar_dt * dt, target_pos, target_vel, target_accel);
+    //bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _wp_radius, _flags.fast_waypoint, _track_scalar_dt * dt, target_pos, target_vel, target_accel);
+    bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _radius, _fast_waypoint, dt, target_pos, target_vel, target_accel);
 
     // pass new target to the position controller
-    _pos_control.set_pos_vel_accel_target(target_pos, target_vel, target_accel);
+    //_pos_control.set_pos_vel_accel_target(target_pos, target_vel, target_accel);
+    _psc.set_pos_vel_accel_target(Vector2f{target_pos.x, target_pos.y}, Vector2f{target_vel.x, target_vel.y}, Vector2f{target_accel.x, target_accel.y});
 
     // check if we've reached the waypoint
-    if (!_flags.reached_destination) {
-        if (s_finished) {
-            // "fast" waypoints are complete once the intermediate point reaches the destination
-            if (_flags.fast_waypoint) {
-                _flags.reached_destination = true;
-            } else {
-                // regular waypoints also require the vehicle to be within the waypoint radius
-                const Vector3f dist_to_dest = curr_pos - _destination;
-                if (dist_to_dest.length_squared() <= sq(_wp_radius_cm)) {
-                    _flags.reached_destination = true;
-                }
-            }
+    if (!_reached_destination && s_finished) {
+        // "fast" waypoints are complete once the intermediate point reaches the destination
+        if (_fast_waypoint) {
+            _reached_destination = true;
+        } else {
+            // regular waypoints also require the vehicle to be within the waypoint radius
+            // To-Do: change this to be within radius or past the tangential line
+            //const Vector3f dist_to_dest = curr_pos - _destination;
+            //if (dist_to_dest.length_squared() <= sq(_radius)) {
+            //    _reached_destination = true;
+            //}
         }
     }
-
-    // successfully advanced along track
-    return true;
 }
 
 // update distance from vehicle's current position to destination
