@@ -142,28 +142,28 @@ void AR_PosControl::update(float dt)
     _last_update_ms = AP_HAL::millis();
 
     // calculate position error and convert to desired velocity
-    Vector2f des_vel;
+    Vector2f des_vel_NE;
     if (_pos_target_valid) {
-        des_vel = _p_pos.update_all(_pos_target.x, _pos_target.y, curr_pos_NE, AR_POSCON_POS_ERR_MAX, _speed_max);
+        des_vel_NE = _p_pos.update_all(_pos_target.x, _pos_target.y, curr_pos_NE, AR_POSCON_POS_ERR_MAX, _speed_max);
     }
 
     // calculation velocity error
     if (_vel_target_valid) {
         // add target velocity to desired velocity from position error
-        des_vel += _vel_target;
+        des_vel_NE += _vel_target;
     }
 
     // calculate desired acceleration
     // To-Do: set limits flag based on whether length is beyond max speed and/or motor outputs?
-    Vector2f des_accel_ne = _pid_vel.update_all(des_vel, curr_vel_NE, false);
+    Vector2f des_accel_NE = _pid_vel.update_all(des_vel_NE, curr_vel_NE, false);
     if (_accel_target_valid) {
-        des_accel_ne += _accel_target;
+        des_accel_NE += _accel_target;
     }
 
     // convert desired acceleration to desired forward-back speed, desired lateral speed and desired turn rate
 
     // rotate acceleration into body frame using current heading
-    const Vector2f des_accel_FR = AP::ahrs().earth_to_body2D(des_accel_ne);
+    const Vector2f des_accel_FR = AP::ahrs().earth_to_body2D(des_accel_NE);
     _desired_lat_accel = des_accel_FR.y;
 
     // calculate turn rate from desired lateral acceleration
