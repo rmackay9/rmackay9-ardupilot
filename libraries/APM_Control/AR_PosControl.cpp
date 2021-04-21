@@ -180,7 +180,7 @@ void AR_PosControl::update(float dt)
 
     // debug
     if (print_now) {
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "spd:%4.2f lat:%4.2f tr:%4.2f", (double)_desired_speed, (double)_desired_lat_accel, (double)_desired_turn_rate_rads);
+        //gcs().send_text(MAV_SEVERITY_CRITICAL, "spd:%4.2f lat:%4.2f tr:%4.2f", (double)_desired_speed, (double)_desired_lat_accel, (double)_desired_turn_rate_rads);
     }
 }
 
@@ -240,7 +240,7 @@ void AR_PosControl::set_pos_vel_accel_target(const Vector2f &pos, const Vector2f
     uint32_t now_ms = AP_HAL::millis();
     if (now_ms - last_print_ms > 1000) {
         last_print_ms = now_ms;
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "vel x:%4.2f y:%4.2f", (double)vel.x, (double)vel.y);
+        //gcs().send_text(MAV_SEVERITY_CRITICAL, "vel x:%4.2f y:%4.2f", (double)vel.x, (double)vel.y);
     }
 }
 
