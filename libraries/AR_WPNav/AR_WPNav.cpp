@@ -125,7 +125,7 @@ void AR_WPNav::init(float speed_max, float accel_max, float lat_accel_max, float
     _scurve_prev_leg.init();
     _scurve_this_leg.init();
     _scurve_next_leg.init();
-    //_track_scalar_dt = 1.0f;
+    _track_scalar_dt = 1.0f;
 
     // set flag so get_yaw() returns current heading target
     _reached_destination = false;
@@ -422,22 +422,22 @@ void AR_WPNav::advance_wp_target_along_track(const Location &current_loc, float 
     origin_NE *= 0.01f;
 
     // use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of vehicle
-    /*Vector3f curr_target_vel = _pos_control.get_desired_velocity();
+    Vector2f curr_target_vel = _psc.get_desired_velocity();
     float track_scaler_dt = 1.0f;
     if (is_positive(curr_target_vel.length())) {
-        Vector3f track_direction = curr_target_vel.normalized();
-        float track_error = _pos_control.get_pos_error().dot(track_direction);
-        float track_velocity = curr_vel_NED.dot(track_direction);
+        Vector2f track_direction = curr_target_vel.normalized();
+        float track_error = _psc.get_pos_error().dot(track_direction);
+        Vector2f curr_vel_NE{curr_vel_NED.x, curr_vel_NED.y};
+        float track_velocity = curr_vel_NE.dot(track_direction);
         // set time scaler to be consistent with the achievable vehicle speed with a 5% buffer for short term variation.
-        track_scaler_dt = constrain_float(0.05f + (track_velocity - _pos_control.get_pos_xy_p().kP() * track_error) / curr_target_vel.length(), 0.1f, 1.0f);
+        track_scaler_dt = constrain_float(0.05f + (track_velocity - _psc.get_pos_p().kP() * track_error) / curr_target_vel.length(), 0.1f, 1.0f);
     }
     // change s-curve time speed with a time constant of maximum acceleration / maximum jerk
     float track_scaler_tc = 1.0f;
-    if (!is_zero(_wp_jerk)) {
-        track_scaler_tc = 0.01f * _wp_accel/_wp_jerk;
+    if (!is_zero(_scurve_jerk)) {
+        track_scaler_tc = 0.01f * _psc.get_accel_max()/_scurve_jerk;
     }
     _track_scalar_dt += (track_scaler_dt - _track_scalar_dt) * (dt / track_scaler_tc);
-    */
 
     // target position, velocity and acceleration from straight line or spline calculators
     Vector3f target_pos{origin_NE.x, origin_NE.y, 0.0f};
