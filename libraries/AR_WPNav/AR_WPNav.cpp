@@ -114,6 +114,7 @@ void AR_WPNav::init(float speed_max, float accel_max, float lat_accel_max, float
     if (!is_positive(jerk_max)) {
         jerk_max = _atc.get_accel_max();
     }
+    _scurve_jerk = jerk_max;
 
     // initialise position controller
     _psc.set_limits(speed_max, accel_max, lat_accel_max);
@@ -131,9 +132,12 @@ void AR_WPNav::init(float speed_max, float accel_max, float lat_accel_max, float
     _fast_waypoint = false;
 
     // initialise origin and destination to stopping point
-    //Vector3f stopping_point;
-    //get_stopping_point(stopping_point);
-    //_origin = _destination = stopping_point;
+    Location stopping_loc;
+    if (get_stopping_location(stopping_loc)) {
+        _origin = _destination = stopping_loc;
+    } else {
+        // handle not current location
+    }
 }
 
 // update navigation
@@ -229,46 +233,45 @@ void AR_WPNav::update(float dt)
 // set desired location
 bool AR_WPNav::set_desired_location(const struct Location& destination)
 {
-    // set origin to last destination if waypoint controller active
-    if (is_active() && _orig_and_dest_valid && _reached_destination) {
-        _origin = _destination;
+    // re-initialise if previous destination has been interrupted
+    if (!is_active() || !_reached_destination) {
+        init(0,0,0,0);
     } else {
-        // otherwise use reasonable stopping point
-        if (!get_stopping_location(_origin)) {
-            return false;
-        }
+        // store previous leg
+        _scurve_prev_leg = _scurve_this_leg;
+        _origin = _destination;
     }
+
+    // To-Do: setup prev leg and this leg so vehicle turns towards target smoothly
 
     // initialise some variables
     _oa_origin = _origin;
     _oa_destination = _destination = destination;
     _orig_and_dest_valid = true;
     _reached_destination = false;
-    update_distance_and_bearing_to_destination();
 
-    // determine if we should pivot immediately
-    update_pivot_active_flag();
-
-    // set final desired speed and whether vehicle should pivot
-    _desired_speed_final = 0.0f;
-    if (!is_equal(next_leg_bearing_cd, AR_WPNAV_HEADING_UNKNOWN)) {
-        const float curr_leg_bearing_cd = _origin.get_bearing_to(_destination);
-        const float turn_angle_cd = wrap_180_cd(next_leg_bearing_cd - curr_leg_bearing_cd);
-        if (fabsf(turn_angle_cd) < 10.0f) {
-            // if turning less than 0.1 degrees vehicle can continue at full speed
-            // we use 0.1 degrees instead of zero to avoid divide by zero in calcs below
-            _desired_speed_final = _desired_speed;
-        } else if (use_pivot_steering_at_next_WP(turn_angle_cd)) {
-            // pivoting so we will stop
-            _desired_speed_final = 0.0f;
-        } else {
-            // calculate maximum speed that keeps overshoot within bounds
-            const float radius_m = fabsf(_overshoot / (cosf(radians(turn_angle_cd * 0.01f)) - 1.0f));
-            _desired_speed_final = MIN(_desired_speed, safe_sqrt(_turn_max_mss * radius_m));
-            // ensure speed does not fall below minimum
-            apply_speed_min(_desired_speed_final);
-        }
+    // convert origin and destination to offset from EKF origin
+    Vector2f origin_NE;
+    Vector2f destination_NE;
+    if (!_origin.get_vector_xy_from_origin_NE(origin_NE) ||
+        !_destination.get_vector_xy_from_origin_NE(destination_NE)) {
+        return false;
     }
+    origin_NE *= 0.01f;
+    destination_NE *= 0.01f;
+
+    // calculate track to destination
+    _scurve_this_leg.calculate_track(Vector3f{origin_NE.x, origin_NE.y, 0.0f},              // origin
+                                     Vector3f{destination_NE.x, destination_NE.y, 0.0f},  // destination
+                                     _psc.get_speed_max(),
+                                     _psc.get_speed_max(),  // speed up (not used)
+                                     _psc.get_speed_max(),  // speed down (not used)
+                                     _psc.get_accel_max(),
+                                     _psc.get_accel_max(),  // vertical accel (not used)
+                                     _scurve_jerk_time,
+                                     _scurve_jerk);
+
+    update_distance_and_bearing_to_destination();
 
     return true;
 }
@@ -300,7 +303,7 @@ bool AR_WPNav::set_desired_location_NED(const Vector3f& destination, float next_
 
     // apply offset
     destination_ned.offset(destination.x, destination.y);
-    return set_desired_location(destination_ned, next_leg_bearing_cd);
+    return set_desired_location(destination_ned);
 }
 
 // calculate vehicle stopping point using current location, velocity and maximum acceleration
