@@ -113,7 +113,7 @@ public:
 
     // set desired location (used in Guided, Auto)
     // set next_destination (if known).  If not provided vehicle stops at destination
-    virtual bool set_desired_location(const Location& destination, Location next_destination = Location()) WARN_IF_UNUSED;
+    virtual bool set_desired_location(const Location &destination, Location next_destination = Location()) WARN_IF_UNUSED;
 
     // true if vehicle has reached desired location. defaults to true because this is normally used by missions and we do not want the mission to become stuck
     virtual bool reached_destination() const { return true; }
@@ -262,7 +262,7 @@ public:
 
     // get or set desired location
     bool get_desired_location(Location& destination) const override WARN_IF_UNUSED;
-    bool set_desired_location(const Location& destination, Location next_destination = Location()) override WARN_IF_UNUSED;
+    bool set_desired_location(const Location &destination, Location next_destination = Location()) override WARN_IF_UNUSED;
     bool reached_destination() const override;
 
     // set desired speed in m/s
@@ -391,7 +391,7 @@ public:
 
     // get or set desired location
     bool get_desired_location(Location& destination) const override WARN_IF_UNUSED;
-    bool set_desired_location(const Location& destination, Location next_destination = Location()) override WARN_IF_UNUSED;
+    bool set_desired_location(const Location &destination, Location next_destination = Location()) override WARN_IF_UNUSED;
 
     // set desired heading and speed
     void set_desired_heading_and_speed(float yaw_angle_cd, float target_speed);

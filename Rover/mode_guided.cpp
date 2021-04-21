@@ -221,7 +221,7 @@ bool ModeGuided::get_desired_location(Location& destination) const
 }
 
 // set desired location
-bool ModeGuided::set_desired_location(const Location& destination, Location next_destination)
+bool ModeGuided::set_desired_location(const Location &destination, Location next_destination)
 {
     if (g2.wp_nav.set_desired_location(destination, next_destination)) {
 

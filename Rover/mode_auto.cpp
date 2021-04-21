@@ -167,7 +167,7 @@ bool ModeAuto::get_desired_location(Location& destination) const
 }
 
 // set desired location to drive to
-bool ModeAuto::set_desired_location(const Location& destination, Location next_destination)
+bool ModeAuto::set_desired_location(const Location &destination, Location next_destination)
 {
     // call parent
     if (!Mode::set_desired_location(destination, next_destination)) {
