@@ -445,7 +445,7 @@ void AR_WPNav::advance_wp_target_along_track(const Location &current_loc, float 
 
     // update target position, velocity and acceleration
     //bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _wp_radius, _flags.fast_waypoint, _track_scalar_dt * dt, target_pos, target_vel, target_accel);
-    bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _radius, _fast_waypoint, _track_scalar_dt * dt, target_pos, target_vel, target_accel);
+    bool s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _radius, _fast_waypoint, dt, target_pos, target_vel, target_accel);
 
     // pass new target to the position controller
     //_pos_control.set_pos_vel_accel_target(target_pos, target_vel, target_accel);
