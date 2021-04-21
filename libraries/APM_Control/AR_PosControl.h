@@ -17,6 +17,11 @@ public:
     // set limits
     void set_limits(float speed_max, float accel_max, float lat_accel_max);
 
+    // get limits
+    float get_speed_max() const { return _speed_max; }
+    float get_accel_max() const { return _accel_max; }
+    float get_lat_accel_max() const { return _lat_accel_max; }
+
     // set desired location
     bool set_desired_location(const Location &destination)  WARN_IF_UNUSED;
 
@@ -54,8 +59,8 @@ private:
     AC_PID_2D _pid_vel;             // velocity PID controller to convert velocity error to desired acceleration
 
     // limits
-    float _accel_max;               // maximum forward/back acceleration in m/s/s
     float _speed_max;               // maximum forward speed in m/s
+    float _accel_max;               // maximum forward/back acceleration in m/s/s
     float _lat_accel_max;           // lateral acceleration maximum in m/s/s
     bool _has_lateral;              // true if vehicle is capable of lateral movement
 
