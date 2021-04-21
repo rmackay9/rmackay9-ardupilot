@@ -174,7 +174,9 @@ void AR_PosControl::update(float dt)
     // we will maintain a target body-frame speed, lat-speed and turn rate?
 
     // updated the desired speed using forward-back acceleration
-    _desired_speed = _atc.get_desired_speed_accel_limited(_atc.get_desired_speed()+des_accel_FR.x, dt);
+    //_desired_speed = _atc.get_desired_speed_accel_limited(_atc.get_desired_speed()+des_accel_FR.x, dt);
+    const Vector2f des_vel_FR = AP::ahrs().earth_to_body2D(des_vel_NE);
+    _desired_speed = _atc.get_desired_speed_accel_limited(des_vel_FR.x, dt);
 
     // debug
     if (print_now) {
