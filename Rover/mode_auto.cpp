@@ -23,10 +23,10 @@ bool ModeAuto::_enter()
     // initialise submode to stop or loiter
     if (rover.is_boat()) {
         if (!start_loiter()) {
-            stop_vehicle();
+            start_stop();
         }
     } else {
-        stop_vehicle();
+        start_stop();
     }
 
     // restart mission processing
@@ -57,7 +57,7 @@ void ModeAuto::update()
                         stop_vehicle();
                     }
                 } else {
-                    stop_vehicle();
+                    start_stop();
                 }
                 // update distance to destination
                 _distance_to_destination = rover.current_loc.get_distance(g2.wp_nav.get_destination());
@@ -80,7 +80,7 @@ void ModeAuto::update()
                         stop_vehicle();
                     }
                 } else {
-                    stop_vehicle();
+                    start_stop();
                 }
             }
             break;
