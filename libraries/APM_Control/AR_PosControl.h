@@ -40,8 +40,16 @@ public:
     float get_desired_lat_accel() const { return _desired_lat_accel; }
     //float get_desired_lateral_speed() const { return _desired_lateral_speed; }
 
+    // return latest position error
+    Vector2f get_pos_error() const;
+
+    // returns desired velocity vector (i.e. feed forward) in cm/s in lat and lon direction
+    Vector2f get_desired_velocity() const;
+
     // get desired lateral acceleration (for reporting purposes only because will be zero during pivot turns)
 
+    // get pid controllers
+    AC_P_2D& get_pos_p() { return _p_pos; }
 
     // parameter var table
     static const struct AP_Param::GroupInfo var_info[];
@@ -84,6 +92,7 @@ private:
     float _desired_speed;           // desired forward_back speed in m/s
     float _desired_turn_rate_rads;  // desired turn-rate in rad/sec (negative is counter clockwise, positive is clockwise)
     float _desired_lat_accel;       // desired lateral acceleration (for reporting only)
+    Vector2f _pos_error;            // latest position error
     //float _desired_lateral_speed;   // desired lateral speed in m/s
     //float _desired_heading_cd;      // desired heading (back towards line between origin and destination)
 };

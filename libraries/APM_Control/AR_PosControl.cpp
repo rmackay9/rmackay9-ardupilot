@@ -180,7 +180,7 @@ void AR_PosControl::update(float dt)
 
     // debug
     if (print_now) {
-        //gcs().send_text(MAV_SEVERITY_CRITICAL, "spd:%4.2f lat:%4.2f tr:%4.2f", (double)_desired_speed, (double)_desired_lat_accel, (double)_desired_turn_rate_rads);
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "spd:%4.2f lat:%4.2f tr:%4.2f", (double)_desired_speed, (double)_desired_lat_accel, (double)_desired_turn_rate_rads);
     }
 }
 
@@ -248,4 +248,22 @@ void AR_PosControl::set_pos_vel_accel_target(const Vector2f &pos, const Vector2f
 bool AR_PosControl::is_active() const
 {
     return ((AP_HAL::millis() - _last_update_ms) < AR_POSCON_TIMEOUT_MS);
+}
+
+// return latest position error
+Vector2f AR_PosControl::get_pos_error() const
+{
+    if (is_active()) {
+        return _pos_error;
+    }
+    return Vector2f();
+}
+
+// returns desired velocity vector (i.e. feed forward) in cm/s in lat and lon direction
+Vector2f AR_PosControl::get_desired_velocity() const
+{
+    if (_vel_target_valid) {
+        return _vel_target;
+    }
+    return Vector2f();
 }
