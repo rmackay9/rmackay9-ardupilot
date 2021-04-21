@@ -230,8 +230,9 @@ void AR_WPNav::update(float dt)
     //update_desired_speed(dt);
 }
 
-// set desired location
-bool AR_WPNav::set_desired_location(const struct Location& destination)
+// set desired location and (optionally) next_destination
+// next_destination should be provided if known to allow smooth cornering
+bool AR_WPNav::set_desired_location(const struct Location& destination, Location next_destination)
 {
     // re-initialise if previous destination has been interrupted
     if (!is_active() || !_reached_destination) {
@@ -272,15 +273,31 @@ bool AR_WPNav::set_desired_location(const struct Location& destination)
                                      //_scurve_jerk_time,
                                      _scurve_jerk);
 
+    // handle next destination
+    if (next_destination.initialised()) {
+        // convert next_destination to offset from EKF origin
+        Vector2f next_destination_NE;
+        if (!next_destination.get_vector_xy_from_origin_NE(next_destination_NE)) {
+            return false;
+        }
+        next_destination_NE *= 0.01f;
+        _scurve_next_leg.calculate_track(Vector3f{destination_NE.x, destination_NE.y, 0.0f},
+                                         Vector3f{next_destination_NE.x, next_destination_NE.y, 0.0f},
+                                         _psc.get_speed_max(),
+                                         _psc.get_speed_max(),  // speed up (not used)
+                                         _psc.get_speed_max(),  // speed down (not used)
+                                         _psc.get_accel_max(),
+                                         _psc.get_accel_max(),  // vertical accel (not used)
+                                         1.0f,                  // jerk time
+                                         _scurve_jerk);
+
+        // next destination provided so fast waypoint
+        _fast_waypoint = true;
+    }
+
     update_distance_and_bearing_to_destination();
 
     return true;
-}
-
-// set desired location and next_destination
-bool AR_WPNav::set_desired_location(const Location &destination, const Location &next_destination)
-{
-    return set_desired_location(destination);
 }
 
 // set desired location to a reasonable stopping point, return true on success

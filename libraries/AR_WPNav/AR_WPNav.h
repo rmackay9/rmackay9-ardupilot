@@ -46,9 +46,8 @@ public:
     float get_lat_accel() const { return _desired_lat_accel; }
 
     // set desired location and (optionally) next_destination
-    // next_destination should be provided if known to allow proper cornering
-    bool set_desired_location(const Location &destination) WARN_IF_UNUSED;
-    bool set_desired_location(const Location &destination, const Location &next_destination) WARN_IF_UNUSED;
+    // next_destination should be provided if known to allow smooth cornering
+    bool set_desired_location(const Location &destination, Location next_destination = Location()) WARN_IF_UNUSED;
 
     // set desired location to a reasonable stopping point, return true on success
     bool set_desired_location_to_stopping_location()  WARN_IF_UNUSED;
