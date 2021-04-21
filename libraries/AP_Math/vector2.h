@@ -87,6 +87,11 @@ struct Vector2
     // dot product
     T operator *(const Vector2<T> &v) const;
 
+    // dot product for Lua
+    T dot(const Vector2<T> &v) const {
+        return *this * v;
+    }
+
     // cross product
     T operator %(const Vector2<T> &v) const;
 
