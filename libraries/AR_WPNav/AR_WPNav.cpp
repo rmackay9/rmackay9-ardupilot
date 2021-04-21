@@ -268,7 +268,8 @@ bool AR_WPNav::set_desired_location(const struct Location& destination)
                                      _psc.get_speed_max(),  // speed down (not used)
                                      _psc.get_accel_max(),
                                      _psc.get_accel_max(),  // vertical accel (not used)
-                                     _scurve_jerk_time,
+                                     1.0f,
+                                     //_scurve_jerk_time,
                                      _scurve_jerk);
 
     update_distance_and_bearing_to_destination();
