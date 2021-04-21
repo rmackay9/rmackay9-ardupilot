@@ -498,7 +498,7 @@ void AR_WPNav::update_distance_and_bearing_to_destination()
 void AR_WPNav::update_steering_and_speed(const Location &current_loc, float dt)
 {
     // handle pivot turns
-    if (_pivot_active) {
+    /*if (_pivot_active) {
         _cross_track_error = calc_crosstrack_error(current_loc);
         _desired_heading_cd = _reversed ? wrap_360_cd(_oa_wp_bearing_cd + 18000) : _oa_wp_bearing_cd;;
         _desired_lat_accel = 0.0f;
@@ -515,7 +515,7 @@ void AR_WPNav::update_steering_and_speed(const Location &current_loc, float dt)
         _desired_turn_rate_rads = 0.0f;
         _desired_lat_accel = 0.0f;
         return;
-    }
+    }*/
     _psc.update(dt);
     _desired_speed_limited = _atc.get_desired_speed_accel_limited(_psc.get_desired_speed(), dt);
     _desired_turn_rate_rads = _psc.get_desired_turn_rate_rads();
