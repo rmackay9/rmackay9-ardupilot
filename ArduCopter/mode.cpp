@@ -531,7 +531,7 @@ void Mode::land_run_vertical_control(bool pause_descent)
     }
 
     // update altitude target and call position controller
-    pos_control->set_alt_target_from_climb_rate_ff(cmb_rate, G_Dt, true);
+    pos_control->set_alt_target_from_climb_rate_ff(cmb_rate, true);
     pos_control->update_z_controller();
 }
 
@@ -592,13 +592,13 @@ void Mode::land_run_horizontal_control()
             target_vel_rel.x = -inertial_nav.get_velocity().x;
             target_vel_rel.y = -inertial_nav.get_velocity().y;
         }
-        pos_control->set_xy_target(target_pos.x, target_pos.y);
+        pos_control->set_target_pos_xy(target_pos.x, target_pos.y);
         pos_control->override_vehicle_velocity_xy(-target_vel_rel);
     }
 #endif
 
     // process roll, pitch inputs
-    loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch, G_Dt);
+    loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
 
     // run loiter controller
     loiter_nav->update();

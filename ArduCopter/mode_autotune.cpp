@@ -101,8 +101,7 @@ void AutoTune::get_pilot_desired_rp_yrate_cd(float &des_roll_cd, float &des_pitc
  */
 void AutoTune::init_z_limits()
 {
-    copter.pos_control->set_max_speed_z(-copter.get_pilot_speed_dn(), copter.g.pilot_speed_up);
-    copter.pos_control->set_max_accel_z(copter.g.pilot_accel_z);
+    copter.pos_control->set_max_speed_accel_z(-copter.get_pilot_speed_dn(), copter.g.pilot_speed_up, copter.g.pilot_accel_z);
 }
 
 void AutoTune::log_pids()

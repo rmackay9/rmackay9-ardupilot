@@ -55,8 +55,7 @@ void ModeThrow::run()
 
         // initialize vertical speed and acceleration limits
         // use brake mode values for rapid response
-        pos_control->set_max_speed_z(BRAKE_MODE_SPEED_Z, BRAKE_MODE_SPEED_Z);
-        pos_control->set_max_accel_z(BRAKE_MODE_DECEL_RATE);
+        pos_control->set_max_speed_accel_z(BRAKE_MODE_SPEED_Z, BRAKE_MODE_SPEED_Z, BRAKE_MODE_DECEL_RATE);
 
         // initialise the demanded height to 3m above the throw height
         // we want to rapidly clear surrounding obstacles
@@ -161,7 +160,7 @@ void ModeThrow::run()
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(0.0f, 0.0f, 0.0f);
 
         // call height controller
-        pos_control->set_alt_target_from_climb_rate_ff(0.0f, G_Dt, false);
+        pos_control->set_alt_target_from_climb_rate_ff(0.0f, false);
         pos_control->update_z_controller();
 
         break;
@@ -178,7 +177,7 @@ void ModeThrow::run()
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(loiter_nav->get_roll(), loiter_nav->get_pitch(), 0.0f);
 
         // call height controller
-        pos_control->set_alt_target_from_climb_rate_ff(0.0f, G_Dt, false);
+        pos_control->set_alt_target_from_climb_rate_ff(0.0f, false);
         pos_control->update_z_controller();
 
         break;

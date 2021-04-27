@@ -24,8 +24,7 @@ void ModeAltHold::run()
     float takeoff_climb_rate = 0.0f;
 
     // initialize vertical speeds and acceleration
-    pos_control->set_max_speed_z(-get_pilot_speed_dn(), g.pilot_speed_up);
-    pos_control->set_max_accel_z(g.pilot_accel_z);
+    pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
     // apply SIMPLE mode transform to pilot inputs
     update_simple_mode();
@@ -75,8 +74,7 @@ void ModeAltHold::run()
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
         // set position controller targets
-        pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate, G_Dt, false);
-        pos_control->add_takeoff_climb_rate(takeoff_climb_rate, G_Dt);
+        pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate + takeoff_climb_rate, false);
         break;
 
     case AltHold_Flying:
@@ -93,7 +91,7 @@ void ModeAltHold::run()
         // get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
-        pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate, G_Dt, false);
+        pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate, false);
         break;
     }
 
