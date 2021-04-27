@@ -420,7 +420,7 @@ void AC_AutoTune::run()
     }
 
     // call position controller
-    pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate_cms, AP::scheduler().get_last_loop_time_s(), false);
+    pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate_cms, false);
     pos_control->update_z_controller();
 
 }
