@@ -8,8 +8,7 @@ bool Sub::surface_init()
     }
 
     // initialize vertical speeds and leash lengths
-    pos_control.set_max_speed_z(wp_nav.get_default_speed_down(), wp_nav.get_default_speed_up());
-    pos_control.set_max_accel_z(wp_nav.get_accel_z());
+    pos_control.set_max_speed_accel_z(wp_nav.get_default_speed_down(), wp_nav.get_default_speed_up(), wp_nav.get_accel_z());
 
     // initialise position and desired velocity
     pos_control.set_alt_target(inertial_nav.get_altitude());
@@ -55,7 +54,7 @@ void Sub::surface_run()
     desired_climb_rate = cmb_rate;
 
     // update altitude target and call position controller
-    pos_control.set_alt_target_from_climb_rate_ff(cmb_rate, G_Dt, true);
+    pos_control.set_alt_target_from_climb_rate_ff(cmb_rate, true);
     pos_control.update_z_controller();
 
     // pilot has control for repositioning

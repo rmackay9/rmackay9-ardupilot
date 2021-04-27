@@ -13,13 +13,12 @@ bool Sub::poshold_init()
     if (!position_ok()) {
         return false;
     }
-    pos_control.init_vel_controller_xyz();
+    pos_control.init_xyz();
     pos_control.set_desired_velocity_xy(0, 0);
     pos_control.set_target_to_stopping_point_xy();
 
     // initialize vertical speeds and acceleration
-    pos_control.set_max_speed_z(-get_pilot_speed_dn(), g.pilot_speed_up);
-    pos_control.set_max_accel_z(g.pilot_accel_z);
+    pos_control.set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
     // initialise position and desired velocity
     pos_control.set_alt_target(inertial_nav.get_altitude());
@@ -71,9 +70,9 @@ void Sub::poshold_run()
             pos_control.set_target_to_stopping_point_xy();
         }
         translate_pos_control_rp(lateral_out, forward_out);
-        pos_control.update_xy_controller();
+        pos_control.run_z_controller();
     } else {
-        pos_control.init_vel_controller_xyz();
+        pos_control.init_xyz();
         pos_control.set_desired_velocity_xy(0, 0);
         pos_control.set_target_to_stopping_point_xy();
     }
