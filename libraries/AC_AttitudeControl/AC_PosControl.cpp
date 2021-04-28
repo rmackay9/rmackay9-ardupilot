@@ -559,7 +559,7 @@ void AC_PosControl::input_pos_vel_accel_z(const Vector3f& pos, const Vector3f& v
 // vel_up_max, vel_down_max should have already been set before calling this method
 void AC_PosControl::run_z_controller()
 {
-    // Check for z_controller time out
+    // check for z_controller time out
     const uint64_t now_us = AP_HAL::micros64();
     if ((now_us - _last_update_z_us) >= POSCONTROL_ACTIVE_TIMEOUT_US) {
         init_z_controller();

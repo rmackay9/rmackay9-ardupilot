@@ -40,7 +40,7 @@
 #define POSCONTROL_THROTTLE_CUTOFF_FREQ         2.0f    // low-pass filter on accel error (unit: hz)
 #define POSCONTROL_ACCEL_FILTER_HZ              2.0f    // low-pass filter on acceleration (unit: hz)
 
-#define POSCONTROL_Z_SHAPER_TC                  0.25f    // low-pass filter on acceleration (unit: hz)
+#define POSCONTROL_Z_SHAPER_TC                  0.25f   // low-pass filter on acceleration (unit: hz)
 
 #define POSCONTROL_OVERSPEED_GAIN_Z             2.0f    // gain controlling rate at which z-axis speed is brought back within SPEED_UP and SPEED_DOWN range
 
@@ -377,7 +377,7 @@ protected:
     // parameters
     AP_Float    _accel_xy_filt_hz;      // XY acceleration filter cutoff frequency
     AP_Float    _lean_angle_max;        // Maximum autopilot commanded angle (in degrees). Set to zero for Angle Max
-    AP_Float    _shaping_tc;            // This is the time constant used to determine how quickly the aircraft varies the acceleration target
+    AP_Float    _shaping_tc;            // Time constant used to determine how quickly the aircraft varies the acceleration target
     AC_P_2D     _p_pos_xy;              // XY axis position controller to convert distance error to desired velocity
     AC_P_1D     _p_pos_z;               // Z axis position controller to convert altitude error to desired climb rate
     AC_PID_2D   _pid_vel_xy;            // XY axis velocity controller to convert velocity error to desired acceleration
