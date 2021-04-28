@@ -4,21 +4,33 @@
   common controller helper functions
  */
 
-// update_pos_vel_accel projects the position and velocity, pos and vel, forward in time based on a time step of dt and acceleration of accel.
-// update_pos_vel_accel - single axis projection.
+// update_vel_accel projects the velocity, vel, forward in time based on a time step of dt and acceleration of accel.
+// update_vel_accel - single axis projection.
+void update_vel_accel(float& vel, float accel, float dt,
+    bool limit_neg, bool limit_pos, float vel_error);
+void update_vel_accel_z(Vector3f& vel, const Vector3f& accel, float dt,
+    bool limit_neg, bool limit_pos, float vel_error);
+
+// update_vel_accel projects the velocity, vel, forward in time based on a time step of dt and acceleration of accel.
+// update_vel_accel - single axis projection.
 void update_pos_vel_accel(float& pos, float& vel, float accel, float dt,
     bool limit_neg, bool limit_pos,
     float pos_error, float vel_error);
-void update_pos_vel_accel_z(Vector3f& pos, Vector3f& vel, Vector3f& accel, float dt,
+void update_pos_vel_accel_z(Vector3f& pos, Vector3f& vel, const Vector3f& accel, float dt,
     bool limit_neg, bool limit_pos,
     float pos_error, float vel_error);
 
+// update_pos_vel_accel_xy - dual axis projection operating on the x, y axis of Vector2f or Vector3f inputs.
+void update_vel_accel_xy(Vector2f& vel, const Vector2f& accel, float dt,
+    bool limit, Vector2f vel_error);
+void update_vel_accel_xy(Vector3f& vel, const Vector3f& accel, float dt,
+    bool limit, Vector2f vel_error);
 
 // update_pos_vel_accel_xy - dual axis projection operating on the x, y axis of Vector2f or Vector3f inputs.
-void update_pos_vel_accel_xy(Vector2f& pos, Vector2f& vel, Vector2f& accel, float dt,
+void update_pos_vel_accel_xy(Vector2f& pos, Vector2f& vel, const Vector2f& accel, float dt,
     bool limit, Vector2f pos_error, Vector2f vel_error);
-void update_pos_vel_accel_xy(Vector3f& pos, Vector3f& vel, Vector3f& accel, float dt,
-    bool limit, const Vector2f& pos_error, const Vector2f& vel_error);
+void update_pos_vel_accel_xy(Vector3f& pos, Vector3f& vel, const Vector3f& accel, float dt,
+    bool limit, Vector2f pos_error, Vector2f vel_error);
 
 /* shape_accel calculates a jerk limited path from the current acceleration to an input acceleration.
  The function takes the current acceleration and calculates the required jerk limited adjustment to the acceleration for the next time dt.

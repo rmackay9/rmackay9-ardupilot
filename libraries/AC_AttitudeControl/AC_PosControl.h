@@ -97,8 +97,8 @@ public:
     ///     The time constant also defines the time taken to achieve the maximum acceleration.
     ///     The time constant must be positive.
     ///     The function alters the input velocity to be the velocity that the system could reach zero acceleration in the minimum time.
-    void input_vel_accel_z(const Vector3f& vel, const Vector3f& accel, bool force_descend);
-    void set_alt_target_from_climb_rate_ff(const float& vel, bool force_descend) {input_vel_accel_z(Vector3f(0.0f, 0.0f, vel), Vector3f(0.0f, 0.0f, 0.0f), force_descend);}
+    void input_vel_accel_z(Vector3f& vel, const Vector3f& accel, bool force_descend);
+    void set_alt_target_from_climb_rate_ff(const float& vel, bool force_descend);
 
     /// input_pos_vel_z calculate a jerk limited path from the current position, velocity and acceleration to an input position and velocity.
     ///     The function takes the current position, velocity, and acceleration and calculates the required jerk limited adjustment to the acceleration for the next time dt.
@@ -110,8 +110,8 @@ public:
     ///     The time constant also defines the time taken to achieve the maximum acceleration.
     ///     The time constant must be positive.
     ///     The function alters the input position to be the closest position that the system could reach zero acceleration in the minimum time.
-    void input_pos_vel_accel_z(const Vector3f& pos, const Vector3f& vel, const Vector3f& accel);
-    void set_alt_target_with_slew(const float& pos) {input_pos_vel_accel_z(Vector3f(0.0f, 0.0f, pos), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));}
+    void input_pos_vel_accel_z(Vector3f& pos, Vector3f& vel, const Vector3f& accel);
+    void set_alt_target_with_slew(const float& pos);
 
     /// set_alt_target_to_current_alt - set altitude target to current altitude
     void set_alt_target_to_current_alt() { _pos_target.z = _inav.get_altitude(); }
@@ -260,7 +260,7 @@ public:
     ///     The time constant also defines the time taken to achieve the maximum acceleration.
     ///     The time constant must be positive.
     ///     The function alters the input velocity to be the velocity that the system could reach zero acceleration in the minimum time.
-    void input_vel_accel_xy(const Vector3f& vel, const Vector3f& accel);
+    void input_vel_accel_xy(Vector3f& vel, const Vector3f& accel);
 
     /// input_pos_vel_xy calculate a jerk limited path from the current position, velocity and acceleration to an input position and velocity.
     ///     The function takes the current position, velocity, and acceleration and calculates the required jerk limited adjustment to the acceleration for the next time dt.
@@ -272,7 +272,7 @@ public:
     ///     The time constant also defines the time taken to achieve the maximum acceleration.
     ///     The time constant must be positive.
     ///     The function alters the input position to be the closest position that the system could reach zero acceleration in the minimum time.
-    void input_pos_vel_accel_xy(const Vector3f& pos, const Vector3f& vel, const Vector3f& accel);
+    void input_pos_vel_accel_xy(Vector3f& pos, Vector3f& vel, const Vector3f& accel);
 
     /// run horizontal position controller correcting position and velocity
     ///     converts position (_pos_target) to target velocity (_vel_target)

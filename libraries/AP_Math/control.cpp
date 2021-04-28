@@ -28,6 +28,25 @@
 #define CONTROL_TIME_CONSTANT_RATIO 4.0f   // minimum horizontal acceleration in cm/s/s - used for sanity checking acceleration in leash length calculation
 
 // update_pos_vel_accel - single axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
+void update_vel_accel(float& vel, float accel, float dt,
+    bool limit_neg, bool limit_pos, float vel_error)
+{
+    float delta_vel = accel * dt;
+    if (!(limit_neg && is_negative(delta_vel) && is_negative(vel_error)) &&
+        !(limit_pos && is_positive(delta_vel) && is_positive(vel_error))  ){
+        vel += delta_vel;
+    }
+}
+
+// update_pos_vel_accel_z - single axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
+void update_vel_accel_z(Vector3f& vel, const Vector3f& accel, float dt,
+    bool limit_neg, bool limit_pos, float vel_error)
+{
+    update_vel_accel(vel.z, accel.z, dt,
+        limit_neg, limit_pos, vel_error);
+}
+
+// update_pos_vel_accel - single axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
 void update_pos_vel_accel(float& pos, float& vel, float accel, float dt,
     bool limit_neg, bool limit_pos,
     float pos_error, float vel_error)
@@ -39,15 +58,11 @@ void update_pos_vel_accel(float& pos, float& vel, float accel, float dt,
         pos += delta_pos;
     }
 
-    float delta_vel = accel * dt;
-    if (!(limit_neg && is_negative(delta_vel) && is_negative(vel_error)) &&
-        !(limit_pos && is_positive(delta_vel) && is_positive(vel_error))  ){
-        vel += delta_vel;
-    }
+    update_vel_accel(vel, accel, dt, limit_neg, limit_pos, vel_error);
 }
 
 // update_pos_vel_accel_z - single axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
-void update_pos_vel_accel_z(Vector3f& pos, Vector3f& vel, Vector3f& accel, float dt,
+void update_pos_vel_accel_z(Vector3f& pos, Vector3f& vel, const Vector3f& accel, float dt,
     bool limit_neg, bool limit_pos,
     float pos_error, float vel_error)
 {
@@ -57,18 +72,11 @@ void update_pos_vel_accel_z(Vector3f& pos, Vector3f& vel, Vector3f& accel, float
 }
 
 // update_pos_vel_accel_xy - dual axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
-void update_pos_vel_accel_xy(Vector2f& pos, Vector2f& vel, Vector2f& accel, float dt,
-    bool limit, Vector2f pos_error, Vector2f vel_error)
+void update_vel_accel_xy(Vector2f& vel, const Vector2f& accel, float dt,
+    bool limit, Vector2f vel_error)
 {
     // move position and velocity forward by dt.
-    Vector2f delta_pos = vel * dt + accel * 0.5f * sq(dt);
     Vector2f delta_vel = accel * dt;
-
-    if(limit && !is_zero(pos_error.length_squared())) {
-        // remove component of delta_pos that would increase the position error
-        pos_error.normalize();
-        delta_pos -= pos_error * (delta_pos*pos_error);
-    }
 
     if(limit && !is_zero(vel_error.length_squared())) {
         // remove component of delta_vel that would increase the velocity error
@@ -76,14 +84,43 @@ void update_pos_vel_accel_xy(Vector2f& pos, Vector2f& vel, Vector2f& accel, floa
         delta_vel -= delta_vel * (delta_vel*vel_error);
     }
 
-    pos += delta_pos;
     vel += delta_vel;
 }
 
 // update_pos_vel_accel_xy - dual axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
 // This function only updates the x and y axis leaving the z axis unchanged.
-void update_pos_vel_accel_xy(Vector3f& pos, Vector3f& vel, Vector3f& accel, float dt,
-    bool limit, const Vector2f& pos_error, const Vector2f& vel_error)
+void update_vel_accel_xy(Vector3f& vel, const Vector3f& accel, float dt,
+    bool limit, Vector2f vel_error)
+{
+    Vector2f vel_2f = Vector2f(vel.x, vel.y);
+    Vector2f accel_2f = Vector2f(accel.x, accel.y);
+    update_vel_accel_xy(vel_2f, accel_2f, dt, limit, vel_error);
+    vel.x = vel_2f.x;
+    vel.y = vel_2f.y;
+}
+
+// update_pos_vel_accel_xy - dual axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
+void update_pos_vel_accel_xy(Vector2f& pos, Vector2f& vel, const Vector2f& accel, float dt,
+    bool limit, Vector2f pos_error, Vector2f vel_error)
+{
+    // move position and velocity forward by dt.
+    Vector2f delta_pos = vel * dt + accel * 0.5f * sq(dt);
+
+    if(limit && !is_zero(pos_error.length_squared())) {
+        // remove component of delta_pos that would increase the position error
+        pos_error.normalize();
+        delta_pos -= pos_error * (delta_pos*pos_error);
+    }
+
+    pos += delta_pos;
+
+    update_vel_accel_xy(vel, accel, dt, limit, vel_error);
+}
+
+// update_pos_vel_accel_xy - dual axis projection of position and velocity, pos and vel, forwards in time based on a time step of dt and acceleration of accel.
+// This function only updates the x and y axis leaving the z axis unchanged.
+void update_pos_vel_accel_xy(Vector3f& pos, Vector3f& vel, const Vector3f& accel, float dt,
+    bool limit, Vector2f pos_error, Vector2f vel_error)
 {
     Vector2f pos_2f = Vector2f(pos.x, pos.y);
     Vector2f vel_2f = Vector2f(vel.x, vel.y);
@@ -94,8 +131,6 @@ void update_pos_vel_accel_xy(Vector3f& pos, Vector3f& vel, Vector3f& accel, floa
     pos.y = pos_2f.y;
     vel.x = vel_2f.x;
     vel.y = vel_2f.y;
-    accel.x = accel_2f.x;
-    accel.y = accel_2f.y;
 }
 
 /* shape_accel calculates a jerk limited path from the current acceleration to an input acceleration.

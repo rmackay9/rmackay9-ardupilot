@@ -575,9 +575,6 @@ void ModeGuided::posvel_control_run()
     // send position and velocity targets to position controller
     pos_control->input_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, Vector3f());
     pos_control->input_pos_vel_accel_z(guided_pos_target_cm, guided_vel_target_cms, Vector3f());
-    Vector3f vel_target_cms = Vector3f();
-    update_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, vel_target_cms, dt, false, Vector2f(), Vector2f());
-    update_pos_vel_accel_z(guided_pos_target_cm, guided_vel_target_cms, vel_target_cms, dt, false, false, 0.0f, 0.0f);
 
     // run position controllers
     pos_control->run_z_controller();

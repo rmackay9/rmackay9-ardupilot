@@ -493,7 +493,7 @@ void AC_PosControl::init_z_controller()
 ///     The time constant also defines the time taken to achieve the maximum acceleration.
 ///     The time constant must be positive.
 ///     The function alters the input velocity to be the velocity that the system could reach zero acceleration in the minimum time.
-void AC_PosControl::input_vel_accel_z(const Vector3f& vel, const Vector3f& accel, bool force_descend)
+void AC_PosControl::input_vel_accel_z(Vector3f& vel, const Vector3f& accel, bool force_descend)
 {
     // check for ekf z position reset
     check_for_ekf_z_reset();
@@ -506,16 +506,26 @@ void AC_PosControl::input_vel_accel_z(const Vector3f& vel, const Vector3f& accel
     if (_vel_desired.z > _speed_up_cms && !is_zero(_speed_up_cms)) {
         accel_z_cms *= POSCONTROL_OVERSPEED_GAIN_Z * _vel_desired.z / _speed_up_cms;
     }
+
+    // adjust desired alt if motors have not hit their limits
+    update_pos_vel_accel(_pos_target.z, _vel_desired.z, _accel_desired.z, _dt,
+        (_motors.limit.throttle_lower && !force_descend), _motors.limit.throttle_upper,
+        _p_pos_z.get_error(), _pid_vel_z.get_error());
+
     shape_vel_accel(vel.z, accel.z,
         _vel_desired.z, _accel_desired.z,
         _speed_down_cms, _speed_up_cms,
         -constrain_float(accel_z_cms, 0.0f, 750.0f), accel_z_cms,
         POSCONTROL_Z_SHAPER_TC, _dt);
 
-    // adjust desired alt if motors have not hit their limits
-    update_pos_vel_accel(_pos_target.z, _vel_desired.z, _accel_desired.z, _dt,
-        (_motors.limit.throttle_lower && !force_descend), _motors.limit.throttle_upper,
-        _p_pos_z.get_error(), _pid_vel_z.get_error());
+    update_vel_accel_z(vel, accel, _dt, false, false, 0.0f);
+}
+
+
+void AC_PosControl::set_alt_target_from_climb_rate_ff(const float& vel, bool force_descend)
+{
+    Vector3f vel_3f = Vector3f(0.0f, 0.0f, vel);
+    input_vel_accel_z(vel_3f, Vector3f(0.0f, 0.0f, 0.0f), force_descend);
 }
 
 /// input_pos_vel_z calculate a jerk limited path from the current position, velocity and acceleration to an input position and velocity.
@@ -528,7 +538,7 @@ void AC_PosControl::input_vel_accel_z(const Vector3f& vel, const Vector3f& accel
 ///     The time constant also defines the time taken to achieve the maximum acceleration.
 ///     The time constant must be positive.
 ///     The function alters the input position to be the closest position that the system could reach zero acceleration in the minimum time.
-void AC_PosControl::input_pos_vel_accel_z(const Vector3f& pos, const Vector3f& vel, const Vector3f& accel)
+void AC_PosControl::input_pos_vel_accel_z(Vector3f& pos, Vector3f& vel, const Vector3f& accel)
 {
     // check for ekf xy position reset
     check_for_ekf_z_reset();
@@ -541,16 +551,26 @@ void AC_PosControl::input_pos_vel_accel_z(const Vector3f& pos, const Vector3f& v
     if (_vel_desired.z > _speed_up_cms && !is_zero(_speed_up_cms)) {
         accel_z_cms *= POSCONTROL_OVERSPEED_GAIN_Z * _vel_desired.z / _speed_up_cms;
     }
+
+    // adjust desired alt if motors have not hit their limits
+    update_pos_vel_accel(_pos_target.z, _vel_desired.z, _accel_desired.z, _dt,
+        _motors.limit.throttle_lower, _motors.limit.throttle_upper,
+        _p_pos_z.get_error(), _pid_vel_z.get_error());
+
     shape_pos_vel_accel(pos.z, vel.z, accel.z,
         _pos_target.z, _vel_desired.z, _accel_desired.z,
         0.0f, _speed_down_cms, _speed_up_cms,
         -constrain_float(accel_z_cms, 0.0f, 750.0f), accel_z_cms,
         POSCONTROL_Z_SHAPER_TC, _dt);
 
-    // adjust desired alt if motors have not hit their limits
-    update_pos_vel_accel(_pos_target.z, _vel_desired.z, _accel_desired.z, _dt,
-        _motors.limit.throttle_lower, _motors.limit.throttle_upper,
-        _p_pos_z.get_error(), _pid_vel_z.get_error());
+    update_pos_vel_accel_z(pos, vel, accel, _dt, false, false, 0.0f, 0.0f);
+}
+
+void AC_PosControl::set_alt_target_with_slew(const float& pos)
+{
+    Vector3f pos_3f = Vector3f(0.0f, 0.0f, pos);
+    Vector3f vel_3f = Vector3f();
+    input_pos_vel_accel_z(pos_3f, vel_3f, Vector3f(0.0f, 0.0f, 0.0f));
 }
 
 // run position control for Z axis
@@ -839,7 +859,7 @@ void AC_PosControl::init_xy_controller()
 ///     The time constant also defines the time taken to achieve the maximum acceleration.
 ///     The time constant must be positive.
 ///     The function alters the input velocity to be the velocity that the system could reach zero acceleration in the minimum time.
-void AC_PosControl::input_vel_accel_xy(const Vector3f& vel, const Vector3f& accel)
+void AC_PosControl::input_vel_accel_xy(Vector3f& vel, const Vector3f& accel)
 {
     // check for ekf xy position reset
     check_for_ekf_xy_reset();
@@ -848,6 +868,8 @@ void AC_PosControl::input_vel_accel_xy(const Vector3f& vel, const Vector3f& acce
         _limit.accel_xy, _p_pos_xy.get_error(), _pid_vel_xy.get_error());
 
     shape_vel_accel_xy(vel, accel, _vel_desired, _accel_desired, _speed_cms, _accel_cms, _shaping_tc, _dt);
+
+    update_vel_accel_xy(vel, accel, _dt, false, Vector2f());
 }
 
 /// input_pos_vel_xy calculate a jerk limited path from the current position, velocity and acceleration to an input position and velocity.
@@ -860,7 +882,7 @@ void AC_PosControl::input_vel_accel_xy(const Vector3f& vel, const Vector3f& acce
 ///     The time constant also defines the time taken to achieve the maximum acceleration.
 ///     The time constant must be positive.
 ///     The function alters the input position to be the closest position that the system could reach zero acceleration in the minimum time.
-void AC_PosControl::input_pos_vel_accel_xy(const Vector3f& pos, const Vector3f& vel, const Vector3f& accel)
+void AC_PosControl::input_pos_vel_accel_xy(Vector3f& pos, Vector3f& vel, const Vector3f& accel)
 {
     // check for ekf xy position reset
     check_for_ekf_xy_reset();
@@ -869,6 +891,8 @@ void AC_PosControl::input_pos_vel_accel_xy(const Vector3f& pos, const Vector3f& 
         _limit.accel_xy, _p_pos_xy.get_error(), _pid_vel_xy.get_error());
 
     shape_pos_vel_accel_xy(pos, vel, accel, _pos_target, _vel_desired, _accel_desired, _speed_cms, _speed_cms, _accel_cms, _shaping_tc, _dt);
+
+    update_pos_vel_accel_xy(pos, vel, accel, _dt, false, Vector2f(), Vector2f());
 }
 
 /// run horizontal position controller correcting position and velocity
