@@ -765,14 +765,6 @@ void AC_PosControl::write_log()
                             _accel_desired.z, get_accel_target().z, get_z_accel_cmss(), _attitude_control.get_throttle_in());
 }
 
-/// init_pos_vel_accel_xyz - initialise the velocity controller - should be called once before the caller attempts to use the controller
-// todo: remove
-void AC_PosControl::init_xyz()
-{
-    init_z_controller();
-    init_xy_controller();
-}
-
 // relax_velocity_controller_xy - initialise the position controller to the current position, velocity, acceleration and level attitude.
 ///     This function is similar to the initialisation but conditions the controller to request level attitude
 void AC_PosControl::relax_velocity_controller_xy()

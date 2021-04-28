@@ -133,8 +133,8 @@ void AC_WPNav::wp_and_spline_init(float speed_cms)
     }
 
     // initialise position controller
-    _pos_control.set_desired_accel_xy(0.0f,0.0f);
-    _pos_control.init_xyz();
+    _pos_control.init_z_controller();
+    _pos_control.init_xy_controller();
 
     // initialise feed forward velocity to zero
     _pos_control.set_desired_velocity_xy(0.0f, 0.0f);
@@ -365,7 +365,9 @@ bool AC_WPNav::set_wp_destination_next_NED(const Vector3f& destination_NED)
 void AC_WPNav::shift_wp_origin_to_current_pos()
 {
     // Reset position controller to current location
-    _pos_control.init_xyz();
+    _pos_control.init_z_controller();
+    _pos_control.init_xy_controller();
+
     const Vector3f pos_target = _pos_control.get_pos_target();
 
     // shift origin and destination

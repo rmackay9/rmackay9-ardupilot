@@ -239,14 +239,6 @@ public:
     /// get_bearing_to_target - get bearing to target position in centi-degrees
     int32_t get_bearing_to_target() const;
 
-    /// xyz velocity controller
-
-    /// init_xyz - initialise the velocity controller - should be called once before the caller attempts to use the controller
-    ///     sets target roll angle, pitch angle and I terms based on vehicle current lean angles
-    ///     should be called once whenever significant changes to the position target are made
-    ///     this does not update the xy target
-    void init_xyz();
-
     /// init_xy - initialise the position controller to the current position and velocity with zero acceleration.
     ///     This function should be called before input_vel_xy or input_pos_vel_xy are used.
     void init_xy_controller();

@@ -13,7 +13,7 @@ bool Sub::poshold_init()
     if (!position_ok()) {
         return false;
     }
-    pos_control.init_xyz();
+    pos_control.init_xy_controller();
     pos_control.set_desired_velocity_xy(0, 0);
     pos_control.set_target_to_stopping_point_xy();
 
@@ -21,8 +21,7 @@ bool Sub::poshold_init()
     pos_control.set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
     // initialise position and desired velocity
-    pos_control.set_alt_target(inertial_nav.get_altitude());
-    pos_control.set_desired_velocity_z(inertial_nav.get_velocity_z());
+    pos_control.init_z_controller();
 
     // Stop all thrusters
     attitude_control.set_throttle_out(0.5f ,true, g.throttle_filt);
@@ -72,7 +71,7 @@ void Sub::poshold_run()
         translate_pos_control_rp(lateral_out, forward_out);
         pos_control.run_z_controller();
     } else {
-        pos_control.init_xyz();
+        pos_control.init_xy_controller();
         pos_control.set_desired_velocity_xy(0, 0);
         pos_control.set_target_to_stopping_point_xy();
     }

@@ -357,8 +357,7 @@ void ModeRTL::land_start()
 
     // initialise position and desired velocity
     if (!pos_control->is_active_z()) {
-        pos_control->set_alt_target_to_current_alt();
-        pos_control->set_desired_velocity_z(inertial_nav.get_velocity_z());
+        pos_control->init_z_controller();
     }
 
     // initialise yaw

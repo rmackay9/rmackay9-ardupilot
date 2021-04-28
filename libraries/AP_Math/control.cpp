@@ -155,11 +155,6 @@ void shape_accel(float accel_input, float& accel,
     // Calculate time constants and limits to ensure stable operation
     const float KPa = 1.0 / tc;
 
-    // limit acceleration to accel_max
-    if (is_negative(accel_min) && is_positive(accel_max)){
-        accel = constrain_float(accel, accel_min, accel_max);
-    }
-
     float jerk_max = 0.0;
     if (is_negative(accel_min) && is_positive(accel_max)){
         jerk_max = MAX(-accel_min, accel_max) * KPa;
@@ -171,6 +166,11 @@ void shape_accel(float accel_input, float& accel,
         accel_delta = constrain_float(accel_delta, -jerk_max * dt, jerk_max * dt);
     }
     accel += accel_delta;
+
+    // limit acceleration to accel_max
+    if (is_negative(accel_min) && is_positive(accel_max)){
+        accel = constrain_float(accel, accel_min, accel_max);
+    }
 }
 
 /* shape_vel_xy calculate a jerk limited path from the current position, velocity and acceleration to an input velocity.

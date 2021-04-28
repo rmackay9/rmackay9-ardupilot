@@ -168,7 +168,8 @@ void ModeGuided::vel_control_start()
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
     // initialise velocity controller
-    pos_control->init_xyz();
+    pos_control->init_z_controller();
+    pos_control->init_xy_controller();
 }
 
 // initialise guided mode's posvel controller
@@ -212,8 +213,7 @@ void ModeGuided::angle_control_start()
 
     // initialise position and desired velocity
     if (!pos_control->is_active_z()) {
-        pos_control->set_alt_target_to_current_alt();
-        pos_control->set_desired_velocity_z(inertial_nav.get_velocity_z());
+        pos_control->init_z_controller();
     }
 
     // initialise targets
