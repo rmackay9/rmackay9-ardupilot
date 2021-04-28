@@ -28,6 +28,7 @@ public:
     float update_all(float &target, float measurement, bool &limit_min, bool &limit_max) WARN_IF_UNUSED;
 
     // set limits on error, output and output from D term
+    // error_min should be negative, error_max should be positive
     void set_limits(float error_min, float error_max, float output_min, float output_max, float D1_max = 0.0f, float D2_max = 0.0f);
 
     // save gain to eeprom
@@ -37,7 +38,7 @@ public:
     AP_Float &kP() WARN_IF_UNUSED { return _kp; }
     const AP_Float &kP() const WARN_IF_UNUSED { return _kp; }
     void kP(float v) { _kp.set(v); }
-    float get_error() const {return _error;}
+    float get_error() const { return _error; }
 
     // parameter var table
     static const struct AP_Param::GroupInfo var_info[];

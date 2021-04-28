@@ -29,11 +29,10 @@ public:
     // set limits on error, output and output from D term
     void set_limits(float error_max, float output_max, float D_Out_max = 0.0f, float D2_Out_max = 0.0f);
 
-
     // get accessors
     AP_Float &kP() WARN_IF_UNUSED { return _kp; }
     const AP_Float &kP() const WARN_IF_UNUSED { return _kp; }
-    Vector2f get_error() const {return _error;}
+    const Vector2f &get_error() const { return _error; }
 
     // set accessor
     void kP(float v) { _kp.set(v); }

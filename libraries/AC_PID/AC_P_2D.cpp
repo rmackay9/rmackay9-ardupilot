@@ -20,8 +20,6 @@ AC_P_2D::AC_P_2D(float initial_p, float dt) :
     AP_Param::setup_object_defaults(this, var_info);
 
     _kp = initial_p;
-    _error_max = 0.0f;
-    _D1_max = 0.0f;
 }
 
 //  set target and measured inputs to P controller and calculate outputs
@@ -54,7 +52,7 @@ void AC_P_2D::set_limits(float error_max, float output_max, float lim_D_Out, flo
     }
 
     _error_max = inv_sqrt_controller(output_max, _kp, _D1_max);
-    if(!is_zero(_error_max) && is_positive(error_max) ) {
+    if (!is_zero(_error_max) && is_positive(error_max) ) {
         _error_max = MIN(_error_max, error_max);
     } else {
         _error_max = error_max;
