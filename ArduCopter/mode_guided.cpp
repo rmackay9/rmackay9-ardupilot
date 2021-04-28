@@ -572,6 +572,13 @@ void ModeGuided::posvel_control_run()
     pos_control->set_pos_target(guided_pos_target_cm);
     pos_control->set_desired_velocity_xy(guided_vel_target_cms.x, guided_vel_target_cms.y);
 
+    // send position and velocity targets to position controller
+    pos_control->input_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, Vector3f());
+    pos_control->input_pos_vel_accel_z(guided_pos_target_cm, guided_vel_target_cms, Vector3f());
+    Vector3f vel_target_cms = Vector3f();
+    update_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, vel_target_cms, dt, false, Vector2f(), Vector2f());
+    update_pos_vel_accel_z(guided_pos_target_cm, guided_vel_target_cms, vel_target_cms, dt, false, false, 0.0f, 0.0f);
+
     // run position controllers
     pos_control->run_z_controller();
     pos_control->update_z_controller();
@@ -674,24 +681,7 @@ void ModeGuided::angle_control_run()
 void ModeGuided::set_desired_velocity_with_accel_and_fence_limits(const Vector3f& vel_des)
 {
     // get current desired velocity
-    Vector3f curr_vel_des = pos_control->get_desired_velocity();
-
-    // get change in desired velocity
-    Vector3f vel_delta = vel_des - curr_vel_des;
-
-    // limit xy change
-    float vel_delta_xy = safe_sqrt(sq(vel_delta.x)+sq(vel_delta.y));
-    float vel_delta_xy_max = G_Dt * pos_control->get_max_accel_xy();
-    float ratio_xy = 1.0f;
-    if (!is_zero(vel_delta_xy) && (vel_delta_xy > vel_delta_xy_max)) {
-        ratio_xy = vel_delta_xy_max / vel_delta_xy;
-    }
-    curr_vel_des.x += (vel_delta.x * ratio_xy);
-    curr_vel_des.y += (vel_delta.y * ratio_xy);
-
-    // limit z change
-    float vel_delta_z_max = G_Dt * pos_control->get_max_accel_z();
-    curr_vel_des.z += constrain_float(vel_delta.z, -vel_delta_z_max, vel_delta_z_max);
+    Vector3f curr_vel_des = vel_des;
 
 #if AC_AVOID_ENABLED
     // limit the velocity for obstacle/fence avoidance
@@ -699,7 +689,8 @@ void ModeGuided::set_desired_velocity_with_accel_and_fence_limits(const Vector3f
 #endif
 
     // update position controller with new target
-    pos_control->set_desired_velocity(curr_vel_des);
+    pos_control->input_vel_accel_xy(curr_vel_des, Vector3f());
+    pos_control->input_vel_accel_z(curr_vel_des, Vector3f(), false);
 }
 
 // helper function to set yaw state and targets
