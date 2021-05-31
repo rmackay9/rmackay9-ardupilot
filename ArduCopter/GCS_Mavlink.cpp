@@ -140,21 +140,22 @@ void GCS_MAVLINK_Copter::send_position_target_local_ned()
         type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
                     POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
                     POSITION_TARGET_TYPEMASK_FORCE_SET | POSITION_TARGET_TYPEMASK_YAW_IGNORE| POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE; // ignore everything except position
+        target_pos = copter.mode_guided.get_target_pos() * 0.01f; // convert to metres
         break;
     case ModeGuided::SubMode::Velocity:
         type_mask = POSITION_TARGET_TYPEMASK_X_IGNORE | POSITION_TARGET_TYPEMASK_Y_IGNORE | POSITION_TARGET_TYPEMASK_Z_IGNORE |
                     POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
                     POSITION_TARGET_TYPEMASK_FORCE_SET | POSITION_TARGET_TYPEMASK_YAW_IGNORE| POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE; // ignore everything except velocity
+        target_vel = copter.mode_guided.get_target_vel() * 0.01f; // convert to metres
         break;
     case ModeGuided::SubMode::TakeOff:
     case ModeGuided::SubMode::PosVel:
         type_mask = POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE | POSITION_TARGET_TYPEMASK_AZ_IGNORE |
                     POSITION_TARGET_TYPEMASK_FORCE_SET | POSITION_TARGET_TYPEMASK_YAW_IGNORE| POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE; // ignore everything except position & velocity
+        target_pos = copter.mode_guided.get_target_pos() * 0.01f; // convert to metres
+        target_vel = copter.mode_guided.get_target_vel() * 0.01f; // convert to metres
         break;
     }
-    target_pos = copter.mode_guided.get_target_pos() * 0.01f; // convert to metres
-    target_vel = copter.mode_guided.get_target_vel() * 0.01f; // convert to metres
-    target_accel = copter.mode_guided.get_target_accel() * 0.01f; // convert to metres
 
     mavlink_msg_position_target_local_ned_send(
         chan,
@@ -170,8 +171,8 @@ void GCS_MAVLINK_Copter::send_position_target_local_ned()
         target_accel.x, // afx
         target_accel.y, // afy
         -target_accel.z,// afz
-        copter.pos_control->get_yaw_cd() * 0.01f, // yaw
-        copter.pos_control->get_yaw_rate_cds() * 0.01f); // yaw_rate
+        0.0f, // yaw
+        0.0f); // yaw_rate
 #endif
 }
 
@@ -1121,7 +1122,7 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
         bool yaw_ignore      = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE;
         bool yaw_rate_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE;
 
-        // exit immediately if acceleration provided
+        // exit immediately if neither position nor velocity is provided
         if (pos_ignore && vel_ignore) {
             break;
         }
