@@ -71,6 +71,8 @@ private:
     float _accel_max;               // maximum forward/back acceleration in m/s/s
     float _lat_accel_max;           // lateral acceleration maximum in m/s/s
     bool _has_lateral;              // true if vehicle is capable of lateral movement
+    bool _limit_pos;                // true if the vehicle has hit a position limit
+    Vector2f _limit_vel;            // To-Do: explain what this is
 
     // other limits (not yet implemented)
     float _turn_radius;             // vehicle turn radius in meters

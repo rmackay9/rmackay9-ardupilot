@@ -144,7 +144,8 @@ void AR_PosControl::update(float dt)
     // calculate position error and convert to desired velocity
     Vector2f des_vel_NE;
     if (_pos_target_valid) {
-        des_vel_NE = _p_pos.update_all(_pos_target.x, _pos_target.y, curr_pos_NE, AR_POSCON_POS_ERR_MAX, _speed_max);
+        // To-Do: replace "false" below with an input from motor's library?
+        des_vel_NE = _p_pos.update_all(_pos_target.x, _pos_target.y, curr_pos_NE, _limit_pos);
     }
 
     // calculation velocity error
@@ -154,8 +155,8 @@ void AR_PosControl::update(float dt)
     }
 
     // calculate desired acceleration
-    // To-Do: set limits flag based on whether length is beyond max speed and/or motor outputs?
-    Vector2f des_accel_NE = _pid_vel.update_all(des_vel_NE, curr_vel_NE, false);
+    // To-Do: fixup _limit_vel used below
+    Vector2f des_accel_NE = _pid_vel.update_all(des_vel_NE, curr_vel_NE, _limit_vel);
     if (_accel_target_valid) {
         des_accel_NE += _accel_target;
     }
