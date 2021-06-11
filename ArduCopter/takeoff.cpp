@@ -153,7 +153,7 @@ void Mode::_TakeOff::get_climb_rates(float& pilot_climb_rate, float& takeoff_cli
         }
         stop();
     } else {
-        alt_climbed_cm += expected_climb_cm;
+        alt_climbed_cm = MAX(alt_climbed_cm += expected_climb_cm, 0);
     }
 }
 
