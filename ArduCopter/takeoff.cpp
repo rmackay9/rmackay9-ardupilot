@@ -98,7 +98,7 @@ void Mode::_TakeOff::get_climb_rates(float& pilot_climb_rate, float& takeoff_cli
 
     // if pilot's commands descent, reduce altitude target
     if (pilot_climb_rate < 0.0f) {
-        alt_delta_cm -= (pilot_climb_rate * dt);
+        alt_delta_cm += (pilot_climb_rate * dt);
     }
 
     // acceleration of 50cm/s/s
