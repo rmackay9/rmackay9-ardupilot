@@ -62,14 +62,28 @@ void ModeAltHold::run()
         pos_control->relax_alt_hold_controllers(0.0f);   // forces throttle output to go to zero
         break;
 
-    case AltHold_Takeoff:
+    case AltHold_Takeoff: {
+        // use rangefinder if healthy
+        const bool use_rngfnd = copter.rangefinder_alt_ok();
+
         // initiate take-off
         if (!takeoff.running()) {
-            takeoff.start(constrain_float(g.pilot_takeoff_alt,0.0f,1000.0f));
+            float alt_delta_cm = constrain_float(g.pilot_takeoff_alt, 0.0f, 1000.0f);
+            if (use_rngfnd && is_positive(alt_delta_cm)) {
+                // subtract current rangefinder alt so final altitude is equal to pilot_takeoff_alt
+                alt_delta_cm -= copter.rangefinder_state.alt_cm_filt.get();
+            }
+            takeoff.start(alt_delta_cm);
         }
 
-        // get take-off adjusted pilot and takeoff climb rates
+        // get takeoff adjusted pilot and takeoff climb rates
         takeoff.get_climb_rates(target_climb_rate, takeoff_climb_rate, G_Dt);
+
+        // adjust climb rate using rangefinder
+        if (use_rngfnd) {
+            target_climb_rate = copter.surface_tracking.adjust_climb_rate(target_climb_rate + takeoff_climb_rate);
+            takeoff_climb_rate = 0.0f;  // set takeoff climb rate to zero so it is not fed forward into position controller below
+        }
 
         // get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
@@ -78,6 +92,7 @@ void ModeAltHold::run()
         pos_control->set_alt_target_from_climb_rate_ff(target_climb_rate, G_Dt, false);
         pos_control->add_takeoff_climb_rate(takeoff_climb_rate, G_Dt);
         break;
+    }
 
     case AltHold_Flying:
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
