@@ -873,9 +873,10 @@ public:
     enum class SubMode {
         TakeOff,
         WP,
-        Velocity,
-        PosVel,
+        VelAccel,
+        PosVelAccel,
         Angle,
+        Accel,
     };
 
     SubMode submode() const { return guided_mode; }
@@ -905,10 +906,12 @@ private:
     };
 
     void pos_control_start();
-    void vel_control_start();
-    void posvel_control_start();
+    void accel_control_start();
+    void velaccel_control_start();
+    void posvelaccel_control_start();
     void takeoff_run();
     void pos_control_run();
+    void accel_control_run();
     void velaccel_control_run();
     void posvelaccel_control_run();
     void set_desired_velocity_with_accel_and_fence_limits(const Vector3f& vel_des);

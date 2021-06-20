@@ -44,7 +44,7 @@ struct Guided_Limit {
 bool ModeGuided::init(bool ignore_checks)
 {
     // start in position control mode
-    vel_control_start();
+    velaccel_control_start();
     posvel_update_time_ms = millis();
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
@@ -73,12 +73,17 @@ void ModeGuided::run()
         }
         break;
 
-    case SubMode::Velocity:
+    case SubMode::Accel:
+        // run velocity controller
+        accel_control_run();
+        break;
+
+    case SubMode::VelAccel:
         // run velocity controller
         velaccel_control_run();
         break;
 
-    case SubMode::PosVel:
+    case SubMode::PosVelAccel:
         // run position-velocity controller
         posvelaccel_control_run();
         break;
@@ -160,10 +165,10 @@ void ModeGuided::pos_control_start()
 }
 
 // initialise guided mode's velocity controller
-void ModeGuided::vel_control_start()
+void ModeGuided::accel_control_start()
 {
     // set guided_mode to velocity controller
-    guided_mode = SubMode::Velocity;
+    guided_mode = SubMode::Accel;
 
     // initialise horizontal speed, acceleration
     pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
@@ -174,13 +179,36 @@ void ModeGuided::vel_control_start()
     // initialise the position controller
     pos_control->init_z_controller();
     pos_control->init_xy_controller();
+
+    // pilot always controls yaw
+    auto_yaw.set_mode(AUTO_YAW_HOLD);
+}
+
+// initialise guided mode's velocity controller
+void ModeGuided::velaccel_control_start()
+{
+    // set guided_mode to velocity controller
+    guided_mode = SubMode::VelAccel;
+
+    // initialise horizontal speed, acceleration
+    pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+
+    // set vertical speed and acceleration limits
+    pos_control->set_max_speed_accel_z(wp_nav->get_default_speed_down(), wp_nav->get_default_speed_up(), wp_nav->get_accel_z());
+
+    // initialise the position controller
+    pos_control->init_z_controller();
+    pos_control->init_xy_controller();
+
+    // pilot always controls yaw
+    auto_yaw.set_mode(AUTO_YAW_HOLD);
 }
 
 // initialise guided mode's posvel controller
-void ModeGuided::posvel_control_start()
+void ModeGuided::posvelaccel_control_start()
 {
     // set guided_mode to velocity controller
-    guided_mode = SubMode::PosVel;
+    guided_mode = SubMode::PosVelAccel;
 
     // initialise horizontal speed, acceleration
     pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
@@ -312,6 +340,29 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
     return true;
 }
 
+// set_velaccel - sets guided mode's target velocity and acceleration
+void ModeGuided::set_accel(const Vector3f& acceleration, bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_yaw, bool log_request)
+{
+    // check we are in velocity control mode
+    if (guided_mode != SubMode::Accel) {
+        accel_control_start();
+    }
+
+    // set yaw state
+    set_yaw_state(use_yaw, yaw_cd, use_yaw_rate, yaw_rate_cds, relative_yaw);
+
+    // set velocity and acceleration targets and zero position
+    guided_pos_target_cm.zero();
+    guided_vel_target_cms.zero();
+    guided_accel_target_cmss = acceleration;
+    vel_update_time_ms = millis();
+
+    // log target
+    if (log_request) {
+        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+    }
+}
+
 // set_velocity - sets guided mode's target velocity
 void ModeGuided::set_velocity(const Vector3f& velocity, bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_yaw, bool log_request)
 {
@@ -322,8 +373,8 @@ void ModeGuided::set_velocity(const Vector3f& velocity, bool use_yaw, float yaw_
 void ModeGuided::set_velaccel(const Vector3f& velocity, const Vector3f& acceleration, bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_yaw, bool log_request)
 {
     // check we are in velocity control mode
-    if (guided_mode != SubMode::Velocity) {
-        vel_control_start();
+    if (guided_mode != SubMode::VelAccel) {
+        velaccel_control_start();
     }
 
     // set yaw state
@@ -362,8 +413,8 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
 #endif
 
     // check we are in velocity control mode
-    if (guided_mode != SubMode::PosVel) {
-        posvel_control_start();
+    if (guided_mode != SubMode::PosVelAccel) {
+        posvelaccel_control_start();
     }
 
     // set yaw state
@@ -486,6 +537,78 @@ void ModeGuided::pos_control_run()
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), target_yaw_rate);
     } else if (auto_yaw.mode() == AUTO_YAW_RATE) {
         // roll & pitch from position-velocity controller, yaw rate from mavlink command or mission item
+        attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), auto_yaw.rate_cds());
+    } else {
+        // roll, pitch from waypoint controller, yaw heading from GCS or auto_heading()
+        attitude_control->input_thrust_vector_heading(pos_control->get_thrust_vector(), auto_yaw.yaw());
+    }
+}
+
+// velaccel_control_run - runs the guided velocity controller
+// called from guided_run
+void ModeGuided::accel_control_run()
+{
+    // process pilot's yaw input
+    float target_yaw_rate = 0;
+    if (!copter.failsafe.radio && use_pilot_yaw()) {
+        // get pilot's desired yaw rate
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+        if (!is_zero(target_yaw_rate)) {
+            auto_yaw.set_mode(AUTO_YAW_HOLD);
+        }
+    }
+
+    // landed with positive desired climb rate, initiate takeoff
+    if (motors->armed() && copter.ap.auto_armed && copter.ap.land_complete && is_positive(guided_vel_target_cms.z)) {
+        zero_throttle_and_relax_ac();
+        motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
+        if (motors->get_spool_state() == AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
+            set_land_complete(false);
+            set_throttle_takeoff();
+        }
+        return;
+    }
+
+    // if not armed set throttle to zero and exit immediately
+    if (is_disarmed_or_landed()) {
+        make_safe_spool_down();
+        return;
+    }
+
+    // set motors to full range
+    motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
+
+    // set velocity to zero and stop rotating if no updates received for 3 seconds
+    uint32_t tnow = millis();
+    if (tnow - vel_update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
+        guided_accel_target_cmss.zero();
+        if (auto_yaw.mode() == AUTO_YAW_RATE) {
+            auto_yaw.set_rate(0.0f);
+        }
+    }
+
+    // update position controller with new target
+    pos_control->input_accel_xy(guided_accel_target_cmss);
+    if (!stabilizing_vel_xy()) {
+        // set position and velocity errors to zero
+        pos_control->stop_vel_xy_stabilisation();
+    } else if (!stabilizing_pos_xy()) {
+        pos_control->input_accel_xy(guided_accel_target_cmss);
+        // set position errors to zero
+        pos_control->stop_pos_xy_stabilisation();
+    }
+    pos_control->input_vel_accel_z(guided_vel_target_cms, guided_accel_target_cmss, false);
+
+    // call velocity controller which includes z axis controller
+    pos_control->update_xy_controller();
+    pos_control->update_z_controller();
+
+    // call attitude controller
+    if (auto_yaw.mode() == AUTO_YAW_HOLD) {
+        // roll & pitch from waypoint controller, yaw rate from pilot
+        attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), target_yaw_rate);
+    } else if (auto_yaw.mode() == AUTO_YAW_RATE) {
+        // roll & pitch from velocity controller, yaw rate from mavlink command or mission item
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), auto_yaw.rate_cds());
     } else {
         // roll, pitch from waypoint controller, yaw heading from GCS or auto_heading()
@@ -839,7 +962,7 @@ uint32_t ModeGuided::wp_distance() const
     case SubMode::WP:
         return norm(guided_pos_target_cm.x - inertial_nav.get_position().x, guided_pos_target_cm.y - inertial_nav.get_position().y);
         break;
-    case SubMode::PosVel:
+    case SubMode::PosVelAccel:
         return pos_control->get_pos_error_xy_cm();
         break;
     default:
@@ -853,11 +976,12 @@ int32_t ModeGuided::wp_bearing() const
     case SubMode::WP:
         return get_bearing_cd(inertial_nav.get_position(), guided_pos_target_cm);
         break;
-    case SubMode::PosVel:
+    case SubMode::PosVelAccel:
         return pos_control->get_bearing_to_target_cd();
         break;
     case SubMode::TakeOff:
-    case SubMode::Velocity:
+    case SubMode::Accel:
+    case SubMode::VelAccel:
     case SubMode::Angle:
         // these do not have bearings
         return 0;
@@ -871,8 +995,9 @@ float ModeGuided::crosstrack_error() const
     switch (guided_mode) {
     case SubMode::WP:
     case SubMode::TakeOff:
-    case SubMode::Velocity:
-    case SubMode::PosVel:
+    case SubMode::Accel:
+    case SubMode::VelAccel:
+    case SubMode::PosVelAccel:
     case SubMode::Angle:
         // no track to have a crosstrack to
         return 0;
