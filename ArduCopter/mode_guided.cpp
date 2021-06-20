@@ -16,7 +16,7 @@
 static Vector3p guided_pos_target_cm;       // position target (used by posvel controller only)
 static Vector3f guided_vel_target_cms;      // velocity target (used by pos_vel_accel controller and vel_accel controller)
 static Vector3f guided_accel_target_cmss;   // acceleration target (used by pos_vel_accel controller vel_accel controller and accel controller)
-static uint32_t posvel_update_time_ms;      // system time of last target update to pos_vel_accel, vel_accel and accel controller (i.e. position and velocity update)
+static uint32_t posvelaccel_update_time_ms;      // system time of last target update to pos_vel_accel, vel_accel and accel controller (i.e. position and velocity update)
 static uint32_t vel_update_time_ms;         // system time of last target update to velocity controller
 
 struct {
@@ -45,7 +45,7 @@ bool ModeGuided::init(bool ignore_checks)
 {
     // start in position control mode
     velaccel_control_start();
-    posvel_update_time_ms = millis();
+    posvelaccel_update_time_ms = millis();
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
     send_notification = false;
@@ -420,7 +420,7 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
     // set yaw state
     set_yaw_state(use_yaw, yaw_cd, use_yaw_rate, yaw_rate_cds, relative_yaw);
 
-    posvel_update_time_ms = millis();
+    posvelaccel_update_time_ms = millis();
     guided_pos_target_cm = destination.topostype();
     guided_vel_target_cms = velocity;
     guided_accel_target_cmss = acceleration;
@@ -593,7 +593,6 @@ void ModeGuided::accel_control_run()
         // set position and velocity errors to zero
         pos_control->stop_vel_xy_stabilisation();
     } else if (!stabilizing_pos_xy()) {
-        pos_control->input_accel_xy(guided_accel_target_cmss);
         // set position errors to zero
         pos_control->stop_pos_xy_stabilisation();
     }
@@ -668,19 +667,19 @@ void ModeGuided::velaccel_control_run()
 #endif
 
     // update position controller with new target
+
     if (!stabilizing_vel_xy() && !do_avoid) {
         // set the current commanded xy vel to the desired vel
         guided_vel_target_cms.x = pos_control->get_vel_desired_cms().x;
         guided_vel_target_cms.y = pos_control->get_vel_desired_cms().y;
-        pos_control->input_vel_accel_xy(guided_vel_target_cms, guided_accel_target_cmss);
+    }
+    pos_control->input_vel_accel_xy(guided_vel_target_cms, guided_accel_target_cmss);
+    if (!stabilizing_vel_xy() && !do_avoid) {
         // set position and velocity errors to zero
         pos_control->stop_vel_xy_stabilisation();
     } else if (!stabilizing_pos_xy() && !do_avoid) {
-        pos_control->input_vel_accel_xy(guided_vel_target_cms, guided_accel_target_cmss);
         // set position errors to zero
         pos_control->stop_pos_xy_stabilisation();
-    } else {
-        pos_control->input_vel_accel_xy(guided_vel_target_cms, guided_accel_target_cmss);
     }
     pos_control->input_vel_accel_z(guided_vel_target_cms, guided_accel_target_cmss, false);
 
@@ -727,7 +726,7 @@ void ModeGuided::posvelaccel_control_run()
 
     // set velocity to zero and stop rotating if no updates received for 3 seconds
     uint32_t tnow = millis();
-    if (tnow - posvel_update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
+    if (tnow - posvelaccel_update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
         guided_vel_target_cms.zero();
         guided_accel_target_cmss.zero();
         if (auto_yaw.mode() == AUTO_YAW_RATE) {
@@ -742,18 +741,18 @@ void ModeGuided::posvelaccel_control_run()
         guided_pos_target_cm.y = pos_control->get_pos_target_cm().y;
         guided_vel_target_cms.x = pos_control->get_vel_desired_cms().x;
         guided_vel_target_cms.y = pos_control->get_vel_desired_cms().y;
-        pos_control->input_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
-        // set position and velocity errors to zero
-        pos_control->stop_vel_xy_stabilisation();
     } else if (!stabilizing_pos_xy()) {
         // set the current commanded xy pos to the target pos
         guided_pos_target_cm.x = pos_control->get_pos_target_cm().x;
         guided_pos_target_cm.y = pos_control->get_pos_target_cm().y;
-        pos_control->input_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+    }
+    pos_control->input_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+    if (!stabilizing_vel_xy()) {
+        // set position and velocity errors to zero
+        pos_control->stop_vel_xy_stabilisation();
+    } else if (!stabilizing_pos_xy()) {
         // set position errors to zero
         pos_control->stop_pos_xy_stabilisation();
-    } else {
-        pos_control->input_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
     }
     pos_control->input_pos_vel_accel_z(guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
 
