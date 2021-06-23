@@ -16,8 +16,7 @@
 static Vector3p guided_pos_target_cm;       // position target (used by posvel controller only)
 static Vector3f guided_vel_target_cms;      // velocity target (used by pos_vel_accel controller and vel_accel controller)
 static Vector3f guided_accel_target_cmss;   // acceleration target (used by pos_vel_accel controller vel_accel controller and accel controller)
-static uint32_t posvelaccel_update_time_ms;      // system time of last target update to pos_vel_accel, vel_accel and accel controller (i.e. position and velocity update)
-static uint32_t vel_update_time_ms;         // system time of last target update to velocity controller
+static uint32_t update_time_ms;             // system time of last target update to pos_vel_accel, vel_accel or accel controller
 
 struct {
     uint32_t update_time_ms;
@@ -43,9 +42,8 @@ struct Guided_Limit {
 // init - initialise guided controller
 bool ModeGuided::init(bool ignore_checks)
 {
-    // start in position control mode
+    // start in velaccel control mode
     velaccel_control_start();
-    posvelaccel_update_time_ms = millis();
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
     send_notification = false;
@@ -74,22 +72,18 @@ void ModeGuided::run()
         break;
 
     case SubMode::Accel:
-        // run velocity controller
         accel_control_run();
         break;
 
     case SubMode::VelAccel:
-        // run velocity controller
         velaccel_control_run();
         break;
 
     case SubMode::PosVelAccel:
-        // run position-velocity controller
         posvelaccel_control_run();
         break;
 
     case SubMode::Angle:
-        // run angle controller
         angle_control_run();
         break;
     }
@@ -283,7 +277,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
     guided_pos_target_cm = destination;
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
-    vel_update_time_ms = millis();
+    update_time_ms = millis();
 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
@@ -330,7 +324,6 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
     }
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
-    vel_update_time_ms = millis();
 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode, Vector3f(dest_loc.lat, dest_loc.lng, dest_loc.alt), guided_vel_target_cms, guided_accel_target_cmss);
@@ -355,7 +348,7 @@ void ModeGuided::set_accel(const Vector3f& acceleration, bool use_yaw, float yaw
     guided_pos_target_cm.zero();
     guided_vel_target_cms.zero();
     guided_accel_target_cmss = acceleration;
-    vel_update_time_ms = millis();
+    update_time_ms = millis();
 
     // log target
     if (log_request) {
@@ -384,7 +377,7 @@ void ModeGuided::set_velaccel(const Vector3f& velocity, const Vector3f& accelera
     guided_pos_target_cm.zero();
     guided_vel_target_cms = velocity;
     guided_accel_target_cmss = acceleration;
-    vel_update_time_ms = millis();
+    update_time_ms = millis();
 
     // log target
     if (log_request) {
@@ -420,7 +413,7 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
     // set yaw state
     set_yaw_state(use_yaw, yaw_cd, use_yaw_rate, yaw_rate_cds, relative_yaw);
 
-    posvelaccel_update_time_ms = millis();
+    update_time_ms = millis();
     guided_pos_target_cm = destination.topostype();
     guided_vel_target_cms = velocity;
     guided_accel_target_cmss = acceleration;
@@ -533,13 +526,13 @@ void ModeGuided::pos_control_run()
 
     // call attitude controller
     if (auto_yaw.mode() == AUTO_YAW_HOLD) {
-        // roll & pitch from waypoint controller, yaw rate from pilot
+        // roll & pitch from position controller, yaw rate from pilot
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), target_yaw_rate);
     } else if (auto_yaw.mode() == AUTO_YAW_RATE) {
-        // roll & pitch from position-velocity controller, yaw rate from mavlink command or mission item
+        // roll & pitch from position controller, yaw rate from mavlink command or mission item
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), auto_yaw.rate_cds());
     } else {
-        // roll, pitch from waypoint controller, yaw heading from GCS or auto_heading()
+        // roll & pitch from position controller, yaw heading from GCS or auto_heading()
         attitude_control->input_thrust_vector_heading(pos_control->get_thrust_vector(), auto_yaw.yaw());
     }
 }
@@ -580,7 +573,7 @@ void ModeGuided::accel_control_run()
 
     // set velocity to zero and stop rotating if no updates received for 3 seconds
     uint32_t tnow = millis();
-    if (tnow - vel_update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
+    if (tnow - update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
         guided_accel_target_cmss.zero();
         if (auto_yaw.mode() == AUTO_YAW_RATE) {
             auto_yaw.set_rate(0.0f);
@@ -604,18 +597,18 @@ void ModeGuided::accel_control_run()
 
     // call attitude controller
     if (auto_yaw.mode() == AUTO_YAW_HOLD) {
-        // roll & pitch from waypoint controller, yaw rate from pilot
+        // roll & pitch from position controller, yaw rate from pilot
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), target_yaw_rate);
     } else if (auto_yaw.mode() == AUTO_YAW_RATE) {
-        // roll & pitch from velocity controller, yaw rate from mavlink command or mission item
+        // roll & pitch from position controller, yaw rate from mavlink command or mission item
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), auto_yaw.rate_cds());
     } else {
-        // roll, pitch from waypoint controller, yaw heading from GCS or auto_heading()
+        // roll & pitch from position controller, yaw heading from GCS or auto_heading()
         attitude_control->input_thrust_vector_heading(pos_control->get_thrust_vector(), auto_yaw.yaw());
     }
 }
 
-// velaccel_control_run - runs the guided velocity controller
+// velaccel_control_run - runs the guided velocity and acceleration controller
 // called from guided_run
 void ModeGuided::velaccel_control_run()
 {
@@ -651,7 +644,7 @@ void ModeGuided::velaccel_control_run()
 
     // set velocity to zero and stop rotating if no updates received for 3 seconds
     uint32_t tnow = millis();
-    if (tnow - vel_update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
+    if (tnow - update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
         guided_vel_target_cms.zero();
         guided_accel_target_cmss.zero();
         if (auto_yaw.mode() == AUTO_YAW_RATE) {
@@ -689,18 +682,18 @@ void ModeGuided::velaccel_control_run()
 
     // call attitude controller
     if (auto_yaw.mode() == AUTO_YAW_HOLD) {
-        // roll & pitch from waypoint controller, yaw rate from pilot
+        // roll & pitch from position controller, yaw rate from pilot
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), target_yaw_rate);
     } else if (auto_yaw.mode() == AUTO_YAW_RATE) {
-        // roll & pitch from velocity controller, yaw rate from mavlink command or mission item
+        // roll & pitch from position controller, yaw rate from mavlink command or mission item
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), auto_yaw.rate_cds());
     } else {
-        // roll, pitch from waypoint controller, yaw heading from GCS or auto_heading()
+        // roll & pitch from position controller, yaw heading from GCS or auto_heading()
         attitude_control->input_thrust_vector_heading(pos_control->get_thrust_vector(), auto_yaw.yaw());
     }
 }
 
-// posvelaccel_control_run - runs the guided spline controller
+// posvelaccel_control_run - runs the guided position, velocity and acceleration controller
 // called from guided_run
 void ModeGuided::posvelaccel_control_run()
 {
@@ -726,7 +719,7 @@ void ModeGuided::posvelaccel_control_run()
 
     // set velocity to zero and stop rotating if no updates received for 3 seconds
     uint32_t tnow = millis();
-    if (tnow - posvelaccel_update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
+    if (tnow - update_time_ms > GUIDED_POSVEL_TIMEOUT_MS) {
         guided_vel_target_cms.zero();
         guided_accel_target_cmss.zero();
         if (auto_yaw.mode() == AUTO_YAW_RATE) {
@@ -762,13 +755,13 @@ void ModeGuided::posvelaccel_control_run()
 
     // call attitude controller
     if (auto_yaw.mode() == AUTO_YAW_HOLD) {
-        // roll & pitch from waypoint controller, yaw rate from pilot
+        // roll & pitch from position controller, yaw rate from pilot
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), target_yaw_rate);
     } else if (auto_yaw.mode() == AUTO_YAW_RATE) {
-        // roll & pitch from position-velocity controller, yaw rate from mavlink command or mission item
+        // roll & pitch from position controller, yaw rate from mavlink command or mission item
         attitude_control->input_thrust_vector_rate_heading(pos_control->get_thrust_vector(), auto_yaw.rate_cds());
     } else {
-        // roll, pitch from waypoint controller, yaw heading from GCS or auto_heading()
+        // roll & pitch from position controller, yaw heading from GCS or auto_heading()
         attitude_control->input_thrust_vector_heading(pos_control->get_thrust_vector(), auto_yaw.yaw());
     }
 }

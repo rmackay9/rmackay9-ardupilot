@@ -873,10 +873,10 @@ public:
     enum class SubMode {
         TakeOff,
         WP,
-        VelAccel,
         PosVelAccel,
-        Angle,
+        VelAccel,
         Accel,
+        Angle,
     };
 
     SubMode submode() const { return guided_mode; }
