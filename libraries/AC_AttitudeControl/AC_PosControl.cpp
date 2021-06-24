@@ -494,7 +494,7 @@ void AC_PosControl::input_accel_xy(const Vector3f& accel)
     // check for ekf xy position reset
     handle_ekf_xy_reset();
 
-    update_pos_vel_accel_xy(_pos_target, _vel_desired, _accel_desired, _dt, _limit_vector);
+    update_pos_vel_accel_xy(_pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(), _dt, _limit_vector.xy());
     shape_accel_xy(accel, _accel_desired, _accel_max_xy_cmss, _tc_xy_s, _dt);
 }
 
