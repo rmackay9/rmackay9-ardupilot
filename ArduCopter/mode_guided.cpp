@@ -274,13 +274,13 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
     set_yaw_state(use_yaw, yaw_cd, use_yaw_rate, yaw_rate_cds, relative_yaw);
 
     // set position target and zero velocity and acceleration
-    guided_pos_target_cm = destination;
+    guided_pos_target_cm = destination.topostype();
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
     update_time_ms = millis();
 
     // log target
-    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
 
     send_notification = true;
 
@@ -319,9 +319,13 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
     set_yaw_state(use_yaw, yaw_cd, use_yaw_rate, yaw_rate_cds, relative_yaw);
 
     // set position target and zero velocity and acceleration
-    if (!dest_loc.get_vector_from_origin_NEU(guided_pos_target_cm)) {
+    Vector3f pos_target_f;
+    if (!dest_loc.get_vector_from_origin_NEU(pos_target_f)) {
         guided_pos_target_cm = pos_control->get_pos_target_cm();
+    } else {
+        guided_pos_target_cm = pos_target_f.topostype();
     }
+
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
 
@@ -352,7 +356,7 @@ void ModeGuided::set_accel(const Vector3f& acceleration, bool use_yaw, float yaw
 
     // log target
     if (log_request) {
-        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
     }
 }
 
@@ -381,7 +385,7 @@ void ModeGuided::set_velaccel(const Vector3f& velocity, const Vector3f& accelera
 
     // log target
     if (log_request) {
-        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
     }
 }
 
@@ -419,7 +423,7 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
     guided_accel_target_cmss = acceleration;
 
     // log target
-    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
     return true;
 }
 
@@ -486,7 +490,7 @@ void ModeGuided::takeoff_run()
 #endif
 
         // switch to position control mode but maintain current target
-        const Vector3f target = pos_control->get_pos_target_cm();
+        const Vector3f target = pos_control->get_pos_target_cm().tofloat();
         set_destination(target, false, 0, false, 0, false, wp_nav->origin_and_destination_are_terrain_alt());
     }
 }
@@ -589,7 +593,7 @@ void ModeGuided::accel_control_run()
         // set position errors to zero
         pos_control->stop_pos_xy_stabilisation();
     }
-    pos_control->input_vel_accel_z(guided_vel_target_cms, guided_accel_target_cmss, false);
+    pos_control->input_vel_accel_z(guided_vel_target_cms.z, guided_accel_target_cmss.z, false);
 
     // call velocity controller which includes z axis controller
     pos_control->update_xy_controller();
@@ -666,7 +670,7 @@ void ModeGuided::velaccel_control_run()
         guided_vel_target_cms.x = pos_control->get_vel_desired_cms().x;
         guided_vel_target_cms.y = pos_control->get_vel_desired_cms().y;
     }
-    pos_control->input_vel_accel_xy(guided_vel_target_cms, guided_accel_target_cmss);
+    pos_control->input_vel_accel_xy(guided_vel_target_cms.xy(), guided_accel_target_cmss.xy());
     if (!stabilizing_vel_xy() && !do_avoid) {
         // set position and velocity errors to zero
         pos_control->stop_vel_xy_stabilisation();
@@ -674,7 +678,7 @@ void ModeGuided::velaccel_control_run()
         // set position errors to zero
         pos_control->stop_pos_xy_stabilisation();
     }
-    pos_control->input_vel_accel_z(guided_vel_target_cms, guided_accel_target_cmss, false);
+    pos_control->input_vel_accel_z(guided_vel_target_cms.z, guided_accel_target_cmss.z, false);
 
     // call velocity controller which includes z axis controller
     pos_control->update_xy_controller();
@@ -739,7 +743,7 @@ void ModeGuided::posvelaccel_control_run()
         guided_pos_target_cm.x = pos_control->get_pos_target_cm().x;
         guided_pos_target_cm.y = pos_control->get_pos_target_cm().y;
     }
-    pos_control->input_pos_vel_accel_xy(guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+    pos_control->input_pos_vel_accel_xy(guided_pos_target_cm.xy(), guided_vel_target_cms.xy(), guided_accel_target_cmss.xy());
     if (!stabilizing_vel_xy()) {
         // set position and velocity errors to zero
         pos_control->stop_vel_xy_stabilisation();
@@ -747,7 +751,10 @@ void ModeGuided::posvelaccel_control_run()
         // set position errors to zero
         pos_control->stop_pos_xy_stabilisation();
     }
-    pos_control->input_pos_vel_accel_z(guided_pos_target_cm, guided_vel_target_cms, guided_accel_target_cmss);
+
+    float pz = guided_pos_target_cm.z;
+    pos_control->input_pos_vel_accel_z(pz, guided_vel_target_cms.z, guided_accel_target_cmss.z);
+    guided_pos_target_cm.z = pz;
 
     // run position controllers
     pos_control->update_xy_controller();
@@ -933,7 +940,7 @@ bool ModeGuided::limit_check()
     return false;
 }
 
-const Vector3f& ModeGuided::get_target_pos() const
+const Vector3p &ModeGuided::get_target_pos() const
 {
     return guided_pos_target_cm;
 }
@@ -966,7 +973,7 @@ int32_t ModeGuided::wp_bearing() const
 {
     switch(guided_mode) {
     case SubMode::WP:
-        return get_bearing_cd(inertial_nav.get_position(), guided_pos_target_cm);
+        return get_bearing_cd(inertial_nav.get_position(), guided_pos_target_cm.tofloat());
         break;
     case SubMode::PosVelAccel:
         return pos_control->get_bearing_to_target_cd();

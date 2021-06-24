@@ -852,7 +852,7 @@ public:
     bool set_destination_posvelaccel(const Vector3f& destination, const Vector3f& velocity, const Vector3f& acceleration, bool use_yaw = false, float yaw_cd = 0.0, bool use_yaw_rate = false, float yaw_rate_cds = 0.0, bool yaw_relative = false);
 
     // get position, velocity and acceleration targets
-    const Vector3f& get_target_pos() const;
+    const Vector3p& get_target_pos() const;
     const Vector3f& get_target_vel() const;
     const Vector3f& get_target_accel() const;
 
