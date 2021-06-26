@@ -282,7 +282,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
     update_time_ms = millis();
 
     // log target
-    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
+    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_pos_terrain_alt, guided_vel_target_cms, guided_accel_target_cmss);
 
     send_notification = true;
 
@@ -334,7 +334,7 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
     guided_accel_target_cmss.zero();
 
     // log target
-    copter.Log_Write_GuidedTarget(guided_mode, Vector3f(dest_loc.lat, dest_loc.lng, dest_loc.alt), guided_vel_target_cms, guided_accel_target_cmss);
+    copter.Log_Write_GuidedTarget(guided_mode, Vector3f(dest_loc.lat, dest_loc.lng, dest_loc.alt), guided_pos_terrain_alt, guided_vel_target_cms, guided_accel_target_cmss);
 
     send_notification = true;
 
@@ -361,7 +361,7 @@ void ModeGuided::set_accel(const Vector3f& acceleration, bool use_yaw, float yaw
 
     // log target
     if (log_request) {
-        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
+        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_pos_terrain_alt, guided_vel_target_cms, guided_accel_target_cmss);
     }
 }
 
@@ -391,7 +391,7 @@ void ModeGuided::set_velaccel(const Vector3f& velocity, const Vector3f& accelera
 
     // log target
     if (log_request) {
-        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
+        copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_pos_terrain_alt, guided_vel_target_cms, guided_accel_target_cmss);
     }
 }
 
@@ -430,7 +430,7 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
     guided_accel_target_cmss = acceleration;
 
     // log target
-    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_vel_target_cms, guided_accel_target_cmss);
+    copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_pos_terrain_alt, guided_vel_target_cms, guided_accel_target_cmss);
     return true;
 }
 
@@ -482,6 +482,7 @@ void ModeGuided::set_angle(const Quaternion &q, float climb_rate_cms_or_thrust, 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode,
                            Vector3f(guided_angle_state.roll_cd, guided_angle_state.pitch_cd, guided_angle_state.yaw_cd),
+                           false,
                            Vector3f(0.0f, 0.0f, climb_rate_cms_or_thrust), Vector3f());
 }
 
