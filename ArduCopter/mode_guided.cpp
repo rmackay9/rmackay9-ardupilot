@@ -760,6 +760,11 @@ void ModeGuided::posvelaccel_control_run()
         pos_control->stop_pos_xy_stabilisation();
     }
 
+    // guided_pos_target z-axis should never be a terrain altitude
+    if (guided_pos_terrain_alt) {
+        INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
+    }
+
     float pz = guided_pos_target_cm.z;
     pos_control->input_pos_vel_accel_z(pz, guided_vel_target_cms.z, guided_accel_target_cmss.z);
     guided_pos_target_cm.z = pz;
