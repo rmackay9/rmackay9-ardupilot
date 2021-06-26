@@ -14,6 +14,7 @@
 #define GUIDED_ATTITUDE_TIMEOUT_MS  1000    // guided mode's attitude controller times out after 1 second with no new updates
 
 static Vector3p guided_pos_target_cm;       // position target (used by posvel controller only)
+bool guided_pos_terrain_alt;                // true if guided_pos_target_cm.z is an alt above terrain
 static Vector3f guided_vel_target_cms;      // velocity target (used by pos_vel_accel controller and vel_accel controller)
 static Vector3f guided_accel_target_cmss;   // acceleration target (used by pos_vel_accel controller vel_accel controller and accel controller)
 static uint32_t update_time_ms;             // system time of last target update to pos_vel_accel, vel_accel or accel controller
@@ -275,6 +276,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
 
     // set position target and zero velocity and acceleration
     guided_pos_target_cm = destination.topostype();
+    guided_pos_terrain_alt = terrain_alt;
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
     update_time_ms = millis();
@@ -320,10 +322,12 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
 
     // set position target and zero velocity and acceleration
     Vector3f pos_target_f;
-    if (!dest_loc.get_vector_from_origin_NEU(pos_target_f)) {
-        guided_pos_target_cm = pos_control->get_pos_target_cm();
+    bool pos_target_terr;
+    if (!wp_nav->get_vector_NEU(dest_loc, pos_target_f, pos_target_terr)) {
+        return false;
     } else {
         guided_pos_target_cm = pos_target_f.topostype();
+        guided_pos_terrain_alt = pos_target_terr;
     }
 
     guided_vel_target_cms.zero();
@@ -350,6 +354,7 @@ void ModeGuided::set_accel(const Vector3f& acceleration, bool use_yaw, float yaw
 
     // set velocity and acceleration targets and zero position
     guided_pos_target_cm.zero();
+    guided_pos_terrain_alt = false;
     guided_vel_target_cms.zero();
     guided_accel_target_cmss = acceleration;
     update_time_ms = millis();
@@ -379,6 +384,7 @@ void ModeGuided::set_velaccel(const Vector3f& velocity, const Vector3f& accelera
 
     // set velocity and acceleration targets and zero position
     guided_pos_target_cm.zero();
+    guided_pos_terrain_alt = false;
     guided_vel_target_cms = velocity;
     guided_accel_target_cmss = acceleration;
     update_time_ms = millis();
@@ -419,6 +425,7 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
 
     update_time_ms = millis();
     guided_pos_target_cm = destination.topostype();
+    guided_pos_terrain_alt = false;
     guided_vel_target_cms = velocity;
     guided_accel_target_cmss = acceleration;
 
