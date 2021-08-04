@@ -37,6 +37,31 @@ struct Guided_Limit {
     Vector3f start_pos; // start position as a distance from home in cm.  used for checking horiz_max limit
 } guided_limit;
 
+const AP_Param::GroupInfo ModeGuided::var_info[] = {
+
+    // @Param: _OPTIONS
+    // @DisplayName: Guided mode options
+    // @Description: Options that can be applied to change guided mode behaviour
+    // @Bitmask: 0:Allow Arming from Transmitter,2:Ignore pilot yaw,3:SetAttitudeTarget_ThrustAsThrust,4:DoNotStabilizePositionXY,5:DoNotStabilizeVelocityXY
+    // @User: Advanced
+    AP_GROUPINFO("_OPTIONS", 1, ModeGuided, options, 0),
+
+    // @Param: _TIMEOUT
+    // @DisplayName: Guided mode timeout
+    // @Description: Guided mode timeout after which vehicle will stop or return to level if no updates are received from caller.  Only applicable during velocity, acceleration or angle control
+    // @Units: s
+    // @Range: 0.1 5
+    // @User: Advanced
+    AP_GROUPINFO("_TIMEOUT", 2, ModeGuided, timeout, 3.0),
+
+    AP_GROUPEND
+};
+
+ModeGuided::ModeGuided(void) : Mode()
+{
+    AP_Param::setup_object_defaults(this, var_info);
+}
+
 // init - initialise guided controller
 bool ModeGuided::init(bool ignore_checks)
 {
@@ -95,7 +120,7 @@ bool ModeGuided::allows_arming(AP_Arming::Method method) const
     }
 
     // optionally allow arming from the transmitter
-    return (copter.g2.guided_options & (uint32_t)Options::AllowArmingFromTX) != 0;
+    return (options & (uint32_t)Options::AllowArmingFromTX) != 0;
 };
 
 // do_user_takeoff_start - initialises waypoint controller to implement take-off
@@ -450,19 +475,19 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
 // returns true if GUIDED_OPTIONS param suggests SET_ATTITUDE_TARGET's "thrust" field should be interpreted as thrust instead of climb rate
 bool ModeGuided::set_attitude_target_provides_thrust() const
 {
-    return ((copter.g2.guided_options.get() & uint32_t(Options::SetAttitudeTarget_ThrustAsThrust)) != 0);
+    return ((options.get() & uint32_t(Options::SetAttitudeTarget_ThrustAsThrust)) != 0);
 }
 
 // returns true if GUIDED_OPTIONS param suggests SET_ATTITUDE_TARGET's "thrust" field should be interpreted as thrust instead of climb rate
 bool ModeGuided::stabilizing_pos_xy() const
 {
-    return !((copter.g2.guided_options.get() & uint32_t(Options::DoNotStabilizePositionXY)) != 0);
+    return !((options.get() & uint32_t(Options::DoNotStabilizePositionXY)) != 0);
 }
 
 // returns true if GUIDED_OPTIONS param suggests SET_ATTITUDE_TARGET's "thrust" field should be interpreted as thrust instead of climb rate
 bool ModeGuided::stabilizing_vel_xy() const
 {
-    return !((copter.g2.guided_options.get() & uint32_t(Options::DoNotStabilizeVelocityXY)) != 0);
+    return !((options.get() & uint32_t(Options::DoNotStabilizeVelocityXY)) != 0);
 }
 
 // set guided mode angle target and climbrate
@@ -899,7 +924,7 @@ void ModeGuided::set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, fl
 // returns true if pilot's yaw input should be used to adjust vehicle's heading
 bool ModeGuided::use_pilot_yaw(void) const
 {
-    return (copter.g2.guided_options.get() & uint32_t(Options::IgnorePilotYaw)) == 0;
+    return (options.get() & uint32_t(Options::IgnorePilotYaw)) == 0;
 }
 
 // Guided Limit code
@@ -1036,7 +1061,7 @@ float ModeGuided::crosstrack_error() const
 // return guided mode timeout in milliseconds.  Only used for velocity, acceleration and angle control
 uint32_t ModeGuided::get_timeout_ms() const
 {
-    return MAX(copter.g2.guided_timeout, 0.1) * 1000;
+    return MAX(timeout, 0.1) * 1000;
 }
 
 #endif

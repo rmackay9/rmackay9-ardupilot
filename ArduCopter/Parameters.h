@@ -633,10 +633,6 @@ public:
     AP_Int32 auto_options;
 #endif
 
-#if MODE_GUIDED_ENABLED == ENABLED
-    AP_Int32 guided_options;
-#endif
-
     AP_Float fs_gcs_timeout;
 
 #if MODE_RTL_ENABLED == ENABLED
@@ -650,7 +646,8 @@ public:
 #endif
 
 #if MODE_GUIDED_ENABLED == ENABLED
-    AP_Float guided_timeout;
+    // we need a pointer to the mode for the G2 table
+    void *mode_guided_ptr;
 #endif
 };
 

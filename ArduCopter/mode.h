@@ -838,8 +838,8 @@ private:
 class ModeGuided : public Mode {
 
 public:
-    // inherit constructor
-    using Mode::Mode;
+    // need a constructor for parameters
+    ModeGuided(void);
     Number mode_number() const override { return Number::GUIDED; }
 
     bool init(bool ignore_checks) override;
@@ -900,6 +900,8 @@ public:
     // return guided mode timeout in milliseconds.  Only used for velocity, acceleration and angle control
     uint32_t get_timeout_ms() const;
 
+    static const struct AP_Param::GroupInfo var_info[];
+
 protected:
 
     const char *name() const override { return "GUIDED"; }
@@ -934,6 +936,14 @@ private:
     void set_desired_velocity_with_accel_and_fence_limits(const Vector3f& vel_des);
     void set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_angle);
     bool use_pilot_yaw(void) const;
+
+    // parameters
+    AP_Int32 options;       // options that can be applied to change guided mode behaviour
+    AP_Float timeout;       // timeout (in seconds) after which vehicle will stop or return to level if no updates are received from caller.  Only applicable during velocity, acceleration or angle control
+    AP_Float velxy_max;     // maximum horizontal velocity when using velocity or acceleration control
+    AP_Float velz_max;      // maximum vertical velocity when using velocity or acceleration control
+    AP_Float accelxy_max;   // maximum horizontal acceleration when using velocity or acceleration control
+    AP_Float accelz_max;    // maximum vertical velocity when using velocity or acceleration control
 
     // controls which controller is run (pos or vel):
     SubMode guided_mode = SubMode::TakeOff;

@@ -1023,14 +1023,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_GROUPINFO("AUTO_OPTIONS", 40, ParametersG2, auto_options, 0),
 #endif
 
-#if MODE_GUIDED_ENABLED == ENABLED
-    // @Param: GUID_OPTIONS
-    // @DisplayName: Guided mode options
-    // @Description: Options that can be applied to change guided mode behaviour
-    // @Bitmask: 0:Allow Arming from Transmitter,2:Ignore pilot yaw,3:SetAttitudeTarget_ThrustAsThrust,4:DoNotStabilizePositionXY,5:DoNotStabilizeVelocityXY
-    // @User: Advanced
-    AP_GROUPINFO("GUID_OPTIONS", 41, ParametersG2, guided_options, 0),
-#endif
+    // 41 was GUID_OPTIONS (never released in a stable version)
 
     // @Param: FS_GCS_TIMEOUT
     // @DisplayName: GCS failsafe timeout
@@ -1069,14 +1062,12 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_GROUPINFO("RNGFND_FILT", 45, ParametersG2, rangefinder_filt, RANGEFINDER_FILT_DEFAULT),
 #endif
 
+    // 46 was GUID_TIMEOUT (never released in a stable version)
+
 #if MODE_GUIDED_ENABLED == ENABLED
-    // @Param: GUID_TIMEOUT
-    // @DisplayName: Guided mode timeout
-    // @Description: Guided mode timeout after which vehicle will stop or return to level if no updates are received from caller.  Only applicable during velocity, acceleration or angle control
-    // @Units: s
-    // @Range: 0.1 5
-    // @User: Advanced
-    AP_GROUPINFO("GUID_TIMEOUT", 46, ParametersG2, guided_timeout, 3.0),
+    // @Group: GUID
+    // @Path: mode_guided.cpp
+    AP_SUBGROUPPTR(mode_guided_ptr, "GUID", 47, ParametersG2, ModeGuided),
 #endif
 
     AP_GROUPEND
@@ -1120,6 +1111,9 @@ ParametersG2::ParametersG2(void)
     ,button_ptr(&copter.button)
 #if MODE_ZIGZAG_ENABLED == ENABLED
     ,mode_zigzag_ptr(&copter.mode_zigzag)
+#endif
+#if MODE_GUIDED_ENABLED == ENABLED
+    ,mode_guided_ptr(&copter.mode_guided)
 #endif
 {
     AP_Param::setup_object_defaults(this, var_info);
