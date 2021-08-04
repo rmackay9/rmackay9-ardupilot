@@ -54,6 +54,42 @@ const AP_Param::GroupInfo ModeGuided::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_TIMEOUT", 2, ModeGuided, timeout, 3.0),
 
+    // @Param: _VELXY_MAX
+    // @DisplayName: Guided mode horizontal velocity max
+    // @Description: Guided mode horizontal velocity max when using velocity or acceleration control
+    // @Range: 0 50
+    // @Increment: 0.1
+    // @Units: m/s
+    // @User: Advanced
+    AP_GROUPINFO("_VELXY_MAX", 3, ModeGuided, velxy_max, 10),
+
+    // @Param: _VELZ_MAX
+    // @DisplayName: Guided mode vertical velocity max
+    // @Description: Guided mode vertical velocity max when using velocity or acceleration control
+    // @Range: 0 50
+    // @Increment: 0.1
+    // @Units: m/s
+    // @User: Advanced
+    AP_GROUPINFO("_VELZ_MAX", 4, ModeGuided, velz_max, 2.5),
+
+    // @Param: _ACCELXY_MAX
+    // @DisplayName: Guided mode horizontal acceleration max
+    // @Description: Guided mode horizontal acceleration max when using velocity or acceleration control
+    // @Range: 0 5
+    // @Increment: 0.1
+    // @Units: m/s/s
+    // @User: Advanced
+    AP_GROUPINFO("_ACCELXY_MAX", 5, ModeGuided, accelxy_max, 1),
+
+    // @Param: _ACCELZ_MAX
+    // @DisplayName: Guided mode vertical acceleration max
+    // @Description: Guided mode vertical acceleration max when using velocity or acceleration control
+    // @Range: 0 5
+    // @Increment: 0.1
+    // @Units: m/s/s
+    // @User: Advanced
+    AP_GROUPINFO("_ACCELZ_MAX", 6, ModeGuided, accelz_max, 1),
+
     AP_GROUPEND
 };
 
