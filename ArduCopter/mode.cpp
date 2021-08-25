@@ -706,14 +706,14 @@ void Mode::execute_landing(bool pause_descent)
     if (pause_descent || !copter.precland.enabled()) {
         // we don't want to start descending immediately or prec land is disabled
         // in both cases just run simple land controllers
-        run_land_controllers(pause_descent);
+        land_run_horiz_and_vert_control(pause_descent);
     } else {
         // prec land is enabled and we have not paused descent
         // the state machine takes care of the entire prec landing procedure
         run_precland();
     }
 #else
-    run_land_controllers(pause_descent);
+    land_run_horiz_and_vert_control(pause_descent);
 #endif
 }
 
@@ -785,11 +785,11 @@ void Mode::run_precland()
             switch (copter.precland_statemachine.get_failsafe_actions()) {
             case AC_PrecLand_StateMachine::FailSafeAction::DESCEND:
                 // descend normally, prec land target is definitely not in sight
-                run_land_controllers();
+                land_run_horiz_and_vert_control();
                 break;
             case AC_PrecLand_StateMachine::FailSafeAction::HOLD_POS:
                 // sending "true" in this argument will stop the descend
-                run_land_controllers(true);
+                land_run_horiz_and_vert_control(true);
                 break;
             }
             break;
@@ -801,12 +801,12 @@ void Mode::run_precland()
         case AC_PrecLand_StateMachine::Status::DESCEND:
             // run land controller. This will descend towards the target if prec land target is in sight
             // else it will just descend vertically
-            run_land_controllers();
+            land_run_horiz_and_vert_control();
             break;
         }
     } else {
         // just land, since user has taken over controls, it does not make sense to run any retries or failsafe measures
-        run_land_controllers();
+        land_run_horiz_and_vert_control();
     }
 }
 #endif

@@ -111,11 +111,10 @@ protected:
     void zero_throttle_and_hold_attitude();
     void make_safe_ground_handling(bool force_throttle_unlimited = false);
 
-    // functions to control landing
-    // in modes that support landing
+    // functions to control normal landing.  pause_descent is true if vehicle should not descend
     void land_run_horizontal_control();
     void land_run_vertical_control(bool pause_descent = false);
-    void run_land_controllers(bool pause_descent = false) {
+    void land_run_horiz_and_vert_control(bool pause_descent = false) {
         land_run_horizontal_control();
         land_run_vertical_control(pause_descent);
     }
