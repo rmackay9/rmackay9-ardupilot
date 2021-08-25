@@ -711,7 +711,7 @@ void Mode::land_run_normal_or_precland(bool pause_descent)
     } else {
         // prec land is enabled and we have not paused descent
         // the state machine takes care of the entire prec landing procedure
-        run_precland();
+        precland_run();
     }
 #else
     land_run_horiz_and_vert_control(pause_descent);
@@ -721,7 +721,7 @@ void Mode::land_run_normal_or_precland(bool pause_descent)
 #if PRECISION_LANDING == ENABLED
 // Go towards a position commanded by prec land state machine in order to retry landing
 // The passed in location is expected to be NED and in m
-void Mode::land_retry_position(const Vector3f &retry_loc)
+void Mode::precland_retry_position(const Vector3f &retry_pos)
 {
     if (!copter.failsafe.radio) {
         if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 && copter.rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR){
@@ -751,10 +751,10 @@ void Mode::land_retry_position(const Vector3f &retry_loc)
         }
     }
 
-    Vector3p retry_loc_NEU{retry_loc.x, retry_loc.y, retry_loc.z * -1.0f};
+    Vector3p retry_pos_NEU{retry_pos.x, retry_pos.y, retry_pos.z * -1.0f};
     //pos contoller expects input in NEU cm's
-    retry_loc_NEU = retry_loc_NEU * 100.0f;
-    pos_control->input_pos_xyz(retry_loc_NEU, 0.0f, 1000.0f);
+    retry_pos_NEU = retry_pos_NEU * 100.0f;
+    pos_control->input_pos_xyz(retry_pos_NEU, 0.0f, 1000.0f);
 
     // run position controllers
     pos_control->update_xy_controller();
@@ -768,7 +768,7 @@ void Mode::land_retry_position(const Vector3f &retry_loc)
 
 // Run precland statemachine. This function should be called from any mode that wants to do precision landing.
 // This handles everything from prec landing, to prec landing failures, to retries and failsafe measures
-void Mode::run_precland()
+void Mode::precland_run()
 {
     // if user is taking control, we will not run the statemachine, and simply land (may or may not be on target)
     if (!copter.ap.land_repo_active) {
@@ -778,7 +778,7 @@ void Mode::run_precland()
         switch (copter.precland_statemachine.update(retry_pos)) {
         case AC_PrecLand_StateMachine::Status::RETRYING:
             // we want to retry landing by going to another position
-            land_retry_position(retry_pos);
+            precland_retry_position(retry_pos);
             break;
 
         case AC_PrecLand_StateMachine::Status::FAILSAFE: {

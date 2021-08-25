@@ -123,6 +123,15 @@ protected:
     // pause_descent is true if vehicle should not descend
     void land_run_normal_or_precland(bool pause_descent = false);
 
+#if PRECISION_LANDING == ENABLED
+    // Go towards a position commanded by prec land state machine in order to retry landing
+    // The passed in location is expected to be NED and in meters
+    void precland_retry_position(const Vector3f &retry_pos);
+
+    // Run precland statemachine. This function should be called from any mode that wants to do precision landing.
+    // This handles everything from prec landing, to prec landing failures, to retries and failsafe measures
+    void precland_run();
+#endif
 
     // return expected input throttle setting to hover:
     virtual float throttle_hover() const;
@@ -247,17 +256,6 @@ public:
         float _yaw_rate_cds;
     };
     static AutoYaw auto_yaw;
-
-#if PRECISION_LANDING == ENABLED
-    // Go towards a position commanded by prec land state machine in order to retry landing
-    // The passed in location is expected to be NED and in meters
-    void land_retry_position(const Vector3f &retry_loc);
-
-    // Run precland statemachine. This function should be called from any mode that wants to do precision landing.
-    // This handles everything from prec landing, to prec landing failures, to retries and failsafe measures
-    void run_precland();
-
-#endif
 
     // pass-through functions to reduce code churn on conversion;
     // these are candidates for moving into the Mode base
