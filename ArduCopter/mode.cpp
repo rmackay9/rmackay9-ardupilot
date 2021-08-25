@@ -699,8 +699,9 @@ void Mode::land_run_horizontal_control()
     }
 }
 
-// Do normal landing or precision landing if enabled. pause_descent is true if vehicle should not descend
-void Mode::execute_landing(bool pause_descent)
+// run normal or precision landing (if enabled)
+// pause_descent is true if vehicle should not descend
+void Mode::land_run_normal_or_precland(bool pause_descent)
 {
 #if PRECISION_LANDING == ENABLED
     if (pause_descent || !copter.precland.enabled()) {
