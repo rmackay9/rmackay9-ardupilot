@@ -123,7 +123,7 @@ void ModeAcro::get_pilot_desired_angle_rates(float roll_in, float pitch_in, floa
     rate_bf_request_cd.y = g2.acro_rp_rate * 100.0 * input_expo(pitch_in, g.acro_rp_expo);
 
     // yaw expo
-    rate_bf_request_cd.z = g2.acro_rp_rate * 100.0 * input_expo(yaw_in, g2.acro_y_expo);
+    rate_bf_request_cd.z = g2.acro_y_rate * 100.0 * input_expo(yaw_in, g2.acro_y_expo);
 
     // calculate earth frame rate corrections to pull the copter back to level while in ACRO mode
 

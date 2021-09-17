@@ -466,7 +466,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @DisplayName: Acro Roll/Pitch Expo
     // @Description: Acro roll/pitch Expo to allow faster rotation when stick at edges
     // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
-    // @Range: -0.5 1.0
+    // @Range: -0.5 0.95
     // @User: Advanced
     GSCALAR(acro_rp_expo,  "ACRO_RP_EXPO",    ACRO_RP_EXPO_DEFAULT),
 #endif
@@ -822,7 +822,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @DisplayName: Acro Yaw Expo
     // @Description: Acro yaw expo to allow faster rotation when stick at edges
     // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
-    // @Range: -0.5 1.0
+    // @Range: -1.0 0.95
     // @User: Advanced
     AP_GROUPINFO("ACRO_Y_EXPO", 9, ParametersG2, acro_y_expo, ACRO_Y_EXPO_DEFAULT),
 
@@ -1071,13 +1071,15 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Param: ACRO_RP_RATE
     // @DisplayName: Acro Roll and Pitch Rate
     // @Description: Acro mode maximum roll and pitch rate.  Higher values mean faster rate of rotation
-    // @Range: 1 360
+    // @Units: deg/s
+    // @Range: 1 1080
     // @User: Standard
     AP_GROUPINFO("ACRO_RP_RATE", 47, ParametersG2, acro_rp_rate, ACRO_RP_RATE_DEFAULT),
 
     // @Param: ACRO_Y_RATE
     // @DisplayName: Acro Yaw Rate
     // @Description: Acro mode maximum yaw rate.  Higher value means faster rate of rotation
+    // @Units: deg/s
     // @Range: 1 360
     // @User: Standard
     AP_GROUPINFO("ACRO_Y_RATE", 48, ParametersG2, acro_y_rate, ACRO_Y_RATE_DEFAULT),
@@ -1086,15 +1088,17 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Param: PILOT_Y_RATE
     // @DisplayName: Pilot controlled yaw rate
     // @Description: Pilot controlled yaw rate max.  Used in all pilot controlled modes except Acro
+    // @Units: deg/s
     // @Range: 1 360
     // @User: Standard
     AP_GROUPINFO("PILOT_Y_RATE", 49, ParametersG2, pilot_y_rate, PILOT_Y_RATE_DEFAULT),
 
     // @Param: PILOT_Y_EXPO
     // @DisplayName: Pilot controlled yaw expo
-    // @Description: Pilot controlled yaw expo.  Used in all pilot controlled modes except Acrxo
-    // @Range: 1 360
-    // @User: Standard
+    // @Description: Pilot controlled yaw expo to allow faster rotation when stick at edges
+    // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
+    // @Range: -0.5 1.0
+    // @User: Advanced
     AP_GROUPINFO("PILOT_Y_EXPO", 50, ParametersG2, pilot_y_expo, PILOT_Y_EXPO_DEFAULT),
 
     AP_GROUPEND
