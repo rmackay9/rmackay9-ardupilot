@@ -450,16 +450,12 @@
 //
 
 // Acro Mode
-#ifndef ACRO_RP_P
- # define ACRO_RP_P                 4.5f
-#endif
-
-#ifndef ACRO_YAW_P
- # define ACRO_YAW_P                4.5f
-#endif
-
 #ifndef ACRO_LEVEL_MAX_ANGLE
  # define ACRO_LEVEL_MAX_ANGLE      3000
+#endif
+
+#ifndef ACRO_LEVEL_MAX_OVERSHOOT
+ # define ACRO_LEVEL_MAX_OVERSHOOT  1000
 #endif
 
 #ifndef ACRO_BALANCE_ROLL
@@ -483,11 +479,11 @@
 #endif
 
 #ifndef ACRO_RP_RATE_DEFAULT
- #define ACRO_RP_RATE_DEFAULT      90
+ #define ACRO_RP_RATE_DEFAULT      360
 #endif
 
 #ifndef ACRO_Y_RATE_DEFAULT
- #define ACRO_Y_RATE_DEFAULT       90
+ #define ACRO_Y_RATE_DEFAULT       202.5
 #endif
 
 // RTL Mode
@@ -584,10 +580,10 @@
 #endif
 
 #ifndef PILOT_Y_RATE_DEFAULT
- # define PILOT_Y_RATE_DEFAULT  90  // pilot controlled yaw rotation rate parameter default
+ # define PILOT_Y_RATE_DEFAULT  202.5   // pilot controlled yaw rotation rate parameter default
 #endif
 #ifndef PILOT_Y_EXPO_DEFAULT
- # define PILOT_Y_EXPO_DEFAULT  90  // pilot controlled yaw expo parameter default
+ # define PILOT_Y_EXPO_DEFAULT  0.0     // pilot controlled yaw expo parameter default
 #endif
 
 #ifndef AUTO_DISARMING_DELAY

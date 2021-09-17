@@ -918,30 +918,22 @@ Mode::AltHoldModeState Mode::get_alt_hold_state(float target_climb_rate_cms)
 
 // transform pilot's yaw input into a desired yaw rate
 // returns desired yaw rate in centi-degrees per second
-float Mode::get_pilot_desired_yaw_rate(int16_t stick_angle)
+float Mode::get_pilot_desired_yaw_rate(float yaw_in)
 {
+    // todo: provide normalised commands from RC library so this can be removed.
+    yaw_in /= ROLL_PITCH_YAW_INPUT_MAX;
+
     // throttle failsafe check
     if (copter.failsafe.radio || !copter.ap.rc_receiver_present) {
         return 0.0f;
     }
 
-    // range check expo
-    g2.acro_y_expo = constrain_float(g2.acro_y_expo, -0.5f, 1.0f);
-
     // calculate yaw rate request
     float yaw_request;
-    if (is_zero(g2.acro_y_expo)) {
-        yaw_request = stick_angle * g.acro_yaw_p;
-    } else {
-        // expo variables
-        float y_in, y_in3, y_out;
 
-        // yaw expo
-        y_in = float(stick_angle)/ROLL_PITCH_YAW_INPUT_MAX;
-        y_in3 = y_in*y_in*y_in;
-        y_out = (g2.acro_y_expo * y_in3) + ((1.0f - g2.acro_y_expo) * y_in);
-        yaw_request = ROLL_PITCH_YAW_INPUT_MAX * y_out * g.acro_yaw_p;
-    }
+    // yaw expo
+    yaw_request = g2.pilot_y_rate * 100.0 * input_expo(yaw_in, g2.pilot_y_expo);
+
     // convert pilot input to the desired yaw rate
     return yaw_request;
 }
