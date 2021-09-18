@@ -451,11 +451,11 @@
 
 // Acro Mode
 #ifndef ACRO_LEVEL_MAX_ANGLE
- # define ACRO_LEVEL_MAX_ANGLE      3000
+ # define ACRO_LEVEL_MAX_ANGLE      3000 // maximum lean angle in trainer mode measured in centidegrees
 #endif
 
 #ifndef ACRO_LEVEL_MAX_OVERSHOOT
- # define ACRO_LEVEL_MAX_OVERSHOOT  1000
+ # define ACRO_LEVEL_MAX_OVERSHOOT  1000 // maximum overshoot angle in trainer mode when full roll or pitch stick is held in centidegrees
 #endif
 
 #ifndef ACRO_BALANCE_ROLL
@@ -479,11 +479,11 @@
 #endif
 
 #ifndef ACRO_RP_RATE_DEFAULT
- #define ACRO_RP_RATE_DEFAULT      360
+ #define ACRO_RP_RATE_DEFAULT      360 // deg/s
 #endif
 
 #ifndef ACRO_Y_RATE_DEFAULT
- #define ACRO_Y_RATE_DEFAULT       202.5
+ #define ACRO_Y_RATE_DEFAULT       202.5 // deg/s
 #endif
 
 // RTL Mode
