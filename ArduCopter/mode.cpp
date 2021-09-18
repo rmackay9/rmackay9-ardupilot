@@ -635,7 +635,7 @@ void Mode::land_run_horizontal_control()
         }
 
         // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
         if (!is_zero(target_yaw_rate)) {
             auto_yaw.set_mode(AUTO_YAW_HOLD);
         }
@@ -920,9 +920,6 @@ Mode::AltHoldModeState Mode::get_alt_hold_state(float target_climb_rate_cms)
 // returns desired yaw rate in centi-degrees per second
 float Mode::get_pilot_desired_yaw_rate(float yaw_in)
 {
-    // todo: provide normalised commands from RC library so this can be removed.
-    yaw_in /= ROLL_PITCH_YAW_INPUT_MAX;
-
     // throttle failsafe check
     if (copter.failsafe.radio || !copter.ap.rc_receiver_present) {
         return 0.0f;

@@ -1067,7 +1067,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_GROUPINFO("GUID_TIMEOUT", 46, ParametersG2, guided_timeout, 3.0),
 #endif
 
-#if MODE_ACRO_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
     // @Param: ACRO_RP_RATE
     // @DisplayName: Acro Roll and Pitch Rate
     // @Description: Acro mode maximum roll and pitch rate.  Higher values mean faster rate of rotation

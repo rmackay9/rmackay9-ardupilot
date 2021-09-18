@@ -460,10 +460,14 @@ public:
 
     AP_Int16                rc_speed; // speed of fast RC Channels in Hz
 
-#if MODE_ACRO_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
     // Acro parameters
     AP_Float                acro_balance_roll;
     AP_Float                acro_balance_pitch;
+#endif
+
+#if MODE_ACRO_ENABLED == ENABLED
+    // Acro parameters
     AP_Int8                 acro_trainer;
     AP_Float                acro_rp_expo;
 #endif
@@ -651,13 +655,14 @@ public:
     AP_Float guided_timeout;
 #endif
 
-#if MODE_ACRO_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
     // Acro parameters
     AP_Float                acro_rp_rate;
     AP_Float                acro_y_rate;
+#endif
+
     AP_Float                pilot_y_rate;
     AP_Float                pilot_y_expo;
-#endif
 };
 
 extern const AP_Param::Info        var_info[];

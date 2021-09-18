@@ -12,7 +12,7 @@ void ModeAcro::run()
 {
     // convert the input to the desired body frame rate
     float target_roll, target_pitch, target_yaw;
-    get_pilot_desired_angle_rates(channel_roll->get_control_in(), channel_pitch->get_control_in(), channel_yaw->get_control_in(), target_roll, target_pitch, target_yaw);
+    get_pilot_desired_angle_rates(channel_roll->norm_input_dz(), channel_pitch->norm_input_dz(), channel_yaw->norm_input_dz(), target_roll, target_pitch, target_yaw);
 
     if (!motors->armed()) {
         // Motors should be Stopped
@@ -98,10 +98,6 @@ float ModeAcro::throttle_hover() const
 // returns desired angle rates in centi-degrees-per-second
 void ModeAcro::get_pilot_desired_angle_rates(float roll_in, float pitch_in, float yaw_in, float &roll_out, float &pitch_out, float &yaw_out)
 {
-    // todo: provide normalised commands from RC library so this can be removed.
-    roll_in /= ROLL_PITCH_YAW_INPUT_MAX;
-    pitch_in /= ROLL_PITCH_YAW_INPUT_MAX;
-
     float rate_limit;
     Vector3f rate_ef_level_cd, rate_bf_level_cd, rate_bf_request_cd;
 
