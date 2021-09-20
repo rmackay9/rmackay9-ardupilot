@@ -925,14 +925,8 @@ float Mode::get_pilot_desired_yaw_rate(float yaw_in)
         return 0.0f;
     }
 
-    // calculate yaw rate request
-    float yaw_request;
-
-    // yaw expo
-    yaw_request = g2.pilot_y_rate * 100.0 * input_expo(yaw_in, g2.pilot_y_expo);
-
     // convert pilot input to the desired yaw rate
-    return yaw_request;
+    return g2.pilot_y_rate * 100.0 * input_expo(yaw_in, g2.pilot_y_expo);
 }
 
 // pass-through functions to reduce code churn on conversion;

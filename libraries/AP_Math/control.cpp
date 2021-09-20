@@ -416,7 +416,6 @@ float input_expo(float input, float expo)
     input = constrain_float(input, -1.0, 1.0);
     if (expo < 0.95) {
         return (1 - expo) * input / (1 - expo * fabsf(input));
-    } else {
-        return input;
     }
+    return input;
 }
