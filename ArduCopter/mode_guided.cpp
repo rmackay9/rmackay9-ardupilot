@@ -274,6 +274,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
 
     // set position target and zero velocity and acceleration
     guided_pos_target_cm = destination.topostype();
+    guided_pos_target_inited = true;
     guided_pos_terrain_alt = terrain_alt;
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
@@ -348,6 +349,7 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
     guided_pos_terrain_alt = terrain_alt;
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
+    guided_pos_target_inited = true;
 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode, Vector3f(dest_loc.lat, dest_loc.lng, dest_loc.alt), guided_pos_terrain_alt, guided_vel_target_cms, guided_accel_target_cmss);
@@ -374,6 +376,7 @@ void ModeGuided::set_accel(const Vector3f& acceleration, bool use_yaw, float yaw
     guided_vel_target_cms.zero();
     guided_accel_target_cmss = acceleration;
     update_time_ms = millis();
+    guided_pos_target_inited = false;
 
     // log target
     if (log_request) {
@@ -404,6 +407,7 @@ void ModeGuided::set_velaccel(const Vector3f& velocity, const Vector3f& accelera
     guided_vel_target_cms = velocity;
     guided_accel_target_cmss = acceleration;
     update_time_ms = millis();
+    guided_pos_target_inited = false;
 
     // log target
     if (log_request) {
@@ -443,6 +447,7 @@ bool ModeGuided::set_destination_posvelaccel(const Vector3f& destination, const 
     guided_pos_terrain_alt = false;
     guided_vel_target_cms = velocity;
     guided_accel_target_cmss = acceleration;
+    guided_pos_target_inited = true;
 
     // log target
     copter.Log_Write_GuidedTarget(guided_mode, guided_pos_target_cm.tofloat(), guided_pos_terrain_alt, guided_vel_target_cms, guided_accel_target_cmss);
@@ -559,6 +564,11 @@ void ModeGuided::pos_control_run()
         pos_offset_z_buffer = MIN(copter.wp_nav->get_terrain_margin() * 100.0, 0.5 * fabsf(guided_pos_target_cm.z));
     }
     pos_control->input_pos_xyz(guided_pos_target_cm, terr_offset, pos_offset_z_buffer);
+
+    // debug check of pos target init
+    if (!guided_pos_target_inited) {
+        INTERNAL_ERROR(AP_InternalError::error_t::invalid_arg_or_result);
+    }
 
     // run position controllers
     pos_control->update_xy_controller();
@@ -749,6 +759,11 @@ void ModeGuided::posvelaccel_control_run()
         if ((auto_yaw.mode() == AUTO_YAW_RATE) || (auto_yaw.mode() == AUTO_YAW_ANGLE_RATE)) {
             auto_yaw.set_rate(0.0f);
         }
+    }
+
+    // debug check of pos target init
+    if (!guided_pos_target_inited) {
+        INTERNAL_ERROR(AP_InternalError::error_t::invalid_arg_or_result);
     }
 
     // send position and velocity targets to position controller
@@ -976,6 +991,10 @@ bool ModeGuided::limit_check()
 
 const Vector3p &ModeGuided::get_target_pos() const
 {
+    // debug check of pos target init
+    if (!guided_pos_target_inited) {
+        INTERNAL_ERROR(AP_InternalError::error_t::invalid_arg_or_result);
+    }
     return guided_pos_target_cm;
 }
 
@@ -993,6 +1012,10 @@ uint32_t ModeGuided::wp_distance() const
 {
     switch(guided_mode) {
     case SubMode::WP:
+        // debug check of pos target init
+        if (!guided_pos_target_inited) {
+            INTERNAL_ERROR(AP_InternalError::error_t::invalid_arg_or_result);
+        }
         return norm(guided_pos_target_cm.x - inertial_nav.get_position().x, guided_pos_target_cm.y - inertial_nav.get_position().y);
         break;
     case SubMode::PosVelAccel:
@@ -1007,6 +1030,10 @@ int32_t ModeGuided::wp_bearing() const
 {
     switch(guided_mode) {
     case SubMode::WP:
+        // debug check of pos target init
+        if (!guided_pos_target_inited) {
+            INTERNAL_ERROR(AP_InternalError::error_t::invalid_arg_or_result);
+        }
         return get_bearing_cd(inertial_nav.get_position(), guided_pos_target_cm.tofloat());
         break;
     case SubMode::PosVelAccel:
