@@ -224,7 +224,7 @@ bool ModeGuided::get_desired_location(Location& destination) const
 bool ModeGuided::set_desired_location(const struct Location& destination,
                                       float next_leg_bearing_cd)
 {
-    if (g2.wp_nav.set_desired_location(destination, next_leg_bearing_cd)) {
+    if (g2.wp_nav.set_desired_location(destination, next_leg_bearing_cd, true)) {
 
         // handle guided specific initialisation and logging
         _guided_mode = ModeGuided::Guided_WP;
