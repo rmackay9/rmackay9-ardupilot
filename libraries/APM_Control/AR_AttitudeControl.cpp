@@ -839,7 +839,8 @@ float AR_AttitudeControl::get_desired_speed() const
 }
 
 // get acceleration limited desired speed
-float AR_AttitudeControl::get_desired_speed_accel_limited(float desired_speed, float dt) const
+// accel_max (in m/s) can be used to set the acceleration to a value less than ATC_ACCEL_MAX value (if zero this value has no effect)
+float AR_AttitudeControl::get_desired_speed_accel_limited(float desired_speed, float dt, float accel_max) const
 {
     // return input value if no recent calls to speed controller
     // apply no limiting when ATC_ACCEL_MAX is set to zero
@@ -862,6 +863,9 @@ float AR_AttitudeControl::get_desired_speed_accel_limited(float desired_speed, f
     float speed_change_max;
     if (fabsf(desired_speed) < fabsf(_desired_speed) && is_positive(_throttle_decel_max)) {
         speed_change_max = _throttle_decel_max * dt;
+    } else if (is_positive(accel_max) && (accel_max < _throttle_accel_max)) {
+        // use accel_max argument if positive and less than ATC_ACCEL_MAX
+        speed_change_max = accel_max * dt;
     } else {
         speed_change_max = _throttle_accel_max * dt;
     }

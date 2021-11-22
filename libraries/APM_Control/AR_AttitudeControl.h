@@ -100,7 +100,8 @@ public:
     float get_desired_speed() const;
 
     // get acceleration limited desired speed
-    float get_desired_speed_accel_limited(float desired_speed, float dt) const;
+    // accel_max (in m/s) can be used to set the acceleration to a value less than ATC_ACCEL_MAX value (if zero this value has no effect)
+    float get_desired_speed_accel_limited(float desired_speed, float dt, float accel_max = 0) const;
 
     // get minimum stopping distance (in meters) given a speed (in m/s)
     float get_stopping_distance(float speed) const;
