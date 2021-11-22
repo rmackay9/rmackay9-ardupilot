@@ -92,6 +92,15 @@ const AP_Param::GroupInfo AR_WPNav::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("PIVOT_DELAY", 7, AR_WPNav, _pivot_delay, 0),
 
+    // @Param: ACCEL_MAX
+    // @DisplayName: Waypoint speed control acceleration (and deceleration) maximum in m/s/s
+    // @Description: Speed control acceleration (and deceleration) maximum in m/s/s.  0 to use ATC_ACCEL_MAX
+    // @Range: 0.0 10.0
+    // @Increment: 0.1
+    // @Units: m/s/s
+    // @User: Standard
+    AP_GROUPINFO("ACCEL_MAX", 9, AR_WPNav, _accel_max, 0),
+
     AP_GROUPEND
 };
 
@@ -421,7 +430,7 @@ void AR_WPNav::update_desired_speed(float dt)
     }
 
     // accelerate desired speed towards max
-    float des_speed_lim = _atc.get_desired_speed_accel_limited(_reversed ? -_desired_speed : _desired_speed, dt);
+    float des_speed_lim = _atc.get_desired_speed_accel_limited(_reversed ? -_desired_speed : _desired_speed, dt, _accel_max);
 
     // reduce speed to limit overshoot from line between origin and destination
     // calculate number of degrees vehicle must turn to face waypoint
@@ -451,7 +460,11 @@ void AR_WPNav::update_desired_speed(float dt)
 
     // limit speed based on distance to waypoint and max acceleration/deceleration
     if (is_positive(_oa_distance_to_destination) && is_positive(_atc.get_decel_max())) {
-        const float dist_speed_max = safe_sqrt(2.0f * _oa_distance_to_destination * _atc.get_decel_max() + sq(_desired_speed_final));
+        float decel_max = _atc.get_decel_max();
+        if (is_positive(_accel_max)) {
+            decel_max = MIN(decel_max, _accel_max);
+        }
+        const float dist_speed_max = safe_sqrt(2.0f * _oa_distance_to_destination * decel_max + sq(_desired_speed_final));
         des_speed_lim = constrain_float(des_speed_lim, -dist_speed_max, dist_speed_max);
     }
 

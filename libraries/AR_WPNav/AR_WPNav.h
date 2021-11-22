@@ -124,6 +124,7 @@ private:
     AP_Int16 _pivot_angle;          // angle error that leads to pivot turn
     AP_Int16 _pivot_rate;           // desired turn rate during pivot turns in deg/sec
     AP_Float _pivot_delay;          // waiting time after pivot turn
+    AP_Float _accel_max;            // speed/throttle control acceleration (and deceleration) maximum in m/s/s.  0 to use attitude controller defined acceleration max
 
     // references
     AR_AttitudeControl& _atc;       // rover attitude control library
