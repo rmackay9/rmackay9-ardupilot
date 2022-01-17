@@ -561,6 +561,7 @@ private:
         Vector2F    flowRadXYcomp;  // motion compensated XY optical flow angular rates about the XY body axes (rad/sec)
         Vector3F    bodyRadXYZ;     // body frame XYZ axis angular rates averaged across the optical flow measurement interval (rad/sec)
         Vector3F    body_offset;    // XYZ position of the optical flow sensor in body frame (m)
+        bool        upwardsOrientation; // true if optical flow sensor is facing upwards
     };
 
     struct vel_odm_elements : EKF_obs_element_t {
