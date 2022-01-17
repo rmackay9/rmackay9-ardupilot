@@ -303,7 +303,7 @@ void NavEKF2_core::FuseOptFlow()
 
     // Fuse X and Y axis measurements sequentially assuming observation errors are uncorrelated
     for (uint8_t obsIndex=0; obsIndex<=1; obsIndex++) { // fuse X axis data first
-        // calculate range from ground plain to centre of sensor fov assuming flat earth
+        // calculate range from ground plane to centre of sensor fov assuming flat earth
         ftype range = constrain_ftype((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
 
         // correct range for flow sensor offset body frame position offset
