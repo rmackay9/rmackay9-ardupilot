@@ -89,7 +89,7 @@ void NavEKF2_core::EstimateTerrainOffset()
         gndHgtValidTime_ms = imuSampleTime_ms;
 
         // propagate ground position state noise each time this is called using the difference in position since the last observations and an RMS gradient assumption
-        // limit distance to prevent intialisation afer bad gps causing bad numerical conditioning
+        // limit distance to prevent initialisation afer bad gps causing bad numerical conditioning
         ftype distanceTravelledSq = sq(stateStruct.position[0] - prevPosN) + sq(stateStruct.position[1] - prevPosE);
         distanceTravelledSq = MIN(distanceTravelledSq, 100.0f);
         prevPosN = stateStruct.position[0];
