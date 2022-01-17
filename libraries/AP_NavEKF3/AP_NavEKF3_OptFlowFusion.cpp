@@ -286,7 +286,7 @@ void NavEKF3_core::FuseOptFlow(const of_elements &ofDataDelayed, ftype flow_nois
     // constrain height above ground to be above range measured on ground
     ftype heightAboveGndEst = MAX((terrainState - pd), rngOnGnd);
 
-    // calculate range from ground plain to centre of sensor fov assuming flat earth
+    // calculate range from ground plane to centre of sensor fov assuming flat earth
     ftype range = constrain_ftype((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
 
     // correct range for flow sensor offset body frame position offset
