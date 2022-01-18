@@ -1175,7 +1175,6 @@ private:
     // variables added for optical flow fusion and terrain estimation
     EKF_obs_buffer_t<of_elements> storedOF;    // OF data buffer
     bool flowDataValid;             // true while optical flow data is still fresh
-    Vector2F auxFlowObsInnov;       // optical flow rate innovation from 1-state terrain offset estimator
     uint32_t flowValidMeaTime_ms;   // time stamp from latest valid flow measurement (msec)
     uint32_t flowMeaTime_ms;        // time stamp from latest flow measurement (msec)
     uint32_t prevFlowFuseTime_ms;   // time both flow measurement components passed their innovation consistency checks
@@ -1188,8 +1187,9 @@ private:
     ftype terrainState;             // terrain height above EKF origin (m)
     ftype terrainPopt;              // terrain height state covariance (m^2)
     Vector2F terrainPrevPosNE;      // position at last measurement in NE frame
-    ftype rngInnov;                 // range finder observation innovation (m) calculated during terrain height estimation
-    ftype auxRngTestRatio;          // square of range finder innovations divided by fail threshold used by main filter where >1.0 is a fail
+    Vector2F terrainFlowInnov;      // optical flow rate innovation from 1-state terrain offset estimator
+    ftype terrainRngInnov;          // range finder observation innovation (m) calculated during terrain height estimation
+    ftype terrainRngTestRatio;      // square of range finder innovations divided by fail threshold used by main filter where >1.0 is a fail
     bool inhibitTerrainState;       // true when the terrain position state is to remain constant
     bool terrainStateValid;         // true when the terrain position state can still be considered valid
 

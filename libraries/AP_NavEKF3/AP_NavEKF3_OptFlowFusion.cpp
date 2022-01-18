@@ -127,15 +127,15 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
             terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
 
             // Calculate the rangefinder measurement innovation
-            rngInnov = predRngMeas - rangeDataDelayed.rng;
+            terrainRngInnov = predRngMeas - rangeDataDelayed.rng;
 
             // calculate the innovation consistency test ratio
-            auxRngTestRatio = sq(rngInnov) / (sq(MAX(0.01f * (ftype)frontend->_rngInnovGate, 1.0f)) * varInnovRng);
+            terrainRngTestRatio = sq(terrainRngInnov) / (sq(MAX(0.01f * (ftype)frontend->_rngInnovGate, 1.0f)) * varInnovRng);
 
             // Check the innovation test ratio and don't fuse if too large
-            if (auxRngTestRatio < 1.0f) {
+            if (terrainRngTestRatio < 1.0f) {
                 // correct the state
-                terrainState -= K_RNG * rngInnov;
+                terrainState -= K_RNG * terrainRngInnov;
 
                 // constrain the state
                 terrainState = MAX(terrainState, stateStruct.position[2] + rngOnGnd);
@@ -159,7 +159,7 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
             ftype q3 = stateStruct.quat[3]; // quaternion at optical flow measurement time
             ftype K_OPT;
             ftype H_OPT;
-            Vector2F auxFlowObsInnovVar;
+            Vector2F terrainFlowInnovVar;
 
             // predict range to centre of image
             ftype flowRngPred = MAX((terrainState - stateStruct.position.z),rngOnGnd) / prevTnb.c.z;
@@ -176,7 +176,7 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
             losPred.y = - relVelSensor.x / flowRngPred;
 
             // calculate innovations
-            auxFlowObsInnov = losPred - ofDataDelayed.flowRadXYcomp;
+            terrainFlowInnov = losPred - ofDataDelayed.flowRadXYcomp;
 
             // calculate observation jacobians 
             ftype t2 = q0*q0;
@@ -200,19 +200,19 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
             H_OPT = t7*t9*(-stateStruct.velocity.z*(q0*q2*2.0-q1*q3*2.0)+stateStruct.velocity.x*(t2+t3-t4-t5)+stateStruct.velocity.y*(t8+q1*q2*2.0));
 
             // calculate innovation variance
-            auxFlowObsInnovVar.y = H_OPT * terrainPopt * H_OPT + flow_noise_variance;
+            terrainFlowInnovVar.y = H_OPT * terrainPopt * H_OPT + flow_noise_variance;
 
             // calculate Kalman gain
-            K_OPT = terrainPopt * H_OPT / auxFlowObsInnovVar.y;
+            K_OPT = terrainPopt * H_OPT / terrainFlowInnovVar.y;
 
             // calculate the innovation consistency test ratio
-            const ftype auxFlowTestRatio_y = sq(auxFlowObsInnov.y) / (sq(MAX(0.01f * (ftype)frontend->_flowInnovGate, 1.0f)) * auxFlowObsInnovVar.y);
+            const ftype auxFlowTestRatio_y = sq(terrainFlowInnov.y) / (sq(MAX(0.01f * (ftype)frontend->_flowInnovGate, 1.0f)) * terrainFlowInnovVar.y);
 
             // don't fuse if optical flow data is outside valid range
             if (auxFlowTestRatio_y < 1.0f) {
 
                 // correct the state
-                terrainState -= K_OPT * auxFlowObsInnov.y;
+                terrainState -= K_OPT * terrainFlowInnov.y;
 
                 // constrain the state
                 terrainState = MAX(terrainState, stateStruct.position.z + rngOnGnd);
@@ -232,19 +232,19 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
             H_OPT = -t7*t9*(stateStruct.velocity.z*(q0*q1*2.0+q2*q3*2.0)+stateStruct.velocity.y*(t2-t3+t4-t5)-stateStruct.velocity.x*(t8-q1*q2*2.0));
 
             // calculate innovation variances
-            auxFlowObsInnovVar.x = H_OPT * terrainPopt * H_OPT + flow_noise_variance;
+            terrainFlowInnovVar.x = H_OPT * terrainPopt * H_OPT + flow_noise_variance;
 
             // calculate Kalman gain
-            K_OPT = terrainPopt * H_OPT / auxFlowObsInnovVar.x;
+            K_OPT = terrainPopt * H_OPT / terrainFlowInnovVar.x;
 
             // calculate the innovation consistency test ratio
-            const ftype auxFlowTestRatio_x = sq(auxFlowObsInnov.x) / (sq(MAX(0.01f * (ftype)frontend->_flowInnovGate, 1.0f)) * auxFlowObsInnovVar.x);
+            const ftype auxFlowTestRatio_x = sq(terrainFlowInnov.x) / (sq(MAX(0.01f * (ftype)frontend->_flowInnovGate, 1.0f)) * terrainFlowInnovVar.x);
 
             // don't fuse if optical flow data is outside valid range
             if (auxFlowTestRatio_x < 1.0f) {
 
                 // correct the state
-                terrainState -= K_OPT * auxFlowObsInnov.x;
+                terrainState -= K_OPT * terrainFlowInnov.x;
 
                 // constrain the state
                 terrainState = MAX(terrainState, stateStruct.position.z + rngOnGnd);
