@@ -826,6 +826,9 @@ private:
     // Estimate terrain offset using a single state EKF
     void EstimateTerrainOffset(const of_elements &ofDataDelayed);
 
+    // Estimate ceiling offset (i.e. ceiling's height above EKF origin) using an upward facing rangefinder
+    void EstimateCeilingOffset();
+
     // fuse optical flow measurements into the main filter
     // flow_noise is the variance of optical flow rate measurements (rad/sec)^2
     // really_fuse should be true to actually fuse into the main filter, false to only calculate variances
@@ -868,6 +871,9 @@ private:
     // Read the range finder and take new measurements if available
     // Apply a median filter to range finder data
     void readRangeFinder();
+
+    // Read upward facing range finder
+    void readRangeFinderUp();
 
     // check if the vehicle has taken off during optical flow navigation by looking at inertial and range finder data
     void detectOptFlowTakeoff(void);
@@ -1192,6 +1198,19 @@ private:
     ftype terrainRngTestRatio;      // square of range finder innovations divided by fail threshold used by main filter where >1.0 is a fail
     bool inhibitTerrainState;       // true when the terrain position state is to remain constant
     bool terrainStateValid;         // true when the terrain position state can still be considered valid
+
+    // variables for upward facing optical flow and ceiling state estimation
+    EKF_obs_buffer_t<range_elements> storedRangeUp; // upward range finder data buffer
+    uint32_t lastRngUpMeasTime_ms;  // system time of last upward rangefinder measurement (time from sensor)
+    uint32_t ceilingValidTime_ms;   // system time from last ceiling offset state update
+    uint32_t ceilingResetTime_ms;   // system time of last ceiling state reset
+    Vector2F ceilingPrevPosNE;      // position (in NE frame) when ceiling state was last estimated
+    uint32_t ceilingPrevPosNETime_ms;   // system time that ceilingPrevPosNE was recorded
+    ftype ceilingState;             // ceiling height above EKF origin (m)
+    ftype ceilingPopt;              // ceiling height state covariance (m^2)
+    ftype ceilingRngInnov;          // range finder observation innovation (m) calculated during ceiling state estimation
+    ftype ceilingRngTestRatio;      // square of range finder innovations divided by fail threshold used by main filter where >1.0 is a fail
+    const float ceilingDistMin = 0.05;  // ceiling estimate's minimum height above vehicle
 
     ftype hgtMea;                   // height measurement derived from either baro, gps or range finder data (m)
     bool rangeDataToFuse;           // true when valid range finder height data has arrived at the fusion time horizon.
