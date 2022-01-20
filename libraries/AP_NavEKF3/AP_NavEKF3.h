@@ -199,6 +199,9 @@ public:
     // upwardsOrientation should be true if the sensor is facing upwards
     void writeOptFlowMeas(uint8_t rawFlowQuality, const Vector2f &rawFlowRates, const Vector2f &rawGyroRates, uint32_t msecFlowMeas, const Vector3f &posOffset, bool upwardsOrientation);
 
+    // retrieve latest corrected optical flow samples (used for calibration)
+    bool getOptFlowSample(uint32_t& timeStamp_ms, Vector2f& flowRate, Vector2f& bodyRate, Vector2f& losPred);
+
     /*
      * Write body frame linear and angular displacement measurements from a visual odometry sensor
      *

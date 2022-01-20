@@ -1519,6 +1519,16 @@ void NavEKF3::writeOptFlowMeas(uint8_t rawFlowQuality, const Vector2f &rawFlowRa
     }
 }
 
+// retrieve latest corrected optical flow samples (used for calibration)
+bool NavEKF3::getOptFlowSample(uint32_t& timeStamp_ms, Vector2f& flowRate, Vector2f& bodyRate, Vector2f& losPred)
+{
+    // return optical flow samples from primary core
+    if (core) {
+        return core[primary].getOptFlowSample(timeStamp_ms, flowRate, bodyRate, losPred);
+    }
+    return false;
+}
+
 // write yaw angle sensor measurements
 void NavEKF3::writeEulerYawAngle(float yawAngle, float yawAngleErr, uint32_t timeStamp_ms, uint8_t type)
 {

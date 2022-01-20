@@ -249,6 +249,9 @@ public:
     // upwardsOrientation should be true if the sensor is pointing upwards
     void writeOptFlowMeas(uint8_t rawFlowQuality, const Vector2f &rawFlowRates, const Vector2f &rawGyroRates, uint32_t msecFlowMeas, const Vector3f &posOffset, bool upwardsOrientation);
 
+    // retrieve latest corrected optical flow samples (used for calibration)
+    bool getOptFlowSample(uint32_t& timeStamp_ms, Vector2f& flowRate, Vector2f& bodyRate, Vector2f& losPred);
+
     /*
      * Write body frame linear and angular displacement measurements from a visual odometry sensor
      *
@@ -1189,6 +1192,12 @@ private:
     uint32_t flowInnovTime_ms;      // system time that optical flow innovations and variances were recorded (to detect timeouts)
     Vector2 flowTestRatio;          // square of optical flow innovations divided by fail threshold used by main filter where >1.0 is a fail
     Vector2F flowGyroBias;          // bias error of optical flow sensor gyro output
+    struct {
+        uint32_t timestamp_ms;      // system timestamp of last correct optical flow sample (used for calibration)
+        Vector2f flowRate;          // latest corrected optical flow flow rate (used for calibration)
+        Vector2f bodyRate;          // latest corrected optical flow body rate (used for calibration)
+        Vector2f losPred;           // EKF estimated component of flowRate that comes from vehicle movement (not rotation)
+    } flowCalSample;
     uint32_t terrainValidTime_ms;   // time stamp from last terrain offset state update (msec)
     ftype terrainState;             // terrain height above EKF origin (m)
     ftype terrainPopt;              // terrain height state covariance (m^2)
