@@ -2154,6 +2154,15 @@ void AP_AHRS::writeOptFlowMeas(uint8_t rawFlowQuality, const Vector2f &rawFlowRa
 #endif
 }
 
+// retrieve latest corrected optical flow samples (used for calibration)
+bool AP_AHRS::getOptFlowSample(uint32_t& timeStamp_ms, Vector2f& flowRate, Vector2f& bodyRate, Vector2f& losPred)
+{
+#if HAL_NAVEKF3_AVAILABLE
+    return EKF3.getOptFlowSample(timeStamp_ms, flowRate, bodyRate, losPred);
+#endif
+    return false;
+}
+
 // write body frame odometry measurements to the EKF
 void  AP_AHRS::writeBodyFrameOdom(float quality, const Vector3f &delPos, const Vector3f &delAng, float delTime, uint32_t timeStamp_ms, uint16_t delay_ms, const Vector3f &posOffset)
 {
