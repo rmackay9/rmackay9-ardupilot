@@ -27,8 +27,7 @@
 #if AP_OPTICALFLOW_ENABLED
 
 /*
- *       AP_OpticalFlow.h - OpticalFlow Base Class for Ardupilot
- *       Code by Randy Mackay. DIYDrones.com
+ * OpticalFlow driver front end
  */
 
 #include <AP_MSP/msp.h>
