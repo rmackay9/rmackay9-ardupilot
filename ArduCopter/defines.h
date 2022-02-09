@@ -71,7 +71,8 @@ enum tuning_func {
     TUNING_RATE_MOT_YAW_HEADROOM =      55, // motors yaw headroom minimum
     TUNING_RATE_YAW_FILT =              56, // yaw rate input filter
     UNUSED =                            57, // was winch control
-    TUNING_SYSTEM_ID_MAGNITUDE =        58  // magnitude of the system ID signal
+    TUNING_SYSTEM_ID_MAGNITUDE =        58, // magnitude of the system ID signal
+    TUNING_ALT_OFFSET =                 70, // altitude offset added to target
 };
 
 // Yaw behaviours during missions - possible values for WP_YAW_BEHAVIOR parameter
