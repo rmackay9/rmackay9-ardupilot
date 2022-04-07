@@ -14,6 +14,7 @@
 #include <AP_SmartRTL/AP_SmartRTL.h>
 #include <AP_Stats/AP_Stats.h>
 #include "AP_Torqeedo/AP_Torqeedo.h"
+#include "AP_Torqeedo/AP_EPropulsion.h"
 #include <AP_WindVane/AP_WindVane.h>
 
 // Global parameter class.
@@ -420,6 +421,11 @@ public:
 
     // Rover options
     AP_Int32 manual_options;
+
+#if HAL_EPROPULSION_ENABLED
+    // epropulsion motor driver
+    AP_EPropulsion epropulsion;
+#endif
 };
 
 extern const AP_Param::Info var_info[];

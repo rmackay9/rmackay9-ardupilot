@@ -48,6 +48,7 @@ extern const AP_HAL::HAL& hal;
 #include <AP_Mount/AP_Mount.h>
 #include <AP_VideoTX/AP_VideoTX.h>
 #include <AP_Torqeedo/AP_Torqeedo.h>
+#include <AP_Torqeedo/AP_EPropulsion.h>
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 
 #define SWITCH_DEBOUNCE_TIME_MS  200

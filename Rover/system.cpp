@@ -98,6 +98,11 @@ void Rover::init_ardupilot()
     g2.torqeedo.init();
 #endif
 
+#if HAL_EPROPULSION_ENABLED
+    // epropulsion motor driver
+    g2.epropulsion.init();
+#endif
+
     relay.init();
 
 #if HAL_MOUNT_ENABLED

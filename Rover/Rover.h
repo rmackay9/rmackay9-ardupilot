@@ -37,6 +37,8 @@
 #include <AP_Logger/AP_Logger.h>
 #include <AP_OSD/AP_OSD.h>
 #include <AR_Motors/AP_MotorsUGV.h>
+#include <AP_Torqeedo/AP_Torqeedo.h>
+#include <AP_Torqeedo/AP_EPropulsion.h>
 
 #if AP_SCRIPTING_ENABLED
 #include <AP_Scripting/AP_Scripting.h>

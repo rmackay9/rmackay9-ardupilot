@@ -664,6 +664,12 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("MANUAL_OPTIONS", 53, ParametersG2, manual_options, 0),
 
+#if HAL_EPROPULSION_ENABLED
+    // @Group: EPRP_
+    // @Path: ../libraries/AP_Torqeedo/AP_EPropulsion.cpp
+    AP_SUBGROUPINFO(epropulsion, "EPRP_", 54, ParametersG2, AP_EPropulsion),
+#endif
+
     AP_GROUPEND
 };
 
