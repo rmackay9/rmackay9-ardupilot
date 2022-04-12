@@ -160,6 +160,10 @@ void AP_EPropulsion::thread_main()
         // check if transmit pin should be unset
         check_for_send_end();
 
+        // debug
+        uint8_t rcv_debug_buf[20] = {};
+        uint8_t rcv_debug_buf_len = 0;
+
         // parse incoming characters
         uint32_t nbytes = MIN(_uart->available(), 1024U);
         while (nbytes-- > 0) {
@@ -169,7 +173,39 @@ void AP_EPropulsion::thread_main()
                     // complete message received, parse it!
                     parse_message();
                 }
+                // debug
+                if (rcv_debug_buf_len < ARRAY_SIZE(rcv_debug_buf)) {
+                    rcv_debug_buf[rcv_debug_buf_len++] = b;
+                }
             }
+        }
+
+        // print debug bug
+        if (rcv_debug_buf_len > 0) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"n:%u %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x",
+                //(unsigned long)AP_HAL::millis(),
+                (unsigned)rcv_debug_buf_len,
+                (unsigned)rcv_debug_buf[0],
+                (unsigned)rcv_debug_buf[1],
+                (unsigned)rcv_debug_buf[2],
+                (unsigned)rcv_debug_buf[3],
+                (unsigned)rcv_debug_buf[4],
+                (unsigned)rcv_debug_buf[5],
+                (unsigned)rcv_debug_buf[6],
+                (unsigned)rcv_debug_buf[7],
+                (unsigned)rcv_debug_buf[8],
+                (unsigned)rcv_debug_buf[9],
+                (unsigned)rcv_debug_buf[10],
+                (unsigned)rcv_debug_buf[11],
+                (unsigned)rcv_debug_buf[12],
+                (unsigned)rcv_debug_buf[13],
+                (unsigned)rcv_debug_buf[14],
+                (unsigned)rcv_debug_buf[15],
+                (unsigned)rcv_debug_buf[16],
+                (unsigned)rcv_debug_buf[17],
+                (unsigned)rcv_debug_buf[18],
+                (unsigned)rcv_debug_buf[19]
+                );
         }
 
         // check if should send a reply
