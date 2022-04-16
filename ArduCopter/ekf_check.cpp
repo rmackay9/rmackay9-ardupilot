@@ -15,6 +15,22 @@
  # define EKF_CHECK_WARNING_TIME            (30*1000)   // warning text messages are sent to ground no more than every 30 seconds
 #endif
 
+#ifndef EKF_CHECK_THRESH_SLEW_TIME_SEC
+ # define EKF_CHECK_THRESH_SLEW_TIME_SEC    10       // ekf check threshold slews to max within 10 seconds of takeoff
+#endif
+
+#ifndef EKF_CHECK_THRESH_SLEW_ALT_M
+ # define EKF_CHECK_THRESH_SLEW_ALT_M       10.0     // ekf check threshold slews to max within 10m of takeoff alt
+#endif
+
+#ifndef EKF_CHECK_THRESH_SLEW_RATIO_MIN
+ # define EKF_CHECK_THRESH_SLEW_RATIO_MIN   0.5     // ekf check threshold slew ratio is in range 0.5 to 1.0
+#endif
+
+#ifndef EKF_CHECK_THRESH_SLEW_RATIO_MAX
+ # define EKF_CHECK_THRESH_SLEW_RATIO_MAX   1.0     // ekf check threshold slew ratio is in range 0.5 to 1.0
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // EKF_check structure
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,6 +39,9 @@ static struct {
     uint8_t bad_variance : 1;   // true if ekf should be considered untrusted (fail_count has exceeded EKF_CHECK_ITERATIONS_MAX)
     bool has_ever_passed;       // true if the ekf checks have ever passed
     uint32_t last_warn_time;    // system time of last warning in milliseconds.  Used to throttle text warnings sent to GCS
+    uint32_t takeoff_time_ms;   // system time of most recent takeoff.  Used for slewing of ekf threshold
+    float takeoff_alt_m;        // takeoff altitude above ekf origin in m.  Used for slewing of ekf threshold
+    float thresh_slew_ratio;    // percentage of full fs_ekf_thresh that should be used (slewed to 1 during takeoff)
 } ekf_check_state;
 
 // ekf_check - detects if ekf variance are out of tolerance and triggers failsafe
@@ -42,9 +61,41 @@ void Copter::ekf_check()
     if (g.fs_ekf_thresh <= 0.0f) {
         ekf_check_state.fail_count = 0;
         ekf_check_state.bad_variance = false;
+        ekf_check_state.thresh_slew_ratio = EKF_CHECK_THRESH_SLEW_RATIO_MAX;
         AP_Notify::flags.ekf_bad = ekf_check_state.bad_variance;
         failsafe_ekf_off_event();   // clear failsafe
         return;
+    }
+
+    // update ekf check threshold slewing
+    if (ap.land_complete) {
+        // vehicle is landed, record altitude and time for use in threshold slewing
+        ekf_check_state.thresh_slew_ratio = EKF_CHECK_THRESH_SLEW_RATIO_MIN;
+        ekf_check_state.takeoff_time_ms = AP_HAL::millis();
+        float curr_posd_m;
+        if (ahrs.get_relative_position_D_origin(curr_posd_m)) {
+            ekf_check_state.takeoff_alt_m = -curr_posd_m;
+        } else {
+            // if ahrs is unable to provide altitude record takeoff at extremely low altitude
+            // so normal EKF threshold will be used
+            ekf_check_state.takeoff_alt_m = FLT_MIN;
+        }
+    } else if (ekf_check_state.thresh_slew_ratio < EKF_CHECK_THRESH_SLEW_RATIO_MAX) {
+        // vehicle is not landed so update threshold slew ratio
+        // time ratio slews from 0 to 1 over 10 seconds
+        const float time_ratio = (AP_HAL::millis() - ekf_check_state.takeoff_time_ms) / (EKF_CHECK_THRESH_SLEW_TIME_SEC * 1000.0);
+
+        // alt ratio slews from 0 to 1 as vehicle climbs 10m
+        // defaults to 1.0 in case ahrs cannot provide altitude
+        float alt_ratio = 1.0;
+        float curr_posd_m;
+        if (ahrs.get_relative_position_D_origin(curr_posd_m)) {
+            const float cur_alt_m = -curr_posd_m;
+            alt_ratio = (cur_alt_m - ekf_check_state.takeoff_alt_m) / EKF_CHECK_THRESH_SLEW_ALT_M;
+        }
+
+        // update thresh_slew_ratio to max of current value, time ratio and alt ratio
+        ekf_check_state.thresh_slew_ratio = constrain_float(MAX(MAX(ekf_check_state.thresh_slew_ratio, time_ratio), alt_ratio), EKF_CHECK_THRESH_SLEW_RATIO_MIN, EKF_CHECK_THRESH_SLEW_RATIO_MAX);
     }
 
     // compare compass and velocity variance vs threshold and also check
@@ -118,6 +169,9 @@ bool Copter::ekf_over_threshold() const
         return false;
     }
 
+    // get scaled ekf threshold
+    const float ekf_thresh = get_ekf_check_thresh();
+
     // use EKF to get variance
     float position_variance, vel_variance, height_variance, tas_variance;
     Vector3f mag_variance;
@@ -127,7 +181,7 @@ bool Copter::ekf_over_threshold() const
 
     // return true if two of compass, velocity and position variances are over the threshold OR velocity variance is twice the threshold
     uint8_t over_thresh_count = 0;
-    if (mag_max >= g.fs_ekf_thresh) {
+    if (mag_max >= ekf_thresh) {
         over_thresh_count++;
     }
 
@@ -135,19 +189,24 @@ bool Copter::ekf_over_threshold() const
 #if AP_OPTICALFLOW_ENABLED
     optflow_healthy = optflow.healthy();
 #endif
-    if (!optflow_healthy && (vel_variance >= (2.0f * g.fs_ekf_thresh))) {
+    if (!optflow_healthy && (vel_variance >= (2.0f * ekf_thresh))) {
         over_thresh_count += 2;
-    } else if (vel_variance >= g.fs_ekf_thresh) {
+    } else if (vel_variance >= ekf_thresh) {
         over_thresh_count++;
     }
 
-    if ((position_variance >= g.fs_ekf_thresh && over_thresh_count >= 1) || over_thresh_count >= 2) {
+    if ((position_variance >= ekf_thresh && over_thresh_count >= 1) || over_thresh_count >= 2) {
         return true;
     }
 
     return false;
 }
 
+// return ekf check's threshold (higher means less likely to trigger)
+float Copter::get_ekf_check_thresh() const
+{
+    return g.fs_ekf_thresh * constrain_float(ekf_check_state.thresh_slew_ratio, EKF_CHECK_THRESH_SLEW_RATIO_MIN, EKF_CHECK_THRESH_SLEW_RATIO_MAX);
+}
 
 // failsafe_ekf_event - perform ekf failsafe
 void Copter::failsafe_ekf_event()
