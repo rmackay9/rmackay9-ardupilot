@@ -96,6 +96,13 @@ void Copter::ekf_check()
 
         // update thresh_slew_ratio to max of current value, time ratio and alt ratio
         ekf_check_state.thresh_slew_ratio = constrain_float(MAX(MAX(ekf_check_state.thresh_slew_ratio, time_ratio), alt_ratio), EKF_CHECK_THRESH_SLEW_RATIO_MIN, EKF_CHECK_THRESH_SLEW_RATIO_MAX);
+
+        // debug
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "tr:%4.2f ar:%4.2f totr:%4.2f thresh:%4.2f",
+                 (double)time_ratio,
+                 (double)alt_ratio,
+                 (double)ekf_check_state.thresh_slew_ratio,
+                 (double)get_ekf_check_thresh());
     }
 
     // compare compass and velocity variance vs threshold and also check
