@@ -111,7 +111,7 @@ void Copter::ekf_check()
 }
 
 // ekf_over_threshold - returns true if the ekf's variance are over the tolerance
-bool Copter::ekf_over_threshold()
+bool Copter::ekf_over_threshold() const
 {
     // return false immediately if disabled
     if (g.fs_ekf_thresh <= 0.0f) {
