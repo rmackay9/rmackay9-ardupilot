@@ -57,12 +57,21 @@ void Copter::ekf_check()
         return;
     }
 
+    // get AHRS/EKF innovations
+    // return the innovations
+    Vector3f vel_innov, pos_innov, mag_Innov;
+    float tas_innov, yaw_innov;
+    IGNORE_RETURN(ahrs.get_innovations(vel_innov, pos_innov, mag_Innov, tas_innov, yaw_innov));
+
     // position control failsafe
     if (pos_control->is_active_xy()) {
         Vector2f vel_error_cms = pos_control->get_vel_error_xy_cms();
-        const float vel_error_len_cms = vel_error_cms.length();
-        if (vel_error_len_cms > 20) {
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "velerr:%4.1f ang:%4.1f", (double)vel_error_len_cms, (double)degrees(vel_error_cms.angle()));
+        const float vel_error_len_ms = vel_error_cms.length() * 0.01;
+        if (vel_error_len_ms > 0.20) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "velerr:%4.1f ang:%4.1f velIn:%4.1f ang:%4.1f",
+                    (double)vel_error_len_ms, (double)degrees(vel_error_cms.angle()),
+                    (double)vel_innov.xy().length(), (double)degrees(vel_innov.xy().angle())
+                    );
         }
     }
 
