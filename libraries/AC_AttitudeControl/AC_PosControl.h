@@ -292,6 +292,9 @@ public:
     /// get_vel_target_z_cms - returns current vertical speed in cm/s
     float get_vel_target_z_cms() const { return _vel_target.z; }
 
+    /// get_vel_error_xy_cms - get the length of the velocity error vector in the xy plane
+    const Vector2f get_vel_error_xy_cms() const { return (_vel_target.xy() - _inav.get_velocity_neu_cms().xy()); }
+
 
     /// Acceleration
 
