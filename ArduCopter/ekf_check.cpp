@@ -57,6 +57,15 @@ void Copter::ekf_check()
         return;
     }
 
+    // position control failsafe
+    if (pos_control->is_active_xy()) {
+        Vector2f vel_error_cms = pos_control->get_vel_error_xy_cms();
+        const float vel_error_len_cms = vel_error_cms.length();
+        if (vel_error_len_cms > 50) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "velerr:%4.1f", (double)vel_error_len_cms);
+        }
+    }
+
     // return immediately if ekf check is disabled
     if (g.fs_ekf_thresh <= 0.0f) {
         ekf_check_state.fail_count = 0;
