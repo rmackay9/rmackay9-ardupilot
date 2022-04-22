@@ -61,8 +61,8 @@ void Copter::ekf_check()
     if (pos_control->is_active_xy()) {
         Vector2f vel_error_cms = pos_control->get_vel_error_xy_cms();
         const float vel_error_len_cms = vel_error_cms.length();
-        if (vel_error_len_cms > 50) {
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "velerr:%4.1f", (double)vel_error_len_cms);
+        if (vel_error_len_cms > 20) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "velerr:%4.1f ang:%4.1f", (double)vel_error_len_cms, (double)degrees(vel_error_cms.angle()));
         }
     }
 
