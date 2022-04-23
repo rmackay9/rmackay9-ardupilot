@@ -57,6 +57,18 @@ void Copter::ekf_check()
         return;
     }
 
+    // indicators of a problem:
+    //   1. small angular difference between velocity innovations and vel control error (in SITL within 11 deg)
+    //   2. velocity innovations are about twice the control errors
+    //   3. velocity innovations and control errors are growing over time
+    //   4. angular control is still good?
+
+    // indication of recovery:
+    //   a. velocity innovations are much smaller than control errors (happens after GSF reset)
+    //   b. velocity innovations are shrinking
+    //   c. velocity innovations are small (< 0.6m/s down to 0.1m/s)
+    //   d. velocity control errors are shrinking
+
     // get AHRS/EKF innovations
     // return the innovations
     Vector3f vel_innov, pos_innov, mag_Innov;
