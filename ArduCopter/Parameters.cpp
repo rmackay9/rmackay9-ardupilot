@@ -1111,6 +1111,20 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("SURFTRAK_MODE", 51, ParametersG2, surftrak_mode, (uint8_t)Copter::SurfaceTracking::Surface::GROUND),
 
+    // @Param: MOWER_AMPLITUDE
+    // @DisplayName: Mower amplitude
+    // @Description: Mower amplitude in meters (used only in Loiter)
+    // @Range: 1 20
+    // @User: Advanced
+    AP_GROUPINFO("MOWER_AMPLITUDE", 62, ParametersG2, mower_amplitude_m, 5.0),
+
+    // @Param: MOWER_PERIOD
+    // @DisplayName: Mower Period
+    // @Description: Mower Period in seconds (used only in Loiter)
+    // @Range: 1 20
+    // @User: Advanced
+    AP_GROUPINFO("MOWER_PERIOD", 63, ParametersG2, mower_period_sec, 10.0),
+
     AP_GROUPEND
 };
 

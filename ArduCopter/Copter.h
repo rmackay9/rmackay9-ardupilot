@@ -912,6 +912,17 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
 
+    // mower.cpp
+    void mower_init();
+    void mower_update();
+    struct {
+        RC_Channel *amplitude_control;
+        RC_Channel *period_control;
+        uint32_t last_update_ms;
+        float pos_offset_m;
+        float time_sec;
+    } mower;
+
 #if MODE_ACRO_ENABLED == ENABLED
 #if FRAME_CONFIG == HELI_FRAME
     ModeAcro_Heli mode_acro;

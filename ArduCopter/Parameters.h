@@ -667,6 +667,9 @@ public:
     AP_Float                pilot_y_rate;
     AP_Float                pilot_y_expo;
     AP_Int8                 surftrak_mode;
+
+    AP_Float                mower_amplitude_m;
+    AP_Float                mower_period_sec;
 };
 
 extern const AP_Param::Info        var_info[];
