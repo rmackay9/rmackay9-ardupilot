@@ -648,6 +648,9 @@ public:
 #if MODE_GUIDED_ENABLED == ENABLED
     AP_Float guided_timeout;
 #endif
+
+    AP_Float                mower_amplitude_m;
+    AP_Float                mower_period_sec;
 };
 
 extern const AP_Param::Info        var_info[];

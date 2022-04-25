@@ -98,6 +98,8 @@ void RC_Channel_Copter::init_aux_function(const aux_func_t ch_option, const AuxS
     case AUX_FUNC::ZIGZAG_Auto:
     case AUX_FUNC::ZIGZAG_SaveWP:
     case AUX_FUNC::ACRO:
+    case AUX_FUNC::MOWER_AMPLITUDE:
+    case AUX_FUNC::MOWER_PERIOD:
         break;
     case AUX_FUNC::ACRO_TRAINER:
     case AUX_FUNC::ATTCON_ACCEL_LIM:
@@ -576,6 +578,11 @@ bool RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const AuxSwi
 #if MODE_ACRO_ENABLED == ENABLED && FRAME_CONFIG != HELI_FRAME
             copter.mode_acro.air_mode_aux_changed();
 #endif
+            break;
+
+        // manual inputs, do nothing
+        case AUX_FUNC::MOWER_AMPLITUDE:
+        case AUX_FUNC::MOWER_PERIOD:
             break;
 
     default:

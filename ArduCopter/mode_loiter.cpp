@@ -34,6 +34,9 @@ bool ModeLoiter::init(bool ignore_checks)
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
     pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
+    // init loiter mower feature
+    copter.mower_init();
+
     return true;
 }
 
@@ -77,6 +80,9 @@ void ModeLoiter::precision_loiter_xy()
 // should be called at 100hz or more
 void ModeLoiter::run()
 {
+    // update mower
+    copter.mower_update();
+
     float target_roll, target_pitch;
     float target_yaw_rate = 0.0f;
     float target_climb_rate = 0.0f;

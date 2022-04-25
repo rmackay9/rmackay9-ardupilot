@@ -1069,6 +1069,20 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_GROUPINFO("GUID_TIMEOUT", 46, ParametersG2, guided_timeout, 3.0),
 #endif
 
+    // @Param: MOWER_AMPLITUDE
+    // @DisplayName: Mower amplitude
+    // @Description: Mower amplitude in meters (used only in Loiter)
+    // @Range: 1 20
+    // @User: Advanced
+    AP_GROUPINFO("MOWER_AMPLITUDE", 62, ParametersG2, mower_amplitude_m, 5.0),
+
+    // @Param: MOWER_PERIOD
+    // @DisplayName: Mower Period
+    // @Description: Mower Period in seconds (used only in Loiter)
+    // @Range: 1 20
+    // @User: Advanced
+    AP_GROUPINFO("MOWER_PERIOD", 63, ParametersG2, mower_period_sec, 10.0),
+
     AP_GROUPEND
 };
 
