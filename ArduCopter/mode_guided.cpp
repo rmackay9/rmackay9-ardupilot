@@ -97,6 +97,12 @@ void ModeGuided::run()
     }
  }
 
+bool ModeGuided::requires_GPS() const
+{
+    // Guided mode requires GPS in all modes except angle control
+    return (guided_mode != SubMode::Angle);
+}
+
 bool ModeGuided::allows_arming(AP_Arming::Method method) const
 {
     // always allow arming from the ground station
