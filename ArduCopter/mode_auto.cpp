@@ -162,6 +162,15 @@ void ModeAuto::run()
     }
 }
 
+bool ModeAuto::requires_GPS() const
+{
+    // Auto requires GPS in all modes except (maybe) NAVGUIDED and NAV_SCRIPT_TIME in which case we defer to Guided mode
+    if (_mode == SubMode::NAVGUIDED || _mode == SubMode::NAV_SCRIPT_TIME) {
+        return copter.mode_guided.requires_GPS();
+    }
+    return true;
+}
+
 bool ModeAuto::allows_arming(AP_Arming::Method method) const
 {
     return ((copter.g2.auto_options & (uint32_t)Options::AllowArming) != 0) && !auto_RTL;
