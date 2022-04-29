@@ -40,7 +40,22 @@ AP_Mission_ChangeDetector_Copter::ChangeResponseType AP_Mission_ChangeDetector_C
     // if !using_next_command && 2nd cmd has changed and is wp then return NONE
     // ToDo: check 2nd waypoint hasn't been deleted
     const bool cmd1_is_wp = (mis_change_detect.cmd[1].id == MAV_CMD_NAV_WAYPOINT);
-    if (!using_next_command && cmd1_is_wp) {
+    if (cmd1_is_wp) {
+        if (first_changed_cmd_idx == 1) {
+            // if 2nd has changed
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, 3rd changed, None");
+            if (using_next_command || cmd0_is_spline) {
+                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
+            } else {
+
+                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
+            }
+        } else {
+            // 3rd has changed
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, 3rd changed, None");
+            return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
+        }
+
         gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, not using next, None");
         return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
     }
