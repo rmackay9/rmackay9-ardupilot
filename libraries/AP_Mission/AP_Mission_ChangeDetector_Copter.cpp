@@ -31,7 +31,7 @@ AP_Mission_ChangeDetector_Copter::ChangeResponseType AP_Mission_ChangeDetector_C
     // if the current command has change a reset is always required
     // ToDo: check this handles mission erased
     if (first_changed_cmd_idx == 0) {
-        debug("check_for_mission_change: 1st comment changed, Reset");
+        debug("check_for_mission_change: 1st changed, Reset");
         return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
     }
 
