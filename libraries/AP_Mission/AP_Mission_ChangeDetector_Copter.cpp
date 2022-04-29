@@ -30,80 +30,70 @@ AP_Mission_ChangeDetector_Copter::ChangeResponseType AP_Mission_ChangeDetector_C
 
     // if 1st segment (wp or spline) has pause then return NONE
     const bool cmd0_is_wp = (mis_change_detect.cmd[0].id == MAV_CMD_NAV_WAYPOINT);
-    const bool cmd0_is_spline = (mis_change_detect.cmd[0].id == MAV_CMD_NAV_SPLINE_WAYPOINT);
     const bool cmd0_has_pause = (mis_change_detect.cmd[0].p1 > 0);
-    if ((cmd0_is_wp || cmd0_is_spline) && cmd0_has_pause) {
+    if (cmd0_has_pause) {
         gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st has pause, None");
         return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
     }
 
-    // if !using_next_command && 2nd cmd has changed and is wp then return NONE
-    // ToDo: check 2nd waypoint hasn't been deleted
-    const bool cmd1_is_wp = (mis_change_detect.cmd[1].id == MAV_CMD_NAV_WAYPOINT);
-    if (cmd1_is_wp) {
-        if (first_changed_cmd_idx == 1) {
-            // if 2nd has changed
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, 3rd changed, None");
-            if (using_next_command || cmd0_is_spline) {
-                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
-            } else {
-
-                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
-            }
-        } else {
-            // 3rd has changed
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, 3rd changed, None");
-            return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
-        }
-
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, not using next, None");
-        return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
-    }
-
-    // if 2nd or 3rd cmd has changed and 2nd is spline then RESET_REQUIRED
-    // ToDo: check 2nd waypoint hasn't been deleted
-    const bool cmd1_is_spline = (mis_change_detect.cmd[1].id == MAV_CMD_NAV_SPLINE_WAYPOINT);
-    if (cmd1_is_spline) {
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 2nd is spline, Reset");
-        return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
-    }
-
-    // if 1st is a spline (without a pause), if add of 2nd then RESET_REQUIRED
-    const bool cmd1_added = (cmd_list_bak.cmd_count == 1) && (mis_change_detect.cmd_count > 1);
-    if (cmd0_is_spline && !cmd0_has_pause && cmd1_added) {
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is spline, no pause, 2nd added, Reset");
-        return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
-    }
-
-    // if 2nd is a spline (without a pause), if add of 3rd then RESET_REQUIRED
-    const bool cmd1_has_pause = (mis_change_detect.cmd[1].p1 > 0);
-    const bool cmd2_added = (cmd_list_bak.cmd_count == 2) && (mis_change_detect.cmd_count > 2);
-    if (cmd1_is_spline && !cmd1_has_pause && cmd2_added) {
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 2nd is spline, no pause, 3rd added, Reset");
-        return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
-    }
-
     // if 1st is wp (without a pause), if add of 2nd then ADD_NEXT_WAYPOINT
+    const bool cmd1_added = (cmd_list_bak.cmd_count == 1) && (mis_change_detect.cmd_count > 1);
     if (cmd0_is_wp && !cmd0_has_pause && cmd1_added) {
         gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, no pause, 2nd added, AddNextWP");
         return AP_Mission_ChangeDetector_Copter::ChangeResponseType::ADD_NEXT_WAYPOINT;
     }
 
-    /*
-    if (using_next_command) {
-        //
-    } else {
-        // not using next command
-
-        // if we only had one command before, a new command must have been added
-        if (cmd_list_bak.cmd_count == 1) {
-            return AP_Mission_ChangeDetector_Copter::ChangeResponseType::ADD_NEXT_WAYPOINT;
+    const bool cmd1_is_wp = (mis_change_detect.cmd[1].id == MAV_CMD_NAV_WAYPOINT);
+    if (cmd0_is_wp) {
+        // if 1st segment wp
+        if (cmd1_is_wp) {
+            // if 1st segment wp
+            if (first_changed_cmd_idx == 1) {
+                // if 2nd has changed
+                if (using_next_command) {
+                    gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, 2nd wp changed, Reset");
+                    return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
+                } else {
+                    gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, not using changed 2nd wp, None");
+                    return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
+                }
+            } else {
+                // 3rd has changed
+                gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, 2nd wp same, None");
+                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
+            }
+        } else {
+            // if 1st segment spline
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, 2nd spline with change, Reset");
+            return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
         }
-
-        // 2nd or 3rd command was changed but we are not using it so no action required
-        return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
+    } else {
+        // if 1st segment spline
+        if (cmd1_is_wp) {
+                // if 2nd segment wp
+            if (first_changed_cmd_idx == 1) {
+                // 2nd has changed
+                gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is spline, 2nd wp changed, None");
+                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
+            } else {
+                // 2nd not changed
+                gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is spline, 2nd wp same, None");
+                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
+            }
+        } else {
+            // if 2nd segment spline
+            // const bool cmd1_has_pause = (mis_change_detect.cmd[1].p1 > 0);
+            // I put this below to ensure we have that entry
+            if ((first_changed_cmd_idx == 2) && (mis_change_detect.cmd[1].p1 > 0)) {
+                // 2nd not pause and 3nd has changed
+                gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is spline, 2nd spline with pause, None");
+                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE;
+            } else {
+                gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is spline, 2nd spline with change, Reset");
+                return AP_Mission_ChangeDetector_Copter::ChangeResponseType::RESET_REQUIRED;
+            }
+        }
     }
-    */
 
     // next command is being used and it has changed so reset required
     gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: got to end");
