@@ -95,7 +95,7 @@ void ModeAuto::run()
         }
     } else {
         // check for mission changes
-        if (mis_change_detector.check_for_mission_change(true) != AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE) {
+        if (mis_change_detector.check_for_mission_change(wp_nav->using_next_waypoint()) != AP_Mission_ChangeDetector_Copter::ChangeResponseType::NONE) {
             // if mission is running restart the current command if it is a waypoint or spline command
             if ((mission.state() == AP_Mission::MISSION_RUNNING) && (_mode == SubMode::WP)) {
                 if (mission.restart_current_nav_cmd()) {
