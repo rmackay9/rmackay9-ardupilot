@@ -38,12 +38,15 @@ AP_Mission_ChangeDetector_Copter::ChangeResponseType AP_Mission_ChangeDetector_C
 
     // if 1st is wp (without a pause), if add of 2nd then ADD_NEXT_WAYPOINT
     const bool cmd1_added = (cmd_list_bak.cmd_count == 1) && (mis_change_detect.cmd_count > 1);
-    if (cmd0_is_wp && !cmd0_has_pause && cmd1_added) {
+    const bool cmd1_is_wp = (mis_change_detect.cmd[1].id == MAV_CMD_NAV_WAYPOINT);
+    
+    // Currently we don't support set_destination_speed_max after leg has been started
+    // Therefore we can't add a spline without reseting
+    if (cmd0_is_wp && !cmd0_has_pause && cmd1_added && cmd1_is_wp) {
         gcs().send_text(MAV_SEVERITY_CRITICAL, "check_for_mission_change: 1st is wp, no pause, 2nd added, AddNextWP");
         return AP_Mission_ChangeDetector_Copter::ChangeResponseType::ADD_NEXT_WAYPOINT;
     }
 
-    const bool cmd1_is_wp = (mis_change_detect.cmd[1].id == MAV_CMD_NAV_WAYPOINT);
     if (cmd0_is_wp) {
         // if 1st segment wp
         if (cmd1_is_wp) {
