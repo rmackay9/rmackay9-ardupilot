@@ -45,6 +45,7 @@ class AP_Mount_Servo;
 class AP_Mount_SoloGimbal;
 class AP_Mount_Alexmos;
 class AP_Mount_MAVLink;
+class AP_Mount_Gremsy;
 class AP_Mount_SToRM32;
 class AP_Mount_SToRM32_serial;
 
@@ -61,6 +62,7 @@ class AP_Mount
     friend class AP_Mount_SoloGimbal;
     friend class AP_Mount_Alexmos;
     friend class AP_Mount_MAVLink;
+    friend class AP_Mount_Gremsy;
     friend class AP_Mount_SToRM32;
     friend class AP_Mount_SToRM32_serial;
 
@@ -83,7 +85,8 @@ public:
         Mount_Type_SoloGimbal = 2,      /// Solo's gimbal
         Mount_Type_Alexmos = 3,         /// Alexmos mount
         Mount_Type_SToRM32 = 4,         /// SToRM32 mount using MAVLink protocol
-        Mount_Type_SToRM32_serial = 5   /// SToRM32 mount using custom serial protocol
+        Mount_Type_SToRM32_serial = 5,  /// SToRM32 mount using custom serial protocol
+        Mount_Type_Gremsy = 6           /// Gremsy gimbal
     };
 
     // init - detect and initialise all mounts
