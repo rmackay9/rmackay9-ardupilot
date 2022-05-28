@@ -44,6 +44,7 @@ class AP_Mount_Backend;
 class AP_Mount_Servo;
 class AP_Mount_SoloGimbal;
 class AP_Mount_Alexmos;
+class AP_Mount_MAVLink;
 class AP_Mount_SToRM32;
 class AP_Mount_SToRM32_serial;
 
@@ -59,6 +60,7 @@ class AP_Mount
     friend class AP_Mount_Servo;
     friend class AP_Mount_SoloGimbal;
     friend class AP_Mount_Alexmos;
+    friend class AP_Mount_MAVLink;
     friend class AP_Mount_SToRM32;
     friend class AP_Mount_SToRM32_serial;
 
