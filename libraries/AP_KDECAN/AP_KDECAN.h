@@ -20,6 +20,14 @@
  
 #pragma once
 
+#include <AP_HAL/AP_HAL.h>
+
+#ifndef HAL_KDECAN_ENABLED
+#define HAL_KDECAN_ENABLED !HAL_MINIMIZE_FEATURES && (BOARD_FLASH_SIZE > 1024) && !defined(HAL_BUILD_AP_PERIPH)
+#endif
+
+#if HAL_KDECAN_ENABLED
+
 #include <AP_CANManager/AP_CANDriver.h>
 
 #if HAL_MAX_CAN_PROTOCOL_DRIVERS
@@ -125,3 +133,4 @@ private:
     static const uint16_t ENUMERATION_TIMEOUT_MS = 30000;
 };
 #endif //HAL_NUM_CAN_IFACES
+#endif // HAL_KDECAN_ENABLED

@@ -18,6 +18,10 @@
  *      Author: Francisco Ferreira
  */
 
+#include "AP_KDECAN.h"
+
+#if HAL_KDECAN_ENABLED
+
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/utility/sparse-endian.h>
@@ -29,7 +33,7 @@
 #include <AP_Motors/AP_Motors.h>
 #include <AP_Logger/AP_Logger.h>
 #include <stdio.h>
-#include "AP_KDECAN.h"
+
 #include <AP_CANManager/AP_CANManager.h>
 
 #if HAL_MAX_CAN_PROTOCOL_DRIVERS
@@ -653,3 +657,4 @@ bool AP_KDECAN::run_enumeration(bool start_stop)
 }
 
 #endif // HAL_NUM_CAN_IFACES
+#endif // HAL_KDECAN_ENABLED
