@@ -29,11 +29,9 @@ void AP_BattMonitor_ESC::read(void)
 {
     AP_ESC_Telem& telem = AP::esc_telem();
 
-    uint8_t voltage_escs = 0;     // number of ESCs with valid voltage
-    uint8_t temperature_escs = 0; // number of ESCs with valid temperature
-    float voltage_sum = 0;
+    float voltage_min = 0;
     float current_sum = 0;
-    float temperature_sum = 0;
+    float temperature_max = 0;
     uint32_t highest_ms = 0;
      _state.consumed_mah = delta_mah;
 
@@ -50,8 +48,9 @@ void AP_BattMonitor_ESC::read(void)
         }
 
         if (telem.get_voltage(i, voltage)) {
-            voltage_sum += voltage;
-            voltage_escs++;
+            if ((is_zero(voltage_min) && !is_zero(voltage))|| (voltage < voltage_min)) {
+                voltage_min = voltage;
+            }
         }
 
         if (telem.get_current(i, current)) {
@@ -59,8 +58,11 @@ void AP_BattMonitor_ESC::read(void)
         }
 
         if (telem.get_temperature(i, temperature_cdeg)) {
-            temperature_sum += float(temperature_cdeg) * 0.01f;
-            temperature_escs++;
+            const float temperature_deg = float(temperature_cdeg) * 0.01f;
+            if ((is_zero(temperature_max) && !is_zero(temperature_deg)) || (temperature_deg > temperature_max)) {
+                temperature_max = temperature_deg;
+                have_temperature = true;
+            }
         }
 
         if (telem.get_last_telem_data_ms(i) > highest_ms) {
@@ -68,15 +70,15 @@ void AP_BattMonitor_ESC::read(void)
         }
     }
 
-    if (voltage_escs > 0) {
-        _state.voltage = voltage_sum / voltage_escs;
+    if (voltage_min > 0) {
+        _state.voltage = voltage_min;
         _state.healthy = true;
     } else {
         _state.voltage = 0;
         _state.healthy = false;
     }
-    if (temperature_escs > 0) {
-        _state.temperature = temperature_sum / temperature_escs;
+    if (temperature_max > 0) {
+        _state.temperature = temperature_max;
         have_temperature = true;
     } else {
         _state.temperature = 0;
