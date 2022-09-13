@@ -794,6 +794,7 @@ void GCS_MAVLINK_Rover::handleMessage(const mavlink_message_t &msg)
 void GCS_MAVLINK_Rover::handle_manual_control(const mavlink_message_t &msg)
 {
     if (msg.sysid != rover.g.sysid_my_gcs) {  // Only accept control from our gcs
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "mc not my gcs:%d need %d", (int)msg.sysid, (int)rover.g.sysid_my_gcs);
         return;
     }
 
@@ -801,6 +802,7 @@ void GCS_MAVLINK_Rover::handle_manual_control(const mavlink_message_t &msg)
     mavlink_msg_manual_control_decode(&msg, &packet);
 
     if (packet.target != rover.g.sysid_this_mav) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "mc not for me:%d need %d", (int)packet.target, (int)rover.g.sysid_this_mav);
         return; // only accept control aimed at us
     }
 
@@ -808,6 +810,9 @@ void GCS_MAVLINK_Rover::handle_manual_control(const mavlink_message_t &msg)
 
     manual_override(rover.channel_steer, packet.y, 1000, 2000, tnow);
     manual_override(rover.channel_throttle, packet.z, 1000, 2000, tnow);
+
+    // debug
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "mc steer:%d thr:%d", (int)packet.y, (int)packet.z);
 
     // a manual control message is considered to be a 'heartbeat' from
     // the ground station for failsafe purposes
