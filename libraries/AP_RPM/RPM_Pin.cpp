@@ -36,10 +36,10 @@ AP_RPM_Pin::AP_RPM_Pin(AP_RPM &_ap_rpm, uint8_t instance, AP_RPM::RPM_State &_st
 /*
   handle interrupt on an instance
  */
-void AP_RPM_Pin::irq_handler(uint8_t pin, bool pin_state, uint32_t timestamp)
+void AP_RPM_Pin::irq_handler(uint8_t pin, bool pin_state, uint32_t timestamp_us)
 {
-    const uint32_t dt = timestamp - irq_state[state.instance].last_pulse_us;
-    irq_state[state.instance].last_pulse_us = timestamp;
+    const uint32_t dt = timestamp_us - irq_state[state.instance].last_pulse_us;
+    irq_state[state.instance].last_pulse_us = timestamp_us;
     // we don't accept pulses less than 100us. Using an irq for such
     // high RPM is too inaccurate, and it is probably just bounce of
     // the signal which we should ignore

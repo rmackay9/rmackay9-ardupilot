@@ -46,7 +46,7 @@ private:
 
     void irq_handler(uint8_t pin,
                      bool pin_state,
-                     uint32_t timestamp);
+                     uint32_t timestamp_us);
 
 };
 
