@@ -35,20 +35,20 @@ AP_BattMonitor_FuelFlow::AP_BattMonitor_FuelFlow(AP_BattMonitor &mon,
 /*
   handle interrupt on an instance
  */
-void AP_BattMonitor_FuelFlow::irq_handler(uint8_t pin, bool pin_state, uint32_t timestamp)
+void AP_BattMonitor_FuelFlow::irq_handler(uint8_t pin, bool pin_state, uint32_t timestamp_us)
 {
     if (irq_state.last_pulse_us == 0) {
-        irq_state.last_pulse_us = timestamp;
+        irq_state.last_pulse_us = timestamp_us;
         return;
     }
-    uint32_t delta = timestamp - irq_state.last_pulse_us;
+    uint32_t delta = timestamp_us - irq_state.last_pulse_us;
     if (delta < FUELFLOW_MIN_PULSE_DELTA_US) {
         // simple de-bounce
         return;
     }
     irq_state.pulse_count++;
     irq_state.total_us += delta;
-    irq_state.last_pulse_us = timestamp;
+    irq_state.last_pulse_us = timestamp_us;
 }
 
 /*

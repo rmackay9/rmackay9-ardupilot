@@ -22,7 +22,7 @@ public:
     void init(void) override {}
 
 private:
-    void irq_handler(uint8_t pin, bool pin_state, uint32_t timestamp);
+    void irq_handler(uint8_t pin, bool pin_state, uint32_t timestamp_us);
 
     struct IrqState {
         uint32_t pulse_count;
