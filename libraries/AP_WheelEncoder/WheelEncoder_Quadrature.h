@@ -34,7 +34,7 @@ private:
     void update_pin(uint8_t &pin, uint8_t new_pin, uint8_t &pin_value);
 
     // gpio interrupt handlers
-    void irq_handler(uint8_t pin, bool pin_value, uint32_t timestamp);  // combined irq handler
+    void irq_handler(uint8_t pin, bool pin_value, uint32_t timestamp_us);   // combined irq handler
 
     // convert pin a and b status to phase
     static uint8_t pin_ab_to_phase(bool pin_a, bool pin_b);

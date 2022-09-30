@@ -120,7 +120,7 @@ void AP_WheelEncoder_Quadrature::update_phase_and_error_count()
 
 void AP_WheelEncoder_Quadrature::irq_handler(uint8_t pin,
                                              bool pin_value,
-                                             uint32_t timestamp)
+                                             uint32_t timestamp_us)
 {
     // sanity check
     if (last_pin_a == 0 || last_pin_b == 0) {
@@ -138,5 +138,5 @@ void AP_WheelEncoder_Quadrature::irq_handler(uint8_t pin,
     update_phase_and_error_count();
 
     // record update time
-    irq_state.last_reading_ms = timestamp * 1e-3f;
+    irq_state.last_reading_ms = timestamp_us * 1e-3f;
 }
