@@ -37,8 +37,8 @@ void AP_WheelEncoder_SITL_Quadrature::update(void)
                                -ef_velocity.x*sin(radians(current_heading)) + ef_velocity.y*cos(radians(current_heading)));
 
     // calculate dt
-    const uint32_t time_now = AP_HAL::millis();
-    const double dt = (time_now - _state.last_reading_ms)/1000.0f;
+    const uint32_t time_now_us = AP_HAL::micros();
+    const double dt = (time_now_us - _state.last_reading_us) * 1e-6;
     if (is_zero(dt)) { // sanity check
         return;
     }
@@ -83,7 +83,7 @@ void AP_WheelEncoder_SITL_Quadrature::update(void)
     _total_count += abs(ticks);
 
     // update previous state to current
-    copy_state_to_frontend(_distance_count, _total_count, 0, time_now);
+    copy_state_to_frontend(_distance_count, _total_count, 0, time_now_us);
 }
 
 #endif

@@ -69,7 +69,7 @@ void AP_WheelEncoder_Quadrature::update(void)
     copy_state_to_frontend(irq_state.distance_count,
                            irq_state.total_count,
                            irq_state.error_count,
-                           irq_state.last_reading_ms);
+                           irq_state.last_reading_us);
 
     // restore interrupts
     hal.scheduler->restore_interrupts(irqstate);
@@ -138,5 +138,5 @@ void AP_WheelEncoder_Quadrature::irq_handler(uint8_t pin,
     update_phase_and_error_count();
 
     // record update time
-    irq_state.last_reading_ms = timestamp_us * 1e-3f;
+    irq_state.last_reading_us = timestamp_us;
 }

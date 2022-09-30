@@ -56,9 +56,9 @@ public:
         float                  distance;        // total distance measured in meters
         uint32_t               total_count;     // total number of successful readings from sensor (used for sensor quality calcs)
         uint32_t               error_count;     // total number of errors reading from sensor (used for sensor quality calcs)
-        uint32_t               last_reading_ms; // time of last reading
+        uint32_t               last_reading_us; // system time of last reading in microseconds
         int32_t                dist_count_change; // distance count change during the last update (used to calculating rate)
-        uint32_t               dt_ms;             // time change (in milliseconds) for the previous period (used to calculating rate)
+        uint32_t               dt_us;             // time change (in microseconds) for the previous period (used to calculating rate)
     };
 
     // detect and initialise any available rpm sensors
@@ -106,8 +106,8 @@ public:
     // get the signal quality for a sensor (0 = extremely poor quality, 100 = extremely good quality)
     float get_signal_quality(uint8_t instance) const;
 
-    // get the system time (in milliseconds) of the last update
-    uint32_t get_last_reading_ms(uint8_t instance) const;
+    // get the system time (in microseconds) of the last update
+    uint32_t get_last_reading_us(uint8_t instance) const;
 
     static const struct AP_Param::GroupInfo var_info[];
 

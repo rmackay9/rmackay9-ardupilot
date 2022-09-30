@@ -302,12 +302,12 @@ float AP_WheelEncoder::get_rate(uint8_t instance) const
     }
 
     // protect against divide by zero
-    if ((state[instance].dt_ms == 0) || _counts_per_revolution[instance] == 0) {
+    if ((state[instance].dt_us == 0) || _counts_per_revolution[instance] == 0) {
         return 0;
     }
 
     // calculate delta_angle (in radians) per second
-    return M_2PI * (state[instance].dist_count_change / ((float)_counts_per_revolution[instance])) / (state[instance].dt_ms * 1e-3f);
+    return M_2PI * (state[instance].dist_count_change / ((float)_counts_per_revolution[instance])) / (state[instance].dt_us * 1e-6f);
 }
 
 // get the total number of sensor reading from the encoder
@@ -340,14 +340,14 @@ float AP_WheelEncoder::get_signal_quality(uint8_t instance) const
     return constrain_float((1.0f - ((float)state[instance].error_count / (float)state[instance].total_count)) * 100.0f, 0.0f, 100.0f);
 }
 
-// get the system time (in milliseconds) of the last update
-uint32_t AP_WheelEncoder::get_last_reading_ms(uint8_t instance) const
+// get the system time (in microseconds) of the last update
+uint32_t AP_WheelEncoder::get_last_reading_us(uint8_t instance) const
 {
     // for invalid instances return zero
     if (instance >= WHEELENCODER_MAX_INSTANCES) {
         return 0;
     }
-    return state[instance].last_reading_ms;
+    return state[instance].last_reading_us;
 }
 
 // singleton instance

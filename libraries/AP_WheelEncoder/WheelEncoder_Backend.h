@@ -37,7 +37,7 @@ protected:
     int8_t get_pin_b() const;
 
     // copy state to front end helper function
-    void copy_state_to_frontend(int32_t distance_count, uint32_t total_count, uint32_t error_count, uint32_t last_reading_ms);
+    void copy_state_to_frontend(int32_t distance_count, uint32_t total_count, uint32_t error_count, uint32_t last_reading_us);
 
     AP_WheelEncoder &_frontend;
     AP_WheelEncoder::WheelEncoder_State &_state;
