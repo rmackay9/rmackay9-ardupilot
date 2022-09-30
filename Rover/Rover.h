@@ -217,7 +217,7 @@ private:
     float wheel_encoder_last_distance_m[WHEELENCODER_MAX_INSTANCES];    // total distance recorded by wheel encoder (for reporting to GCS)
     bool wheel_encoder_initialised;                                     // true once arrays below have been initialised to sensors initial values
     float wheel_encoder_last_angle_rad[WHEELENCODER_MAX_INSTANCES];     // distance in radians at time of last update to EKF
-    uint32_t wheel_encoder_last_reading_ms[WHEELENCODER_MAX_INSTANCES]; // system time of last ping from each encoder
+    uint32_t wheel_encoder_last_reading_us[WHEELENCODER_MAX_INSTANCES]; // system time (in microseconds) of last ping from each encoder
     uint8_t wheel_encoder_last_index_sent;                              // index of the last wheel encoder sent to the EKF
 
     // True when we are doing motor test

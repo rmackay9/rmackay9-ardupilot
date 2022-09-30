@@ -40,7 +40,7 @@ void Rover::update_wheel_encoder()
         wheel_encoder_initialised = true;
         for (uint8_t i = 0; i < g2.wheel_encoder.num_sensors(); i++) {
             wheel_encoder_last_angle_rad[i] = g2.wheel_encoder.get_delta_angle(i);
-            wheel_encoder_last_reading_ms[i] = g2.wheel_encoder.get_last_reading_ms(i);
+            wheel_encoder_last_reading_us[i] = g2.wheel_encoder.get_last_reading_us(i);
         }
         return;
     }
@@ -53,8 +53,8 @@ void Rover::update_wheel_encoder()
 
     // get current time, total delta angle (since startup) and update time from sensor
     const float curr_angle_rad = g2.wheel_encoder.get_delta_angle(wheel_encoder_last_index_sent);
-    const uint32_t sensor_reading_ms = g2.wheel_encoder.get_last_reading_ms(wheel_encoder_last_index_sent);
-    const uint32_t now_ms = AP_HAL::millis();
+    const uint32_t sensor_reading_us = g2.wheel_encoder.get_last_reading_us(wheel_encoder_last_index_sent);
+    const uint32_t now_us = AP_HAL::micros();
 
     // calculate angular change (in radians)
 #if HAL_NAVEKF3_AVAILABLE
@@ -63,16 +63,16 @@ void Rover::update_wheel_encoder()
     wheel_encoder_last_angle_rad[wheel_encoder_last_index_sent] = curr_angle_rad;
 
     // calculate delta time using time between sensor readings or time since last send to ekf (whichever is shorter)
-    uint32_t sensor_diff_ms = sensor_reading_ms - wheel_encoder_last_reading_ms[wheel_encoder_last_index_sent];
-    if (sensor_diff_ms == 0 || sensor_diff_ms > 100) {
+    uint32_t sensor_diff_us = sensor_reading_us - wheel_encoder_last_reading_us[wheel_encoder_last_index_sent];
+    if (sensor_diff_us == 0 || sensor_diff_us > 100000) {
         // if no sensor update or time difference between sensor readings is too long use time since last send to ekf
-        sensor_diff_ms = now_ms - wheel_encoder_last_reading_ms[wheel_encoder_last_index_sent];
-        wheel_encoder_last_reading_ms[wheel_encoder_last_index_sent] = now_ms;
+        sensor_diff_us = now_us - wheel_encoder_last_reading_us[wheel_encoder_last_index_sent];
+        wheel_encoder_last_reading_us[wheel_encoder_last_index_sent] = now_us;
     } else {
-        wheel_encoder_last_reading_ms[wheel_encoder_last_index_sent] = sensor_reading_ms;
+        wheel_encoder_last_reading_us[wheel_encoder_last_index_sent] = sensor_reading_us;
     }
 #if HAL_NAVEKF3_AVAILABLE
-    const float delta_time = sensor_diff_ms * 0.001f;
+    const float delta_time = sensor_diff_us * 1e-6f;
 
     /* delAng is the measured change in angular position from the previous measurement where a positive rotation is produced by forward motion of the vehicle (rad)
      * delTime is the time interval for the measurement of delAng (sec)
@@ -81,7 +81,7 @@ void Rover::update_wheel_encoder()
      */
     ahrs.EKF3.writeWheelOdom(delta_angle,
                         delta_time,
-                        wheel_encoder_last_reading_ms[wheel_encoder_last_index_sent],
+                        wheel_encoder_last_reading_us[wheel_encoder_last_index_sent] * 1000,
                         g2.wheel_encoder.get_pos_offset(wheel_encoder_last_index_sent),
                         g2.wheel_encoder.get_wheel_radius(wheel_encoder_last_index_sent));
 #endif
