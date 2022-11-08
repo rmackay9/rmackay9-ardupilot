@@ -353,6 +353,7 @@ bool AP_NavEKF_Source::pre_arm_check(bool requires_position, char *failure_msg, 
                 break;
             case SourceXY::OPTFLOW:
                 optflow_required = true;
+                rangefinder_required = true;
                 break;
             case SourceXY::EXTNAV:
                 visualodom_required = true;
