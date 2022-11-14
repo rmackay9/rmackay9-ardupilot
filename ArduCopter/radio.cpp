@@ -106,10 +106,8 @@ void Copter::read_radio()
         return;
     }
 
-    const uint32_t elapsed = tnow_ms - last_radio_update_ms;
-    // turn on throttle failsafe if no update from the RC Radio for 500ms or 2000ms if we are using RC_OVERRIDE
-    const uint32_t timeout = RC_Channels::has_active_overrides() ? FS_RADIO_RC_OVERRIDE_TIMEOUT_MS : FS_RADIO_TIMEOUT_MS;
-    if (elapsed < timeout) {
+    // trigger failsafe if no update from the RC Radio for RC_FS_TIMEOU?T seconds
+    if ((tnow_ms - last_radio_update_ms) < (rc().get_fs_timeout() * 1000)) {
         // not timed out yet
         return;
     }
@@ -122,7 +120,7 @@ void Copter::read_radio()
         return;
     }
 
-    // Nobody ever talks to us.  Log an error and enter failsafe.
+    // Log an error and enter failsafe.
     AP::logger().Write_Error(LogErrorSubsystem::RADIO, LogErrorCode::RADIO_LATE_FRAME);
     set_failsafe_radio(true);
 }
