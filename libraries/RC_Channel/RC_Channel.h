@@ -528,6 +528,9 @@ public:
     // flight_mode_channel_number must be overridden in vehicle specific code
     virtual int8_t flight_mode_channel_number() const = 0;
 
+    // get failsafe timeout in seconds
+    float get_fs_timeout() const { return MAX(_fs_timeout, 0.1); }
+
 protected:
 
     enum class Option {
@@ -560,6 +563,7 @@ private:
     AP_Float _override_timeout;
     AP_Int32  _options;
     AP_Int32  _protocols;
+    AP_Float _fs_timeout;
 
     RC_Channel *flight_mode_channel() const;
 
