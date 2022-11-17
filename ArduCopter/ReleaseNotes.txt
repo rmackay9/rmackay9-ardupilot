@@ -1,5 +1,27 @@
 ArduPilot Copter Release Notes:
 ------------------------------------------------------------------
+Copter 4.3.1-rc1 17-Nov-2022
+Changes from 4.3.0
+1) Autopilot specific enhancements
+   a) ARKV6X support
+   b) Pixhawk boards support MS5607 baros
+2) DroneCAN Airspeed sensor support including hygrometer (aka water vapour) readings
+3) EFI support (electronic fuel injection engines)
+4) Pre-arm warning if multiple UARTs with SERIALx_PROTOCOL = RCIN
+5) Siyi gimbal support
+6) Bug fixes
+    a) Arm check warning loses duplicate "AHRS" prefix
+    b) AtomRCF405NAVI bootloader file name fixed
+    c) BRD_SAFETY_MASK fixed on boards with both FMU safety switch and IOMCU
+    d) Gremsy gimbal driver sends autopilot info at lower rate to save bandwidth
+    e) Invensense 42605 and 42609 IMUs use anti-aliasing filter and notch filter
+    f) Mode change to AUTOTUNE message shortened
+    g) OSD stats screen fix
+    h) RC input on serial port uses first UART with SERIALx_PROTOCOL = 23 (was using last)
+    i) RTK CAN GPS fix when GPSs conneted to separate CAN ports on autopilot
+    j) SkyViper GPS fix
+    k) Turtle mode safety fixes (e.g. can only enter Tutle mode with at zero throttle)
+------------------------------------------------------------------
 Copter 4.3.0 31-Oct-2022 / 4.3.0-beta4 24-Oct-2022
 Changes from 4.3.0-beta3
 1) Scripting supports implementing AUX functions
