@@ -110,6 +110,7 @@ PARAMETER_CONVERSION - Added: Aug-2021
 */
 void AP_RPM::convert_params(void)
 {
+#if !APM_BUILD_TYPE(APM_BUILD_ArduPlane)
     if (_params[0].type.configured()) {
         // _params[0].type will always be configured after conversion is done the first time
         return;
@@ -176,6 +177,7 @@ void AP_RPM::convert_params(void)
 
     // force _params[0].type into storage to flag that conversion has been done
     _params[0].type.save(true);
+#endif
 }
 
 /*
