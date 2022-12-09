@@ -365,7 +365,7 @@ void AP_Airspeed::init()
         param[0].type.set_default(TYPE_ANALOG);
     }
 
-#ifndef HAL_BUILD_AP_PERIPH
+#if !defined(HAL_BUILD_AP_PERIPH) && !APM_BUILD_TYPE(APM_BUILD_ArduPlane)
     // Switch to dedicated WIND_MAX param
     // PARAMETER_CONVERSION - Added: Oct-2020
     const float ahrs_max_wind = AP::ahrs().get_max_wind();
