@@ -177,6 +177,7 @@ RangeFinder::RangeFinder()
 }
 
 void RangeFinder::convert_params(void) {
+#if !APM_BUILD_TYPE(APM_BUILD_ArduPlane)
     if (params[0].type.configured()) {
         // _params[0]._type will always be configured after conversion is done the first time
         // or the user has set a type in a defaults.parm file or via apj tool
@@ -256,6 +257,7 @@ void RangeFinder::convert_params(void) {
 
     // force _params[0]._type into storage to flag that conversion has been done
     params[0].type.save(true);
+#endif
 }
 
 /*
