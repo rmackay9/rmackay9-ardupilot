@@ -1,7 +1,15 @@
+#ICM-42688
 # Con i suggerimenti di andhi
-# LUMINOUS BEE 5.32 bidirectional telemetry - BETA 
+# LUMINOUS BEE MINI 3.1 bidirectional telemetry - BETA 
+# NUOVA IMU ICM-42605
+# REV. MICRO dps310 + imu 20608 + swap mot 1/3
+# REV. 41beta ( IMU management BMI088 )
+# REV. 41alfa ( new motors channel management)
 # hw definition file for processing by chibios_hwdef.py
-# aggiunto HAL_HAVE_FAST_MCU 1 
+# for FMUv4 to RCRACER modified hardware
+
+#define CONFIG_HAL_BOARD_SUBTYPE HAL_BOARD_SUBTYPE_CHIBIOS_FMUV4
+#define HAL_CHIBIOS_ARCH_FMUV4 1
 
 # MCU class and specific type
 MCU STM32H7xx STM32H743xx
@@ -11,6 +19,12 @@ APJ_BOARD_ID 1029
 
 # crystal frequency
 OSCILLATOR_HZ 24000000
+
+# board voltage
+#STM32_VDD 330U
+
+# ChibiOS system timer
+#STM32_ST_USE_TIMER 5
 
 # flash size
 FLASH_SIZE_KB 2048
@@ -22,17 +36,23 @@ FLASH_RESERVE_START_KB 128
 
 define HAL_STORAGE_SIZE 16384
 
-#define FAST_MCU 1 # HAL_HAVE_FAST_MCU 1 	# 480 Mhz
+# serial port for stdout disabled, use USB console
+# STDOUT_SERIAL SD7
+# STDOUT_BAUDRATE 57600
 
 # only one I2C bus
 I2C_ORDER I2C1
+
+# NO DMA I2C
 NODMA I2C*
-define STM32_I2C_USE_DMA FALSE 
+define STM32_I2C_USE_DMA FALSE
 
-
+# to match px4 we make the first bus number 1
+#define HAL_I2C_BUS_BASE 1
 define HAL_I2C_INTERNAL_MASK 0
 
 # order of UARTs (and USB)
+#UART_ORDER OTG1 UART4 USART2 USART3 UART8 USART1 UART7
 SERIAL_ORDER OTG1 USART2 USART3 UART4 UART8 USART1 UART7
 
 # UART4 is GPS
@@ -49,12 +69,11 @@ PA5 SPI1_SCK SPI1
 PA6 SPI1_MISO SPI1
 PA7 SPI1_MOSI SPI1
 
-# optional baro2
-PA8 BARO2_CS CS
-
 # This is the pin that senses USB being connected. It is an input pin
 # setup as OPENDRAIN.
 PA9 VBUS INPUT #OPENDRAIN
+
+# PA10 FRSKY_INV OUTPUT GPIO(78)	#era nel vecchio hdef
 
 # Now we define the pins that USB is connected on.
 PA11 OTG_FS_DM OTG1
@@ -67,14 +86,28 @@ PA14 JTCK-SWCLK SWD
 # PWM output for buzzer
 PA15 TIM2_CH1 TIM2 GPIO(77) ALARM
 
+## control of spektrum power pin
+#PE4 SPEKTRUM_PWR OUTPUT LOW GPIO(70)
+#define HAL_GPIO_SPEKTRUM_PWR 70
+
+## spektrum power is active low
+#define HAL_SPEKTRUM_PWR_ENABLED 0
+
+## spektrum RC input pin, used as GPIO for bind for satellite receivers
+#PB0 SPEKTRUM_RC INPUT PULLUP GPIO(71)
+#define HAL_GPIO_SPEKTRUM_RC 71
+
 PB2 BOOT1 INPUT
 #PB5 VDD_BRICK_VALID INPUT
 PB5 VDD_BRICK_VALID INPUT PULLDOWN
 
-# USART1 TX  now as led strip control
-PB6 TIM4_CH1 TIM4 PWM(7) GPIO(56)  # PB6 
+# USART1 is ESP8266
+PB6 TIM4_CH1 TIM4 PWM(7) GPIO(56)  # PB6 as led strip control
 # PB6 USART1_TX USART1
 PB7 USART1_RX USART1
+#PA8 RTS USART1
+# PE10 is not a hw CTS pin for USART1
+# PE10 8266_CTS INPUT
 
 
 # UWB DW1000
@@ -92,17 +125,17 @@ PB15 SPI2_MOSI SPI2
 
 #PC0 VBUS_VALID INPUT
 PC0 VBUS_VALID INPUT PULLDOWN
+#PC1 bmi088_g_DRDY4 INPUT
+#PC2 20608_CS CS # nuova IMU Luminous Bee
 
 #BMI088 CS
-#PC2 BMI088_ACCEL_CS CS	#opt. second imu
-#PC15 BMI088_GYRO_CS CS	#opt. second imu
+#PC2 BMI088_ACCEL_CS CS
+#PC15 BMI088_GYRO_CS CS
 
 PC3 LED_SAFETY OUTPUT
 PC4 SAFETY_IN INPUT PULLDOWN
 PC5 VDD_PERIPH_EN OUTPUT HIGH
-PC7 TIM3_CH2 TIM3 RCININT FLOAT LOW # also USART6_RX for serial 
-
-
+PC7 TIM3_CH2 TIM3 RCININT FLOAT LOW # also USART6_RX for serial RC
 
 # Now setup the pins for the microSD card, if available.
 PC8 SDMMC1_D0 SDMMC1
@@ -121,7 +154,7 @@ PD1 CAN1_TX CAN1
 
 # USART2 serial2 telem1
 
-PD3 icm42605_CS CS # ex usart2 RTS
+PD3 icm42688_CS CS # ex usart2 RTS
 
 PD5 USART2_TX USART2
 PD6 USART2_RX USART2
@@ -132,6 +165,7 @@ PD7 BARO_CS CS
 # USART3 serial3 telem2
 PD8 USART3_TX USART3
 PD9 USART3_RX USART3
+
 PD11 USART3_CTS USART3
 PD12 USART3_RTS USART3
 
@@ -145,15 +179,16 @@ PD15 20608_DRDY INPUT  # IMU Luminous Bee
 PE0 UART8_RX UART8
 PE1 UART8_TX UART8
 
+# allow this uart to be inverted for transmit under user control
+# the polarity is the value to use on the GPIO to change the polarity
+# to the opposite of the default
+#PA10 UART8_TXINV OUTPUT HIGH GPIO(78) POL(0)
 
-
-#set up SPI bus4 for UWB
+#set up SPI bus4 for icm42688
 PE2 SPI4_SCK SPI4
 PE5 SPI4_MISO SPI4
 PE6 SPI4_MOSI SPI4
 DMA_NOSHARE for SPI4* #ANDY
-
-
 
 PE3 VDD_SENSORS_EN OUTPUT HIGH
 PE4 SPEKTRUM_PWR OUTPUT HIGH
@@ -162,8 +197,8 @@ PE4 SPEKTRUM_PWR OUTPUT HIGH
 PE7 UART7_RX UART7 NODMA
 PE8 UART7_TX UART7 NODMA
 
-PE11 TIM1_CH2 TIM1 PWM(1) GPIO(50)  BIDIR   #52
-PE14 TIM1_CH4 TIM1 PWM(2) GPIO(51)  BIDIR   #50
+PE11 TIM1_CH2 TIM1 PWM(1) GPIO(50) BIDIR   #52
+PE14 TIM1_CH4 TIM1 PWM(2) GPIO(51) BIDIR   #50
 PE9 TIM1_CH1 TIM1 PWM(3) GPIO(52)      #53
 PE13 TIM1_CH3 TIM1 PWM(4) GPIO(53)     #51
 PD13 TIM4_CH2 TIM4 PWM(5) GPIO(54)
@@ -185,9 +220,10 @@ SPIDEV hmc5843     SPI1 DEVID5  MAG_CS     MODE3  11*MHZ  11*MHZ
 #SPIDEV bmi088_g    SPI1 DEVID1  BMI088_GYRO_CS    MODE3 10*MHZ 10*MHZ
 #SPIDEV bmi088_a    SPI1 DEVID2  BMI088_ACCEL_CS   MODE3 10*MHZ 10*MHZ
 SPIDEV ramtron     SPI2 DEVID10 FRAM_CS    		MODE3   8*MHZ   8*MHZ
-#SPIDEV dwm1000     SPI4 DEVID5  UWB_CS     		MODE0   3*MHZ  20*MHZ
-SPIDEV icm42605     SPI4 DEVID4  icm42605_CS     		MODE3   16*MHZ  16*MHZ
+# SPIDEV dwm1000     SPI4 DEVID5  UWB_CS     		MODE0   3*MHZ  20*MHZ
+SPIDEV icm42688     SPI4 DEVID4  icm42688_CS     		MODE3   16*MHZ  16*MHZ
 
+#define HAL_CHIBIOS_ARCH_FMUV4 1
 
 define HAL_BOARD_LOG_DIRECTORY "/APM/LOGS"
 define HAL_BOARD_TERRAIN_DIRECTORY "/APM/TERRAIN"
@@ -218,29 +254,31 @@ define HAL_GPIO_A_LED_PIN 0
 define HAL_GPIO_B_LED_PIN 1
 define HAL_GPIO_C_LED_PIN 2
 
+# enable RTSCTS
+# define AP_FEATURE_RTSCTS 1
+
 # battery setup
 define HAL_BATT_VOLT_PIN 14
 define HAL_BATT_CURR_PIN 15
-define HAL_BATT_VOLT_SCALE 3.28
-define HAL_BATT_CURR_SCALE 3.06
+define HAL_BATT_VOLT_SCALE 3.15
+define HAL_BATT_CURR_SCALE 4.1
 
 # setup serial port defaults for ESP8266
 define HAL_SERIAL5_PROTOCOL SerialProtocol_MAVLink
 define HAL_SERIAL5_BAUD 921600
 
-# 6 PWM available by default
+# 7 PWM available by default
 define BOARD_PWM_COUNT_DEFAULT 7
 
 
 # two IMUs
-#IMU Invensense SPI:icm20608 ROTATION_YAW_180
-IMU Invensensev3 SPI:icm42605 ROTATION_NONE
+IMU Invensensev3 SPI:icm42688 ROTATION_NONE
 #IMU BMI088       SPI:bmi088_a SPI:bmi088_g ROTATION_ROLL_180_YAW_90
 define HAL_DEFAULT_INS_FAST_SAMPLE 1
 
 # 2 compasses. R15 has LIS3MDL instead of HMC5843
 COMPASS HMC5843 SPI:hmc5843 false ROTATION_PITCH_180
-#COMPASS LIS3MDL SPI:lis3mdl false ROTATION_NONE
+COMPASS LIS3MDL SPI:lis3mdl false ROTATION_NONE
 #COMPASS AK8963:probe_mpu9250 0 ROTATION_ROLL_180_YAW_90
 
 # also probe all types of external I2C compasses
