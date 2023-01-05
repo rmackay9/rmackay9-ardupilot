@@ -156,10 +156,12 @@ void GCS::update_sensor_status_flags()
     control_sensors_present |= MAV_SYS_STATUS_AHRS;
     if (ahrs.initialised()) {
         control_sensors_enabled |= MAV_SYS_STATUS_AHRS;
-        if (ahrs.healthy()) {
+        if (ahrs.healthy(true)) {
             if (!ahrs.have_inertial_nav() || ins.accel_calibrated_ok_all()) {
                 control_sensors_health |= MAV_SYS_STATUS_AHRS;
             }
+        } else {
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"ahrs not healthy");
         }
     }
 #endif

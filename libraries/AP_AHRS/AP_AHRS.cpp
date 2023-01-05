@@ -1843,7 +1843,7 @@ AP_AHRS::EKFType AP_AHRS::ekf_type(void) const
 #endif
 }
 
-AP_AHRS::EKFType AP_AHRS::active_EKF_type(void) const
+AP_AHRS::EKFType AP_AHRS::active_EKF_type(bool debug) const
 {
     EKFType ret = EKFType::NONE;
 
@@ -1874,6 +1874,9 @@ AP_AHRS::EKFType AP_AHRS::active_EKF_type(void) const
     case EKFType::THREE: {
         // do we have an EKF3 yet?
         if (!_ekf3_started) {
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"ekf3 not started");
+            }
             return EKFType::NONE;
         }
         if (always_use_EKF()) {
@@ -1884,6 +1887,10 @@ AP_AHRS::EKFType AP_AHRS::active_EKF_type(void) const
             }
         } else if (EKF3.healthy()) {
             ret = EKFType::THREE;
+        } else {
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"ekf3 not healthy using:%d", (int)ret);
+            }
         }
         break;
     }
@@ -1951,14 +1958,23 @@ AP_AHRS::EKFType AP_AHRS::active_EKF_type(void) const
             // prefer to use the GPS position from DCM. This is a
             // safety net while some issues with the EKF get sorted
             // out
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"using none1");
+            }
             return EKFType::NONE;
         }
         if (hal.util->get_soft_armed() && filt_state.flags.const_pos_mode) {
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"using none2");
+            }
             return EKFType::NONE;
         }
         if (!filt_state.flags.attitude ||
             !filt_state.flags.vert_vel ||
             !filt_state.flags.vert_pos) {
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"using none3");
+            }
             return EKFType::NONE;
         }
         if (!filt_state.flags.horiz_vel ||
@@ -1976,8 +1992,14 @@ AP_AHRS::EKFType AP_AHRS::active_EKF_type(void) const
                     return ret;
                 }
             }
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"using none4");
+            }
             return EKFType::NONE;
         }
+    }
+    if (debug) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"at end using:%d", (int)ret);
     }
     return ret;
 }
@@ -2033,7 +2055,7 @@ bool AP_AHRS::get_secondary_EKF_type(EKFType &secondary_ekf_type) const
 /*
   check if the AHRS subsystem is healthy
 */
-bool AP_AHRS::healthy(void) const
+bool AP_AHRS::healthy(bool debug) const
 {
     // If EKF is started we switch away if it reports unhealthy. This could be due to bad
     // sensor data. If EKF reversion is inhibited, we only switch across if the EKF encounters
@@ -2050,7 +2072,7 @@ bool AP_AHRS::healthy(void) const
         }
         if ((_vehicle_class == VehicleClass::FIXED_WING ||
                 _vehicle_class == VehicleClass::GROUND) &&
-                active_EKF_type() != EKFType::TWO) {
+                active_EKF_type(debug) != EKFType::TWO) {
             // on fixed wing we want to be using EKF to be considered
             // healthy if EKF is enabled
             return false;
@@ -2063,11 +2085,17 @@ bool AP_AHRS::healthy(void) const
     case EKFType::THREE: {
         bool ret = _ekf3_started && EKF3.healthy();
         if (!ret) {
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL, "ek3 started:%d health:%d", (int)_ekf3_started, (int)EKF3.healthy());
+            }
             return false;
         }
         if ((_vehicle_class == VehicleClass::FIXED_WING ||
                 _vehicle_class == VehicleClass::GROUND) &&
-                active_EKF_type() != EKFType::THREE) {
+                active_EKF_type(debug) != EKFType::THREE) {
+            if (debug) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL, "active ekf:%d", (int)active_EKF_type());
+            }
             // on fixed wing we want to be using EKF to be considered
             // healthy if EKF is enabled
             return false;

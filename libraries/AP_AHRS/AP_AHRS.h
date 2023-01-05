@@ -258,7 +258,7 @@ public:
     float getControlScaleZ(void) const;
 
     // is the AHRS subsystem healthy?
-    bool healthy() const;
+    bool healthy(bool debug = false) const;
 
     // returns false if we fail arming checks, in which case the buffer will be populated with a failure message
     // requires_position should be true if horizontal position configuration should be checked
@@ -662,7 +662,7 @@ private:
         ,EXTERNAL = 11
 #endif
     };
-    EKFType active_EKF_type(void) const;
+    EKFType active_EKF_type(bool debug = false) const;
 
     // if successful returns true and sets secondary_ekf_type to None (for DCM), EKF3 or EKF3
     // returns false if no secondary (i.e. only using DCM)
