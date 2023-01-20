@@ -135,32 +135,38 @@ bool AP_Mount_Servo::get_attitude_quaternion(Quaternion& att_quat)
 // update body-frame angle outputs from earth-frame angle targets
 void AP_Mount_Servo::update_angle_outputs(const MountTarget& angle_rad)
 {
-    const AP_AHRS &ahrs = AP::ahrs();
-
-    // get target yaw in body-frame with limits applied
-    const float yaw_bf_rad = constrain_float(get_bf_yaw_angle(angle_rad), radians(_params.yaw_angle_min), radians(_params.yaw_angle_max));
-
-    // default output to target earth-frame roll and pitch angles, body-frame yaw
-    _angle_bf_output_deg.x = degrees(angle_rad.roll);
-    _angle_bf_output_deg.y = degrees(angle_rad.pitch);
-    _angle_bf_output_deg.z = degrees(yaw_bf_rad);
-
-    // this is sufficient for self-stabilising brushless gimbals
+    // handle the simple case of self-stabilising brushless gimbals
     if (!requires_stabilization) {
+
+        // get target yaw in body-frame with limits applied
+        const float yaw_bf_rad = constrain_float(get_bf_yaw_angle(angle_rad), radians(_params.yaw_angle_min), radians(_params.yaw_angle_max));
+
+        // default output to target earth-frame roll and pitch angles, body-frame yaw
+        _angle_bf_output_deg.x = degrees(angle_rad.roll);
+        _angle_bf_output_deg.y = degrees(angle_rad.pitch);
+        _angle_bf_output_deg.z = degrees(yaw_bf_rad);
+
         return;
     }
 
-    // retrieve lean angles from ahrs
-    Vector2f ahrs_angle_rad = {ahrs.roll, ahrs.pitch};
+    // use full 3D frame transform for gimbals requiring stabilisation
 
-    // rotate ahrs roll and pitch angles to gimbal yaw
-    if (has_pan_control()) {
-        ahrs_angle_rad.rotate(-yaw_bf_rad);
-    }
+    // rotation matrix to convert NED to body-frame
+    const AP_AHRS &ahrs = AP::ahrs();
+    const Matrix3f ned_to_body = ahrs.get_rotation_body_to_ned().transposed();
 
-    // add roll and pitch lean angle correction
-    _angle_bf_output_deg.x -= degrees(ahrs_angle_rad.x);
-    _angle_bf_output_deg.y -= degrees(ahrs_angle_rad.y);
+    // rotation matrix from NED to desired gimbal angles in earth-frame
+    Matrix3f ned_to_gimbal;
+    ned_to_gimbal.from_euler(angle_rad.roll, angle_rad.pitch, get_ef_yaw_angle(angle_rad));
+
+    // rotation matrix from body to gimbal euler angles
+    Matrix3f gimbal_target = ned_to_body * ned_to_gimbal;
+    gimbal_target.to_euler(&_angle_bf_output_deg.x, &_angle_bf_output_deg.y, &_angle_bf_output_deg.z);
+
+    // convert from radians to degrees
+    _angle_bf_output_deg.x = degrees(_angle_bf_output_deg.x);
+    _angle_bf_output_deg.y = degrees(_angle_bf_output_deg.y);
+    _angle_bf_output_deg.z = degrees(_angle_bf_output_deg.z);
 
     // lead filter
     const Vector3f &gyro = ahrs.get_gyro();
