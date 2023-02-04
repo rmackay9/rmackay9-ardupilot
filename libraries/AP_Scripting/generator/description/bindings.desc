@@ -177,6 +177,8 @@ singleton AP_Proximity method num_sensors uint8_t
 singleton AP_Proximity method get_object_count uint8_t
 singleton AP_Proximity method get_closest_object boolean float'Null float'Null
 singleton AP_Proximity method get_object_angle_and_distance boolean uint8_t'skip_check float'Null float'Null
+singleton AP_Proximity method set_sweep_params void uint8_t'skip_check float'skip_check float'skip_check float'skip_check
+singleton AP_Proximity method get_closest_sweep_object boolean float'Null
 
 include AP_RangeFinder/AP_RangeFinder.h
 include AP_RangeFinder/AP_RangeFinder_Backend.h
