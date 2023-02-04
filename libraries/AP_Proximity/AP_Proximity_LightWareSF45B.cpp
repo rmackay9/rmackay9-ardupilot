@@ -184,6 +184,9 @@ void AP_Proximity_LightWareSF45B::process_message()
                 _minisector_distance = distance_m;
                 _minisector_distance_valid = true;
             }
+
+            // add distance to sweep
+            sweep.add_distance(angle_deg, distance_m);
         }
         break;
     }
@@ -198,6 +201,20 @@ void AP_Proximity_LightWareSF45B::process_message()
 uint8_t AP_Proximity_LightWareSF45B::convert_angle_to_minisector(float angle_deg) const
 {
     return wrap_360(angle_deg + (PROXIMITY_SF45B_COMBINE_READINGS_DEG * 0.5f)) / PROXIMITY_SF45B_COMBINE_READINGS_DEG;
+}
+
+// sweep accessors
+// dist_jump is the distance change in meters used to detect the edge of objects
+void AP_Proximity_LightWareSF45B::set_sweep_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg)
+{
+    sweep.set_params(debug, dist_jump_m, angle_min_deg, angle_max_deg);
+}
+
+// get the angle and distance to the closest object
+// returns true on success, false on failure
+bool AP_Proximity_LightWareSF45B::get_closest_sweep_object(float &angle_deg)
+{
+    return sweep.get_closest_object(angle_deg);
 }
 
 #endif // HAL_PROXIMITY_ENABLED

@@ -123,6 +123,15 @@ public:
     // get obstacle pitch and angle for a particular obstacle num
     bool get_obstacle_info(uint8_t obstacle_num, float &angle_deg, float &pitch, float &distance) const;
 
+    // set sweep params
+    // dist_jump is the distance change in meters used to detect the edge of objects
+    void set_sweep_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg);
+
+    // sweep accessors
+    // get the angle and distance to the closest object
+    // returns true on success, false on failure
+    bool get_closest_sweep_object(float &angle_deg);
+
     //
     // mavlink related methods
     //

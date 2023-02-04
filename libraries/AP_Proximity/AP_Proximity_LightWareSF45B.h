@@ -3,6 +3,7 @@
 #include "AP_Proximity_LightWareSerial.h"
 
 #if HAL_PROXIMITY_ENABLED
+#include "AP_Proximity_Sweep.h"
 #include <Filter/Filter.h>
 
 class AP_Proximity_LightWareSF45B : public AP_Proximity_LightWareSerial
@@ -26,6 +27,15 @@ public:
     // get maximum and minimum distances (in meters) of sensor
     float distance_max() const override { return 50.0f; }
     float distance_min() const override { return 0.20f; }
+
+    // sweep accessors
+    // set sweep params
+    // dist_jump is the distance change in meters used to detect the edge of objects
+    void set_sweep_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg) override;
+
+    // get the angle and distance to the closest object
+    // returns true on success, false on failure
+    bool get_closest_sweep_object(float &angle_deg) override;
 
 private:
 
@@ -102,6 +112,8 @@ private:
         uint32_t stream_data_type;  // sensor reported stream value.  5 if DISTANCE_DATA_CM messages are being streamed
     } _sensor_state;
 
+    // sweep data
+    AP_Proximity_Sweep sweep;
 };
 
 #endif // HAL_PROXIMITY_ENABLED
