@@ -16,10 +16,10 @@
 --    0         header              EA
 --    1         message id          2=margin info
 --    2         data length         number of bytes of data
---    3         left margin LSB     percent * 100
---    4         left margin MSB
---    5         right margin LSB    percent * 100
---    6         right margin MSB
+--    3         left margin MSB     percent * 10
+--    4         left margin LSB
+--    5         right margin MSB    percent * 10
+--    6         right margin LSB
 --    7         confidence          percent (0 ~ 100)
 --    8         checksum            covers message id to confidence (inclusive). see https://crccalc.com
 --
@@ -60,7 +60,7 @@ local PARSE_STATE_WAITING_FOR_DATA      = 3
 local PARSE_STATE_WAITING_FOR_CHECKSUM  = 4
 
 -- hardcoded example messages for testing
-local TEST_MSG1 = {0xEA,0x02,0x05,0x64,0x00,0xC8,0x00,0x63,0xE5}
+local TEST_MSG1 = {0xEA,0x02,0x05,0x00,0x64,0x00,0xc8,0x63,0xE1}
 local test_msg_byte = 0
 
 -- local variables and definitions
@@ -294,8 +294,8 @@ function read_incoming_packets()
           parse_success_ms = millis()
 
           -- extract fields from message
-          local left_margin = (parse_buff[2] << 8 | parse_buff[1]) * 0.01
-          local right_margin = (parse_buff[4] << 8 | parse_buff[3]) * 0.01
+          local left_margin = (parse_buff[1] << 8 | parse_buff[2]) * 0.1
+          local right_margin = (parse_buff[3] << 8 | parse_buff[4]) * 0.1
           local confidence = parse_buff[5]
           local yaw_rate_degs = 0
           if confidence >= CONFID_MIN:get() then
