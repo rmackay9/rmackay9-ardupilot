@@ -7,7 +7,7 @@
 --   Copy this script to the autopilot's SD card in the APM/scripts directory and reboot the autopilot
 --   Adjust EATB_RATE_P and I to adjust the control response to the camera input
 --   Set EATB_RATE_MAX to the maximum rate in deg/sec that you want the gimbal to rotate
---   Set EATB_CONFIG_MIN to the minimum usable confidence from the camera
+--   Set EATB_CONFID to the maximum usable confidence from the camera (note the confidence is strangely reversed)
 --   Set EATB_DEBUG = 1 to see debug output on the GCS messages tab.  Set to "2" to use test input messages (e.g. fake the camera input)
 
 --
@@ -20,7 +20,7 @@
 --    4         left margin LSB
 --    5         right margin MSB    percent * 10
 --    6         right margin LSB
---    7         confidence          percent (0 ~ 100)
+--    7         confidence (rev)    percent (0 ~ 100).  0 = full confidence, 100 = no confidence
 --    8         checksum            covers message id to confidence (inclusive). see https://crccalc.com
 --
 
@@ -49,7 +49,7 @@ local PID_RATE_MAX = bind_add_param("RATE_MAX", 1, 20)      -- mount rate contro
 local PID_RATE_P = bind_add_param("RATE_P", 2, 1)           -- mount rate controller P gain
 local PID_RATE_I = bind_add_param("RATE_I", 3, 0.1)         -- mount rate controller I gain
 local PID_RATE_IMAX = bind_add_param("RATE_IMAX", 4, 20)    -- mount rate controller I max
-local CONFID_MIN = bind_add_param("CONFID_MIN", 5, 50)      -- minimum acceptable confidence from AI camera
+local CONFID = bind_add_param("CONFID", 5, 50)              -- acceptable confidence threshold from AI camera (note: 0=full confidence, 100=no confidence)
 local DEBUG = bind_add_param("DEBUG", 6, 0)                 -- debug 0:Disabled, 1:Enabled, 2:Enabled and use fake data
 
 -- parsing state definitions
@@ -298,8 +298,8 @@ function read_incoming_packets()
           local right_margin = (parse_buff[3] << 8 | parse_buff[4]) * 0.1
           local confidence = parse_buff[5]
           local yaw_rate_degs = 0
-          if confidence >= CONFID_MIN:get() then
-             -- ToDo: add scaling based on distance to blade
+          if confidence <= CONFID:get() then
+             -- ToDo: add scaling based on distance to blade?
             local yaw_err = (left_margin - right_margin) * 0.5
             yaw_rate_degs = rate_PI.update(0, yaw_err)
             rotate_mount(yaw_rate_degs)
