@@ -17,6 +17,7 @@
 
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>
+#include <Filter/ModeFilter.h>
 
 #define PROXIMITY_SWEEP_NUM_ITEMS_MAX 500     // maximum number of items (angle+distances) that can be stored
 
@@ -67,6 +68,7 @@ private:
         uint8_t sweep_id;                           // sweep id of items
     } sweeps[2];
     uint8_t internal_sweep_index;                   // the internal sweep's index in the items array
+    ModeFilterFloat_Size3 dist_filt{1};             // mode filter to reduce noise in distance measurements
 
     enum class SweepDirection {
         ANGLE_DECREASING = 0,

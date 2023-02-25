@@ -39,6 +39,9 @@ void AP_Proximity_Sweep::add_distance(float angle_deg, float distance_m)
         return;
     }
 
+    // apply mode filter to reduce noise
+    angle_deg = dist_filt.apply(angle_deg);
+
     // check for reversal in direction
     SweepDirection new_sweep_dir = angle_deg > prev_angle_deg ? SweepDirection::ANGLE_INCREASING : SweepDirection::ANGLE_DECREASING;
     if (new_sweep_dir != internal_sweep_dir) {
