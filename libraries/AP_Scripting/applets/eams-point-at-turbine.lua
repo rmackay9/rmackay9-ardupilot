@@ -9,7 +9,7 @@
 -- setup param block for aerobatics, reserving 30 params beginning with AERO_
 local PARAM_TABLE_KEY = 112
 local PARAM_TABLE_PREFIX = "EAMS_"
-assert(param:add_table(PARAM_TABLE_KEY, "EAMS_", 4), 'could not add param table')
+assert(param:add_table(PARAM_TABLE_KEY, "EAMS_", 5), 'could not add param table')
 
 -- add a parameter and bind it to a variable
 function bind_add_param(name, idx, default_value)
@@ -21,6 +21,7 @@ local JUMP_DIST = bind_add_param("JUMP_DIST", 1, 0.5)   -- object edge detected 
 local DEBUG = bind_add_param("DEBUG", 2, 0)             -- debug 0:Disabled, 1:Enabled
 local ANGLE_MIN = bind_add_param("ANGLE_MIN", 3, -45)   -- minimum angle to check for obstacles
 local ANGLE_MAX = bind_add_param("ANGLE_MAX", 4, 45)    -- maximum angle to check for obstacles
+local PITCH = bind_add_param("PITCH", 5, 0)             -- pitch angle default in degrees (+ve up, -ve down).  zero to use current pitch target
 
 local INIT_INTERVAL_MS = 3000       -- attempt to initialise at this interval
 local UPDATE_INTERVAL_MS = 1000     -- update at this interval
@@ -58,7 +59,15 @@ function update()
     if DEBUG:get() > 0 then
       gcs:send_text(MAV_SEVERITY.INFO, string.format("EAMS: closest at %f deg", angle_deg))
     end
-    mount:set_angle_target(0, 0, 0, angle_deg, false)
+    -- pitch angle comes from parameter if non-zero, otherwise uses current target pitch angle
+    local target_pitch = PITCH:get()
+    if target_pitch == 0 then
+      local _curr_target_roll, curr_target_pitch, _curr_target_yaw, _yaw_is_ef = mount:get_angle_target(0)
+      if curr_target_pitch then
+        target_pitch = curr_target_pitch
+      end
+    end
+    mount:set_angle_target(0, target_pitch, 0, angle_deg, false)
   end
 
   return update, UPDATE_INTERVAL_MS
