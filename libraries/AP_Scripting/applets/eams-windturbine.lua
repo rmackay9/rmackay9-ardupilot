@@ -192,7 +192,7 @@ function init()
   if uart == nil then
     gcs:send_text(3, "EAMSTurbine: no SERIALx_PROTOCOL = 28") -- MAV_SEVERITY_ERR
   else
-    uart:begin(115200)
+    uart:begin(921600)
     uart:set_flow_control(0)
     initialised = true
   end
@@ -296,7 +296,7 @@ function read_incoming_packets()
           -- extract fields from message
           local left_margin = (parse_buff[1] << 8 | parse_buff[2]) * 0.1
           local right_margin = (parse_buff[3] << 8 | parse_buff[4]) * 0.1
-          local confidence = parse_buff[5]
+          local confidence = parse_buff[5] * 1.0
           local yaw_rate_degs = 0
           if confidence <= CONFID:get() then
              -- ToDo: add scaling based on distance to blade?
@@ -304,11 +304,11 @@ function read_incoming_packets()
             yaw_rate_degs = rate_PI.update(0, yaw_err)
             rotate_mount(yaw_rate_degs)
             control_success_ms = parse_success_ms
-
-            -- debug
-            if DEBUG:get() > 0 then
-              gcs:send_text(6, string.format("EAMSTurbine: lm:%d rm:%d c:%d yr:%4.1f", left_margin, right_margin, confidence, yaw_rate_degs)) -- MAV_SEVERITY_INFO
-            end
+          end
+          -- debug
+          if DEBUG:get() > 0 then
+            gcs:send_text(6, string.format("EAMSTurbine: lm:%d rm:%d c:%d yr:%4.1f", left_margin, right_margin, confidence, yaw_rate_degs)) -- MAV_SEVERITY_INFO
+            --gcs:send_text(6, string.format("EAMSTurbine: lm:%d rm:%d c:%d", left_margin, right_margin, confidence)) -- MAV_SEVERITY_INFO
           end
        end
        parse_state = PARSE_STATE_WAITING_FOR_HEADER
