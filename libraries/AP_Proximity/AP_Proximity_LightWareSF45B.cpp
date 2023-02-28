@@ -136,7 +136,8 @@ void AP_Proximity_LightWareSF45B::process_message()
             break;
         }
         _last_distance_received_ms = AP_HAL::millis();
-        const float distance_m = _distance_filt.apply((int16_t)UINT16_VALUE(_msg.payload[1], _msg.payload[0])) * 0.01f;
+        //const float distance_m = _distance_filt.apply((int16_t)UINT16_VALUE(_msg.payload[1], _msg.payload[0])) * 0.01f;
+        const float distance_m = (int16_t)UINT16_VALUE(_msg.payload[1], _msg.payload[0]) * 0.01f;
         const float angle_deg = correct_angle_for_orientation((int16_t)UINT16_VALUE(_msg.payload[3], _msg.payload[2]) * 0.01f);
 
         // if distance is from a new face then update distance, angle and boundary for previous face
