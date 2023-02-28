@@ -362,6 +362,7 @@ function update()
 
   -- handle control timeouts
   -- these occur if messages stop arriving or the confidence is low
+  now_ms = millis()
   if now_ms - control_success_ms > CONTROL_TIMEOUT_MS then
     rotate_mount(0)
     rate_PI.reset(0)
