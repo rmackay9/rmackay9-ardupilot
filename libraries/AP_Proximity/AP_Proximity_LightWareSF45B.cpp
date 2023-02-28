@@ -212,7 +212,7 @@ void AP_Proximity_LightWareSF45B::set_sweep_params(uint8_t debug, float dist_jum
 
 // get the angle and distance to the closest object
 // returns true on success, false on failure
-bool AP_Proximity_LightWareSF45B::get_closest_sweep_object(float &angle_deg)
+bool AP_Proximity_LightWareSF45B::get_closest_sweep_object(float &angle_deg) const
 {
     return sweep.get_closest_object(angle_deg);
 }

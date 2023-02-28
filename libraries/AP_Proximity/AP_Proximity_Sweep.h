@@ -45,9 +45,8 @@ public:
     void set_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg);
 
     // get the angle to the closest object
-    // dist_jump is the distance change in meters used to detect the edge of objects
     // returns true on success, false on failure
-    bool get_closest_object(float &angle_deg);
+    bool get_closest_object(float &angle_deg) const;
 
     // calculate the closest object
     void calculate_closest_object();

@@ -494,7 +494,7 @@ void AP_Proximity::set_sweep_params(uint8_t debug, float dist_jump_m, float angl
 // sweep related accessors
 // get the angle and distance to the closest object
 // returns true on success, false on failure
-bool AP_Proximity::get_closest_sweep_object(float &angle_deg)
+bool AP_Proximity::get_closest_sweep_object(float &angle_deg) const
 {
     for (uint8_t i=0; i<num_instances; i++) {
         if (valid_instance(i)) {

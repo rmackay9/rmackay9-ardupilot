@@ -50,7 +50,7 @@ public:
 
     // get the angle and distance to the closest object
     // returns true on success, false on failure
-    virtual bool get_closest_sweep_object(float &angle_deg) { return false; }
+    virtual bool get_closest_sweep_object(float &angle_deg) const { return false; }
 
 protected:
 

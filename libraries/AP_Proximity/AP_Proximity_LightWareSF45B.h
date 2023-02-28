@@ -35,7 +35,7 @@ public:
 
     // get the angle and distance to the closest object
     // returns true on success, false on failure
-    bool get_closest_sweep_object(float &angle_deg) override;
+    bool get_closest_sweep_object(float &angle_deg) const override;
 
 private:
 
