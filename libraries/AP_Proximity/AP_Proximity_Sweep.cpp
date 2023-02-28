@@ -51,8 +51,7 @@ void AP_Proximity_Sweep::add_distance(float angle_deg, float distance_m)
         internal_sweep_dir = new_sweep_dir;
 
         // calculate closest object so cache is ready for external caller
-        float unused_angle_deg;
-        get_closest_object(unused_angle_deg);
+        calculate_closest_object();
     }
     prev_angle_deg = angle_deg;
 
@@ -128,10 +127,17 @@ bool AP_Proximity_Sweep::get_closest_object(float &angle_deg)
         angle_deg = closest_cache.angle_deg;
         return true;
     }
+    return false;
+}
+
+// calculate the angle to the closest object
+void AP_Proximity_Sweep::calculate_closest_object()
+{
+    uint8_t external_sweep_index = internal_sweep_index == 0 ? 1 : 0;
 
     // sanity check we have data
     if (sweeps[external_sweep_index].count == 0) {
-        return false;
+        return;
     }
 
     // find index of shortest distance
@@ -167,26 +173,23 @@ bool AP_Proximity_Sweep::get_closest_object(float &angle_deg)
     // check at least left or right edge was found
     bool object_found = left_edge_found || right_edge_found;
     if (object_found) {
-        // calculate middle angle
-        angle_deg = (sweeps[external_sweep_index].items[left_edge_index].angle_deg + sweeps[external_sweep_index].items[right_edge_index].angle_deg) * 0.5;
-
-        // store results in cache
+        // calculate middle angle and store results in cache
         closest_cache.sweep_id = sweeps[external_sweep_index].sweep_id;
-        closest_cache.angle_deg = angle_deg;
+        closest_cache.angle_deg = (sweeps[external_sweep_index].items[left_edge_index].angle_deg + sweeps[external_sweep_index].items[right_edge_index].angle_deg) * 0.5;
 
         if (debug_level >= 1) {
-            gcs().send_text(MAV_SEVERITY_CRITICAL,"Sweep: num:%u C:%u L:%u R:%u ang:%4.2f", (unsigned)sweeps[external_sweep_index].count, (unsigned)closest_dist_index, (unsigned)left_edge_index, (unsigned)right_edge_index, (double)angle_deg);
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"Sweep: num:%u C:%u L:%u R:%u ang:%4.2f", (unsigned)sweeps[external_sweep_index].count, (unsigned)closest_dist_index, (unsigned)left_edge_index, (unsigned)right_edge_index, (double)closest_cache.angle_deg);
         }
     } else if (debug_level >= 1) {
         gcs().send_text(MAV_SEVERITY_CRITICAL, "Sweep: edge not found");
-        return false;
+        return;
     }
 
     // log at high debug levels
     if (debug_level >= 2) {
         static uint8_t log_counter = 0;
         log_counter++;
-        if (log_counter >= 10) {
+        if (log_counter >= 10 || debug_level >= 3) {
             log_counter = 0;
 
             // log each reading separately
@@ -216,8 +219,6 @@ bool AP_Proximity_Sweep::get_closest_object(float &angle_deg)
             }
         }
     }
-
-    return object_found;
 }
 
 // start a new sweep

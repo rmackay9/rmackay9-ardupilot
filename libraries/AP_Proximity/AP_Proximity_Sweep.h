@@ -49,6 +49,9 @@ public:
     // returns true on success, false on failure
     bool get_closest_object(float &angle_deg);
 
+    // calculate the closest object
+    void calculate_closest_object();
+
 private:
 
     // start a new sweep
