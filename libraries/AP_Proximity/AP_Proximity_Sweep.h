@@ -70,7 +70,7 @@ private:
         uint8_t sweep_id;                           // sweep id of items
     } sweeps[2];
     uint8_t internal_sweep_index;                   // the internal sweep's index in the items array
-    ModeFilterFloat_Size3 dist_filt{1};             // mode filter to reduce noise in distance measurements
+    //ModeFilterFloat_Size3 dist_filt{1};             // mode filter to reduce noise in distance measurements
 
     enum class SweepDirection {
         ANGLE_DECREASING = 0,
