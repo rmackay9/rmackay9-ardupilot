@@ -315,8 +315,7 @@ function read_incoming_packets()
           end
           -- debug
           if DEBUG:get() > 0 then
-            gcs:send_text(6, string.format("EAMSTurbine: lm:%d rm:%d c:%d yr:%4.1f", left_margin, right_margin, confidence, yaw_rate_degs)) -- MAV_SEVERITY_INFO
-            --gcs:send_text(6, string.format("EAMSTurbine: lm:%d rm:%d c:%d", left_margin, right_margin, confidence)) -- MAV_SEVERITY_INFO
+            gcs:send_text(6, "EAMSTurbine: lm:" .. left_margin .. " rm:" .. right_margin .. " c:" .. confidence .. " yr:" .. yaw_rate_degs)
           end
        end
        parse_state = PARSE_STATE_WAITING_FOR_HEADER
