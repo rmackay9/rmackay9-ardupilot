@@ -27,6 +27,7 @@
 -- global definitions
 local INIT_INTERVAL_MS = 3000           -- attempt initialisation at 3hz
 local UPDATE_INTERVAL_MS = 20           -- update at 50hz
+local PID_UPDATE_INTERVAL_MS = 1000     -- update PIDs from parametsre at 1hz
 local CONTROL_TIMEOUT_MS = 1000         -- stop moving gimbal after this many seconds with no successful input from AI camera
 local HEALTHY_TIMEOUT_MS = 3000         -- camera considered unhealthy if no messages for this many ms
 local MOUNT_INSTANCE = 0                -- always control the first mount/gimbal
@@ -75,6 +76,7 @@ local parse_datalen = 0                 -- most recently received datalen
 local parse_success_ms = 0              -- system time message was last successful parsed (used for health reporting)
 local control_success_ms = 0            -- system time of last rate control message sent to gimbal
 local camera_healthy = false            -- used for health reporting to use
+local last_pid_update_ms = 0            -- system time of last PID parameter update
 
 -- debug variables
 local last_print_ms = 0
@@ -192,7 +194,7 @@ function init()
   if uart == nil then
     gcs:send_text(3, "EAMSTurbine: no SERIALx_PROTOCOL = 28") -- MAV_SEVERITY_ERR
   else
-    uart:begin(921600)
+    uart:begin(115200)
     uart:set_flow_control(0)
     initialised = true
   end
@@ -255,6 +257,9 @@ function read_incoming_packets()
       if parse_msgid ~= MARGIN_MSGID then
         -- unexpected message id so reset parsing state
         parse_state = PARSE_STATE_WAITING_FOR_HEADER
+        if DEBUG:get() > 0 then
+          gcs:send_text(3, string.format("EAMSTurbine: unexpected msgid:%x", parse_msgid)) -- MAV_SEVERITY_ERR
+        end
       else
         parse_state = PARSE_STATE_WAITING_FOR_DATALEN
 
@@ -270,6 +275,9 @@ function read_incoming_packets()
       if parse_datalen ~= MARGIN_DATALEN then
         -- unexpected datalen so reset parsing state
         parse_state = PARSE_STATE_WAITING_FOR_HEADER
+        if DEBUG:get() > 0 then
+          gcs:send_text(3, string.format("EAMSTurbine: unexpected len:%d", parse_datalen)) -- MAV_SEVERITY_ERR
+        end
       else
         parse_state = PARSE_STATE_WAITING_FOR_DATA
 
@@ -300,7 +308,7 @@ function read_incoming_packets()
           local yaw_rate_degs = 0
           if confidence <= CONFID:get() then
              -- ToDo: add scaling based on distance to blade?
-            local yaw_err = (left_margin - right_margin) * 0.5
+            local yaw_err = (right_margin - left_margin) * 0.5
             yaw_rate_degs = rate_PI.update(0, yaw_err)
             rotate_mount(yaw_rate_degs)
             control_success_ms = parse_success_ms
@@ -338,7 +346,15 @@ function update()
   -- debug
   if DEBUG:get() > 0 and now_ms - last_print_ms > 5000 then
     last_print_ms = now_ms
-    gcs:send_text(6, string.format("EAMSTurbine: read:%u", bytes_read)) -- MAV_SEVERITY_INFO
+    gcs:send_text(6, string.format("EAMSTurbine: read:%u state:%d", bytes_read, parse_state)) -- MAV_SEVERITY_INFO
+  end
+
+  -- update PIDs from parameters
+  if now_ms - last_pid_update_ms > PID_UPDATE_INTERVAL_MS then
+    last_pid_update_ms = now_ms
+    rate_PI.set_P(PID_RATE_P:get())
+    rate_PI.set_I(PID_RATE_I:get())
+    rate_PI.set_Imax(PID_RATE_IMAX:get())
   end
 
   -- consume incoming bytes
@@ -346,7 +362,6 @@ function update()
 
   -- handle control timeouts
   -- these occur if messages stop arriving or the confidence is low
-  now_ms = millis()
   if now_ms - control_success_ms > CONTROL_TIMEOUT_MS then
     rotate_mount(0)
     rate_PI.reset(0)
