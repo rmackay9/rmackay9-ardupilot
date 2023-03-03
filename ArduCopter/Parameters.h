@@ -672,6 +672,7 @@ public:
 #endif
 
     AP_Int8                 surftrak_mode;
+    AP_Float                surftrak_filt_tc;
     AP_Int8                 failsafe_dr_enable;
     AP_Int16                failsafe_dr_timeout;
 

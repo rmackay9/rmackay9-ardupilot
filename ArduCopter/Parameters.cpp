@@ -1200,6 +1200,13 @@ const AP_Param::GroupInfo ParametersG2::var_info2[] = {
     // @User: Standard
     AP_GROUPINFO("PLDP_SPEED_DN", 4, ParametersG2, pldp_descent_speed_ms, 0.0),
 
+    // @Param: SURFTRAK_FILT_TC
+    // @DisplayName: Surface Tracking filter time constant
+    // @Description: Surface Tracking filter time constant
+    // @Range: 0 5
+    // @User: Standard
+    AP_GROUPINFO("SURFTRAK_FILT_TC", 5, ParametersG2, surftrak_filt_tc, 1.0),
+
     // ID 62 is reserved for the AP_SUBGROUPEXTENSION
 
     AP_GROUPEND

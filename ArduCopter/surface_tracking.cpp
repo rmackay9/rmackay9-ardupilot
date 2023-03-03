@@ -1,5 +1,11 @@
 #include "Copter.h"
 
+// update surface tracking. should be called at main loop rate
+void Copter::SurfaceTracking::fast_update()
+{
+    // do something here
+}
+
 // update_surface_offset - manages the vertical offset of the position controller to follow the measured ground or ceiling
 //   level measured using the range finder.
 void Copter::SurfaceTracking::update_surface_offset()
