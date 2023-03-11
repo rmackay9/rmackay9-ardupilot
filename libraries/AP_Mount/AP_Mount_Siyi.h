@@ -92,7 +92,8 @@ private:
         ACQUIRE_GIMBAL_CONFIG_INFO = 0x0A,
         FUNCTION_FEEDBACK_INFO = 0x0B,
         PHOTO = 0x0C,
-        ACQUIRE_GIMBAL_ATTITUDE = 0x0D
+        ACQUIRE_GIMBAL_ATTITUDE = 0x0D,
+        SET_GIMBAL_CONTROL_ANGLE = 0x0E
     };
 
     // Function Feedback Info packet info_type values

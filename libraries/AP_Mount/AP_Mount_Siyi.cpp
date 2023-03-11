@@ -16,8 +16,6 @@ extern const AP_HAL::HAL& hal;
 #define AP_MOUNT_SIYI_SERIAL_RESEND_MS   1000    // resend angle targets to gimbal once per second
 #define AP_MOUNT_SIYI_MSG_BUF_DATA_START 8  // data starts at this byte in _msg_buf
 #define AP_MOUNT_SIYI_RATE_MAX_RADS radians(90) // maximum physical rotation rate of gimbal in radans/sec
-#define AP_MOUNT_SIYI_PITCH_P       1.50    // pitch controller P gain (converts pitch angle error to target rate)
-#define AP_MOUNT_SIYI_YAW_P         1.50    // yaw controller P gain (converts yaw angle error to target rate)
 #define AP_MOUNT_SIYI_LOCK_RESEND_COUNT 5   // lock value is resent to gimbal every 5 iterations
 
 #define AP_MOUNT_SIYI_DEBUG 0
@@ -458,6 +456,20 @@ void AP_Mount_Siyi::process_packet()
         break;
     }
 
+    case SiyiCommandId::SET_GIMBAL_CONTROL_ANGLE: {
+        if (_parsed_msg.data_bytes_received != 6) {
+#if AP_MOUNT_SIYI_DEBUG
+            unexpected_len = true;
+#endif
+            break;
+        }
+        _last_current_angle_rad_ms = AP_HAL::millis();
+        _current_angle_rad.z = -radians((int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+1], _msg_buff[_msg_buff_data_start]) * 0.1);   // yaw angle
+        _current_angle_rad.y = radians((int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+3], _msg_buff[_msg_buff_data_start+2]) * 0.1);  // pitch angle
+        _current_angle_rad.x = radians((int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+5], _msg_buff[_msg_buff_data_start+4]) * 0.1);  // roll angle
+        break;
+    }
+
     default:
         debug("Unhandled CmdId:%u", (unsigned)_parsed_msg.command_id);
         break;
@@ -588,17 +600,19 @@ void AP_Mount_Siyi::send_target_angles(float pitch_rad, float yaw_rad, bool yaw_
         return;
     }
 
-    // use simple P controller to convert pitch angle error (in radians) to a target rate scalar (-100 to +100)
-    const float pitch_err_rad = (pitch_rad - _current_angle_rad.y);
-    const float pitch_rate_scalar = constrain_float(100.0 * pitch_err_rad * AP_MOUNT_SIYI_PITCH_P / AP_MOUNT_SIYI_RATE_MAX_RADS, -100, 100);
+    // angle control is always body-frame
+    set_lock(false);
+    if (yaw_is_ef) {
+        yaw_rad = wrap_PI(yaw_rad - AP::ahrs().yaw);
+    }
 
-    // convert yaw angle to body-frame the use simple P controller to convert yaw angle error to a target rate scalar (-100 to +100)
-    const float yaw_bf_rad = yaw_is_ef ? wrap_PI(yaw_rad - AP::ahrs().yaw) : yaw_rad;
-    const float yaw_err_rad = (yaw_bf_rad - _current_angle_rad.z);
-    const float yaw_rate_scalar = constrain_float(100.0 * yaw_err_rad * AP_MOUNT_SIYI_YAW_P / AP_MOUNT_SIYI_RATE_MAX_RADS, -100, 100);
+    // convert angles to centi-degrees
+    const int16_t yaw_angle_cdeg = -degrees(yaw_rad) * 10;
+    const int16_t pitch_angle_cdeg = degrees(pitch_rad) * 10;
 
-    // rotate gimbal.  pitch_rate and yaw_rate are scalars in the range -100 ~ +100
-    rotate_gimbal(pitch_rate_scalar, yaw_rate_scalar, yaw_is_ef);
+    // send angles to gimbal
+    const uint8_t yaw_and_pitch_angles[] {LOWBYTE(yaw_angle_cdeg), HIGHBYTE(yaw_angle_cdeg), LOWBYTE(pitch_angle_cdeg), HIGHBYTE(pitch_angle_cdeg)};
+    send_packet(SiyiCommandId::SET_GIMBAL_CONTROL_ANGLE, yaw_and_pitch_angles, ARRAY_SIZE(yaw_and_pitch_angles));
 }
 
 // take a picture.  returns true on success
