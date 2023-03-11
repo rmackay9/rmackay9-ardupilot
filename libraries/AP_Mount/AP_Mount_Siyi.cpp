@@ -537,14 +537,8 @@ bool AP_Mount_Siyi::send_1byte_packet(SiyiCommandId cmd_id, uint8_t data_byte)
 // yaw_is_ef should be true if gimbal should maintain an earth-frame target (aka lock)
 void AP_Mount_Siyi::rotate_gimbal(int8_t pitch_scalar, int8_t yaw_scalar, bool yaw_is_ef)
 {
-    // send lock/follow value if it has changed
-    if ((yaw_is_ef != _last_lock) || (_lock_send_counter >= AP_MOUNT_SIYI_LOCK_RESEND_COUNT)) {
-        set_lock(yaw_is_ef);
-        _lock_send_counter = 0;
-        _last_lock = yaw_is_ef;
-    } else {
-        _lock_send_counter++;
-    }
+    // send lock/follow value
+    set_lock(yaw_is_ef);
 
     const uint8_t yaw_and_pitch_rates[] {(uint8_t)yaw_scalar, (uint8_t)pitch_scalar};
     send_packet(SiyiCommandId::GIMBAL_ROTATION, yaw_and_pitch_rates, ARRAY_SIZE(yaw_and_pitch_rates));
@@ -561,7 +555,17 @@ void AP_Mount_Siyi::center_gimbal()
 // lock is false to follow / maintain a body-frame target
 void AP_Mount_Siyi::set_lock(bool lock)
 {
+    // increment counter used to resend lock status to gimbal at regular intervals
+    _lock_send_counter++;
+
+    // return immediately if lock/value has not changed and not yet time to resend
+    if ((lock == _last_lock) && (_lock_send_counter < AP_MOUNT_SIYI_LOCK_RESEND_COUNT)) {
+        return;
+    }
+
     send_1byte_packet(SiyiCommandId::PHOTO, lock ? (uint8_t)PhotoFunction::LOCK_MODE : (uint8_t)PhotoFunction::FOLLOW_MODE);
+    _lock_send_counter = 0;
+    _last_lock = lock;
 }
 
 // send target pitch and yaw rates to gimbal
