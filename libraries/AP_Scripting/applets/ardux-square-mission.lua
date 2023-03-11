@@ -1,7 +1,7 @@
 -- ardux-square-mission.lua: creates a square mission based on the vehicle's current Location and heading
 --
 -- How to use
---   Set RCx_OPTION = 28 (Scripting1) to enable triggering the script from an RC switch (optional)
+--   Set RCx_OPTION = 300 (Scripting1) to enable triggering the script from an RC switch (optional)
 --   Set SCR_ENABLE = 1 to enable scripting and reboot the autopilot
 --   Copy this script to the autopilot's SD card in the APM/scripts directory and reboot the autopilot
 --   Set AXMI_ALT to the alt-above-home that the vehicle should fly at
@@ -43,7 +43,6 @@ local AXMI_WP_DELAY = bind_add_param("WP_DELAY", 5, 5)      -- 5 second delay at
 local AXMI_REPEAT = bind_add_param("REPEAT", 6, 0)          -- number of times to repeat the square (0=fly square only once)
 
 -- local variables and definitions
-local initialised = false               -- true once connection to gimbal has been initialised
 local last_aux_pos = nil                -- auxiliary switch last know position.  used to detect change in switch position
 local last_func_val = nil
 local last_print_ms = 0                 -- debug variables
