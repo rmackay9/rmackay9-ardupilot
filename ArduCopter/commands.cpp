@@ -42,6 +42,7 @@ bool Copter::set_home_to_current_location(bool lock) {
     Location temp_loc;
     if (ahrs.get_location(temp_loc)) {
         if (!set_home(temp_loc, lock)) {
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"home set failed Lock:%d Lat:%lu Lon:%lu Alt:%4.2f", (int)lock, (long)temp_loc.lat, (long)temp_loc.lng, (double)temp_loc.alt);
             return false;
         }
         // we have successfully set AHRS home, set it for SmartRTL
@@ -60,18 +61,22 @@ bool Copter::set_home(const Location& loc, bool lock)
     // check EKF origin has been set
     Location ekf_origin;
     if (!ahrs.get_origin(ekf_origin)) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"home set failed1 Lock:%d Lat:%lu Lon:%lu Alt:%4.2f", (int)lock, (long)loc.lat, (long)loc.lng, (double)loc.alt);
         return false;
     }
 
     // check home is close to EKF origin
     if (far_from_EKF_origin(loc)) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"home set failed2 Lock:%d Lat:%lu Lon:%lu Alt:%4.2f", (int)lock, (long)loc.lat, (long)loc.lng, (double)loc.alt);
         return false;
     }
 
     // set ahrs home (used for RTL)
     if (!ahrs.set_home(loc)) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"home set failed3 Lock:%d Lat:%lu Lon:%lu Alt:%4.2f", (int)lock, (long)loc.lat, (long)loc.lng, (double)loc.alt);
         return false;
     }
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"home set Lock:%d Lat:%lu Lon:%lu Alt:%4.2f", (int)lock, (long)loc.lat, (long)loc.lng, (double)loc.alt);
 
     // lock home position
     if (lock) {

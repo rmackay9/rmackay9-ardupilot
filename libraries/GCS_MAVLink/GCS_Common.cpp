@@ -3372,6 +3372,7 @@ void GCS_MAVLINK::set_ekf_origin(const Location& loc)
 {
     // check location is valid
     if (!loc.check_latlng()) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"origin invalid Lat:%lu Lon:%lu Alt:%4.2f",(long)loc.lat, (long)loc.lng, (double)loc.alt);
         return;
     }
 
@@ -3380,13 +3381,16 @@ void GCS_MAVLINK::set_ekf_origin(const Location& loc)
     // check if EKF origin has already been set
     Location ekf_origin;
     if (ahrs.get_origin(ekf_origin)) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"origin already set Lat:%lu Lon:%lu Alt:%4.2f",(long)loc.lat, (long)loc.lng, (double)loc.alt);
         return;
     }
 
     if (!ahrs.set_origin(loc)) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"origin set failed Lat:%lu Lon:%lu Alt:%4.2f",(long)loc.lat, (long)loc.lng, (double)loc.alt);
         return;
     }
 
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"origin set Lat:%lu Lon:%lu Alt:%4.2f",(long)loc.lat, (long)loc.lng, (double)loc.alt);
     ahrs.Log_Write_Home_And_Origin();
 
     // send ekf origin to GCS
