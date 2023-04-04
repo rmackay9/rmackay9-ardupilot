@@ -197,7 +197,8 @@ function init()
   if uart == nil then
     gcs:send_text(3, "EAMSTurbine: no SERIALx_PROTOCOL = 28") -- MAV_SEVERITY_ERR
   else
-    uart:begin(115200)
+    --uart:begin(115200)
+    uart:begin(921600)
     uart:set_flow_control(0)
     initialised = true
   end
