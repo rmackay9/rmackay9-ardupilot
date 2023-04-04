@@ -30,6 +30,7 @@ local UPDATE_INTERVAL_MS = 20           -- update at 50hz
 local PID_UPDATE_INTERVAL_MS = 1000     -- update PIDs from parametsre at 1hz
 local CONTROL_TIMEOUT_MS = 1000         -- stop moving gimbal after this many seconds with no successful input from AI camera
 local HEALTHY_TIMEOUT_MS = 3000         -- camera considered unhealthy if no messages for this many ms
+local RECENTER_TIMEOUT_MS = 5000        -- camera is recentered if no messages for this many ms
 local MOUNT_INSTANCE = 0                -- always control the first mount/gimbal
 local HEADER = 0xEA                     -- AI camera packet header
 local MARGIN_MSGID = 0x02               -- AI camera margin message id
@@ -76,6 +77,7 @@ local parse_datalen = 0                 -- most recently received datalen
 local parse_success_ms = 0              -- system time message was last successful parsed (used for health reporting)
 local control_success_ms = 0            -- system time of last rate control message sent to gimbal
 local camera_healthy = false            -- used for health reporting to use
+local camera_recentered = false         -- used to recenter the camera after for health reporting to use
 local last_pid_update_ms = 0            -- system time of last PID parameter update
 
 -- debug variables
@@ -223,6 +225,17 @@ function rotate_mount(yaw_rate_degs)
   mount:set_rate_target(MOUNT_INSTANCE, 0, 0, yaw_rate_degs, true)
 end
 
+-- recenter mount
+function recenter_mount()
+  target_pitch = 0
+  -- get current mount pitch target
+  local _curr_target_roll, curr_target_pitch, _curr_target_yaw, _yaw_is_ef = mount:get_angle_target(0)
+  if curr_target_pitch then
+    target_pitch = curr_target_pitch
+  end
+  mount:set_angle_target(0, target_pitch, 0, 0, false)
+end
+
 -- reading incoming packets from gimbal
 function read_incoming_packets()
   local n_bytes = uart:available()
@@ -367,8 +380,21 @@ function update()
     rate_PI.reset(0)
   end
 
+  -- calc time since last message from camera
+  local time_since_update_ms = now_ms - parse_success_ms
+
+  -- recenter gimbal once after 5 sec timout
+  if time_since_update_ms > RECENTER_TIMEOUT_MS then
+    if not camera_recentered then
+      recenter_mount()
+      camera_recentered = true
+    end
+  else
+    camera_recentered = false
+  end
+
   -- health reporting
-  local health_timeout = (now_ms - parse_success_ms) > HEALTHY_TIMEOUT_MS
+  local health_timeout = time_since_update_ms > HEALTHY_TIMEOUT_MS
   if camera_healthy then
     -- check for camera becoming unhealthy
     if health_timeout then
