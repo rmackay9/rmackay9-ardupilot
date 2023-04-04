@@ -35,6 +35,8 @@ local MOUNT_INSTANCE = 0                -- always control the first mount/gimbal
 local HEADER = 0xEA                     -- AI camera packet header
 local MARGIN_MSGID = 0x02               -- AI camera margin message id
 local MARGIN_DATALEN = 0x05             -- margin message is always datalen of 5
+local PILOT_RECENTER_RC_OPTION = 300    -- rc channel option for pilot to recenter gimbal
+local PILOT_RECENTER_TIME_MS = 3000     -- mount recenter messages will be sent for at least this long
 
 -- setup param block for aerobatics, reserving 30 params beginning with AERO_
 local PARAM_TABLE_KEY = 111
@@ -80,6 +82,8 @@ local control_stopped = false           -- gimbal is stopped after this long wit
 local camera_healthy = false            -- used for health reporting to use
 local camera_recentered = false         -- used to recenter the camera after for health reporting to use
 local last_pid_update_ms = 0            -- system time of last PID parameter update
+local force_recenter_start_ms = 0       -- system time that pilot forced restart of gimbal
+local forced_recenter_active = false    -- true if gimbal is being forced to recenter
 
 -- debug variables
 local last_print_ms = 0
@@ -325,8 +329,12 @@ function read_incoming_packets()
              -- ToDo: add scaling based on distance to blade?
             local yaw_err = (right_margin - left_margin) * 0.5
             yaw_rate_degs = rate_PI.update(0, yaw_err)
-            rotate_mount(yaw_rate_degs)
             control_success_ms = parse_success_ms
+
+            -- take action as long as pilot isn't also currently forcing a recenter
+            if not forced_recenter_active then
+              rotate_mount(yaw_rate_degs)
+            end
           end
           -- debug
           if DEBUG:get() > 0 then
@@ -385,6 +393,19 @@ function update()
     end
   else
     control_stopped = false
+  end
+
+  -- support pilot controlled forced recenter
+  local cam_switch_pos = rc:get_aux_cached(PILOT_RECENTER_RC_OPTION)
+  if cam_switch_pos == 2 then
+    force_recenter_start_ms = now_ms
+  end
+  if (now_ms - force_recenter_start_ms) < PILOT_RECENTER_TIME_MS then
+    forced_recenter_active = true
+    recenter_mount()
+  else
+    forced_recenter_active = false
+    force_recenter_start_ms = 0
   end
 
   -- calc time since last message from camera
