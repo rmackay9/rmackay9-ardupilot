@@ -76,6 +76,7 @@ local parse_msgid = 0                   -- most recently received message id
 local parse_datalen = 0                 -- most recently received datalen
 local parse_success_ms = 0              -- system time message was last successful parsed (used for health reporting)
 local control_success_ms = 0            -- system time of last rate control message sent to gimbal
+local control_stopped = false           -- gimbal is stopped after this long with low confidence messages
 local camera_healthy = false            -- used for health reporting to use
 local camera_recentered = false         -- used to recenter the camera after for health reporting to use
 local last_pid_update_ms = 0            -- system time of last PID parameter update
@@ -376,8 +377,13 @@ function update()
   -- these occur if messages stop arriving or the confidence is low
   now_ms = millis()
   if now_ms - control_success_ms > CONTROL_TIMEOUT_MS then
-    rotate_mount(0)
-    rate_PI.reset(0)
+    if not control_stopped then
+      rotate_mount(0)
+      rate_PI.reset(0)
+      control_stopped = true
+    end
+  else
+    control_stopped = false
   end
 
   -- calc time since last message from camera
