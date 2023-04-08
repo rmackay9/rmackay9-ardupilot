@@ -19,7 +19,9 @@ local MAV_SEVERITY_INFO = 6             -- send text severity of info
 local MAV_CMD_NAV_WAYPOINT = 16         -- waypoint command
 local MAV_CMD_NAV_LAND = 21             -- land command
 local MAV_CMD_NAV_TAKEOFF = 22          -- takeoff command
+local MAV_CMD_NAV_DELAY = 93            -- nav delay command
 local MAV_CMD_DO_JUMP = 177             -- do-jump command
+local MAV_CMD_DO_SET_SERVO = 183        -- do-set-servo command
 local MAV_FRAME_GLOBAL_RELATIVE_ALT = 3 -- relative alt
 local UPDATE_INTERVAL_MS = 1000         -- update at 1hz
 local AUX_FUNCTION_NUM = 300            -- RCx_OPTION == 300
@@ -27,7 +29,7 @@ local AUX_FUNCTION_NUM = 300            -- RCx_OPTION == 300
 -- setup param block for aerobatics, reserving 30 params beginning with AERO_
 local PARAM_TABLE_KEY = 112
 local PARAM_TABLE_PREFIX = "AXMI_"
-assert(param:add_table(PARAM_TABLE_KEY, "AXMI_", 6), 'could not add param table')
+assert(param:add_table(PARAM_TABLE_KEY, "AXMI_", 9), 'could not add param table')
 
 -- add a parameter and bind it to a variable
 function bind_add_param(name, idx, default_value)
@@ -41,6 +43,9 @@ local AXMI_WP2_DIST = bind_add_param("WP2_DIST", 3, 8)      -- distance from 1st
 local AXMI_WP3_DIST = bind_add_param("WP3_DIST", 4, 5)      -- distance from 2nd waypoint to 3rd.  default is 5m
 local AXMI_WP_DELAY = bind_add_param("WP_DELAY", 5, 5)      -- 5 second delay at each waypoint
 local AXMI_REPEAT = bind_add_param("REPEAT", 6, 0)          -- number of times to repeat the square (0=fly square only once)
+local AXMI_SERVO_CH = bind_add_param("SERVO_CH", 7, 9)      -- servo channel that will be set at each waypoint
+local AXMI_SERVO_LOW = bind_add_param("SERVO_LOW", 8, 1000) -- servo channel pwm value between waypoints
+local AXMI_SERVO_HIGH = bind_add_param("SERVO_HIGH", 9, 1400) -- servo channel pwm value at waypoints
 
 -- local variables and definitions
 local last_aux_pos = nil                -- auxiliary switch last know position.  used to detect change in switch position
@@ -111,53 +116,173 @@ function update()
   local wp_loc = curr_loc:copy()
   wp_loc:offset_bearing(curr_yaw_ef_deg, AXMI_WP1_DIST:get())
   m:command(MAV_CMD_NAV_WAYPOINT)
-  m:param1(AXMI_WP_DELAY:get())
+  m:param1(1)
   m:x(wp_loc:lat())
   m:y(wp_loc:lng())
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output high
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_HIGH:get())
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add nav delay
+  m:command(MAV_CMD_NAV_DELAY)
+  m:param1(AXMI_WP_DELAY:get())
+  m:param2(0)
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output low
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_LOW:get())
+  m:x(0)
+  m:y(0)
   mission:set_item(mission:num_commands(), m)
 
   -- add wp2
   wp_loc:offset_bearing(wrap_360(curr_yaw_ef_deg), AXMI_WP2_DIST:get())
   m:command(MAV_CMD_NAV_WAYPOINT)
-  m:param1(AXMI_WP_DELAY:get())
+  m:param1(1)
   m:x(wp_loc:lat())
   m:y(wp_loc:lng())
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output high
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_HIGH:get())
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add nav delay
+  m:command(MAV_CMD_NAV_DELAY)
+  m:param1(AXMI_WP_DELAY:get())
+  m:param2(0)
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output low
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_LOW:get())
+  m:x(0)
+  m:y(0)
   mission:set_item(mission:num_commands(), m)
 
   -- add wp3
   wp_loc:offset_bearing(wrap_360(curr_yaw_ef_deg-90), AXMI_WP3_DIST:get())
   m:command(MAV_CMD_NAV_WAYPOINT)
-  m:param1(AXMI_WP_DELAY:get())
+  m:param1(1)
   m:x(wp_loc:lat())
   m:y(wp_loc:lng())
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output high
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_HIGH:get())
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add nav delay
+  m:command(MAV_CMD_NAV_DELAY)
+  m:param1(AXMI_WP_DELAY:get())
+  m:param2(0)
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output low
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_LOW:get())
+  m:x(0)
+  m:y(0)
   mission:set_item(mission:num_commands(), m)
 
   -- add wp4
   wp_loc:offset_bearing(wrap_360(curr_yaw_ef_deg-180), AXMI_WP2_DIST:get())
   m:command(MAV_CMD_NAV_WAYPOINT)
-  m:param1(AXMI_WP_DELAY:get())
+  m:param1(1)
   m:x(wp_loc:lat())
   m:y(wp_loc:lng())
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output high
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_HIGH:get())
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add nav delay
+  m:command(MAV_CMD_NAV_DELAY)
+  m:param1(AXMI_WP_DELAY:get())
+  m:param2(0)
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output low
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_LOW:get())
+  m:x(0)
+  m:y(0)
   mission:set_item(mission:num_commands(), m)
 
   -- add wp5, same as wp1
   wp_loc:offset_bearing(wrap_360(curr_yaw_ef_deg+90), AXMI_WP3_DIST:get())
   m:command(MAV_CMD_NAV_WAYPOINT)
-  m:param1(AXMI_WP_DELAY:get())
+  m:param1(1)
   m:x(wp_loc:lat())
   m:y(wp_loc:lng())
   mission:set_item(mission:num_commands(), m)
 
+  -- add do-set-servo to set servo pwm output high
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_HIGH:get())
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add nav delay
+  m:command(MAV_CMD_NAV_DELAY)
+  m:param1(AXMI_WP_DELAY:get())
+  m:param2(0)
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
+  -- add do-set-servo to set servo pwm output low
+  m:command(MAV_CMD_DO_SET_SERVO)
+  m:param1(AXMI_SERVO_CH:get())
+  m:param2(AXMI_SERVO_LOW:get())
+  m:x(0)
+  m:y(0)
+  mission:set_item(mission:num_commands(), m)
+
   -- add do-jump
   m:command(MAV_CMD_DO_JUMP)
-  m:param1(3)                   -- jump to wp2
+  m:param1(6)                   -- jump to wp2
   m:param2(AXMI_REPEAT:get())   -- repeat count
   m:x(0)
   m:y(0)
   m:z(0)
   mission:set_item(mission:num_commands(), m)
 
-  -- add wp6, land as current location
+  -- add wp6, land at current location
   m:command(MAV_CMD_NAV_LAND)
   m:x(curr_loc:lat())
   m:y(curr_loc:lng())
