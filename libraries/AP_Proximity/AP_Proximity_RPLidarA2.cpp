@@ -355,24 +355,24 @@ void AP_Proximity_RPLidarA2::parse_response_data()
         return;
     }
 
-    const float angle_sign = (frontend.get_orientation(state.instance) == 1) ? -1.0f : 1.0f;
-    const float angle_deg = wrap_360(_payload.sensor_scan.angle_q6/64.0f * angle_sign + frontend.get_yaw_correction(state.instance));
+    const float angle_deg = correct_angle_for_orientation(_payload.sensor_scan.angle_q6/64.0f);
     const float distance_m = (_payload.sensor_scan.distance_q2/4000.0f);
+    // const float distance_m = _distance_filt.apply(_payload.sensor_scan.distance_q2/4000.0f);
 #if RP_DEBUG_LEVEL >= 2
     const float quality = _payload.sensor_scan.quality;
     Debug(2, "                                       D%02.2f A%03.1f Q%02d", distance_m, angle_deg, quality);
 #endif
     _last_distance_received_ms = AP_HAL::millis();
-    if (!ignore_reading(angle_deg)) {
-        const AP_Proximity_Boundary_3D::Face face = boundary.get_face(angle_deg);
+    if (!ignore_reading(angle_deg, distance_m)) {
+        const AP_Proximity_Boundary_3D::Face face = frontend.boundary.get_face(angle_deg);
 
         if (face != _last_face) {
             // distance is for a new face, the previous one can be updated now
             if (_last_distance_valid) {
-                boundary.set_face_attributes(_last_face, _last_angle_deg, _last_distance_m);
+                frontend.boundary.set_face_attributes(_last_face, _last_angle_deg, _last_distance_m, state.instance);
             } else {
                 // reset distance from last face
-                boundary.reset_face(face);
+                frontend.boundary.reset_face(face, state.instance);
             }
 
             // initialize the new face
