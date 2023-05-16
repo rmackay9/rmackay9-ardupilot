@@ -31,6 +31,7 @@ void AP_Proximity_Sweep::add_distance(float angle_deg, float distance_m)
 
     // ignore out-of-range angles
     if ((angle_deg < object_detect_params.angle_min_deg) || (angle_deg > object_detect_params.angle_max_deg)) {
+        angle_in_range = false;
         return;
     }
 
@@ -44,16 +45,22 @@ void AP_Proximity_Sweep::add_distance(float angle_deg, float distance_m)
 
     // check for reversal in direction
     SweepDirection new_sweep_dir = angle_deg > prev_angle_deg ? SweepDirection::ANGLE_INCREASING : SweepDirection::ANGLE_DECREASING;
-    if (new_sweep_dir != internal_sweep_dir) {
+    const bool sweep_dir_changed = new_sweep_dir != internal_sweep_dir;
+    internal_sweep_dir = new_sweep_dir;
+    prev_angle_deg = angle_deg;
+
+    // check for wrap around
+    const bool wrapped = !angle_in_range;
+    angle_in_range = true;
+
+    if (sweep_dir_changed || wrapped) {
         //gcs().send_text(MAV_SEVERITY_CRITICAL,"Dir:%d prev:%f now:%f", (int)new_sweep_dir, (double)prev_angle_deg, (double)angle_deg);
         // advance sweep id
         advance_sweep();
-        internal_sweep_dir = new_sweep_dir;
 
         // calculate closest object so cache is ready for external caller
         calculate_closest_object();
     }
-    prev_angle_deg = angle_deg;
 
     // exit immediately if items array is full
     if (sweeps[internal_sweep_index].count >= ARRAY_SIZE(sweeps[internal_sweep_index].items)) {

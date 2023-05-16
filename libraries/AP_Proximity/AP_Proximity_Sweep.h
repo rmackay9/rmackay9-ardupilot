@@ -78,6 +78,8 @@ private:
     } internal_sweep_dir;                           // direction of internal sweep
     float prev_angle_deg;                           // previous recorded angle from sensor.  Used to check sweep direction
 
+    bool angle_in_range;                            // true if most recent reading is between angle min and max
+
     uint8_t debug_level = 0;
 
     // closest object variables
