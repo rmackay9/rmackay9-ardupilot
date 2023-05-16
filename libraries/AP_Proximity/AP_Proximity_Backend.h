@@ -43,6 +43,15 @@ public:
     // handle mavlink messages
     virtual void handle_msg(const mavlink_message_t &msg) {}
 
+    // sweep accessors
+    // set sweep params
+    // dist_jump is the distance change in meters used to detect the edge of objects
+    virtual void set_sweep_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg) {}
+
+    // get the angle and distance to the closest object
+    // returns true on success, false on failure
+    virtual bool get_closest_sweep_object(float &angle_deg) const { return false; }
+
 protected:
 
     // set status and update valid_count

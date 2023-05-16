@@ -492,6 +492,32 @@ void AP_Proximity::log()
 }
 #endif
 
+// set sweep params
+// dist_jump is the distance change in meters used to detect the edge of objects
+void AP_Proximity::set_sweep_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg)
+{
+    for (uint8_t i=0; i<num_instances; i++) {
+        if (valid_instance(i)) {
+            drivers[i]->set_sweep_params(debug, dist_jump_m, angle_min_deg, angle_max_deg);
+        }
+    }
+}
+
+// sweep related accessors
+// get the angle and distance to the closest object
+// returns true on success, false on failure
+bool AP_Proximity::get_closest_sweep_object(float &angle_deg) const
+{
+    for (uint8_t i=0; i<num_instances; i++) {
+        if (valid_instance(i)) {
+            if (drivers[i]->get_closest_sweep_object(angle_deg)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // return true if the given instance exists
 bool AP_Proximity::valid_instance(uint8_t i) const
 {
