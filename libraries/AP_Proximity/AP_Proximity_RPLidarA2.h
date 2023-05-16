@@ -47,6 +47,7 @@ reboot
 #if AP_PROXIMITY_RPLIDARA2_ENABLED
 
 #include "AP_Proximity_Backend_Serial.h"
+#include "AP_Proximity_Sweep.h"
 
 class AP_Proximity_RPLidarA2 : public AP_Proximity_Backend_Serial
 {
@@ -61,6 +62,15 @@ public:
     // get maximum and minimum distances (in meters) of sensor
     float distance_max() const override;
     float distance_min() const override;
+
+    // sweep accessors
+    // set sweep params
+    // dist_jump is the distance change in meters used to detect the edge of objects
+    void set_sweep_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg) override;
+
+    // get the angle and distance to the closest object
+    // returns true on success, false on failure
+    bool get_closest_sweep_object(float &angle_deg) const override;
 
 private:
 
@@ -155,6 +165,9 @@ private:
     } model = Model::UNKNOWN;
 
     bool make_first_byte_in_payload(uint8_t desired_byte);
+
+    // sweep data
+    AP_Proximity_Sweep sweep;
 };
 
 #endif // AP_PROXIMITY_RPLIDARA2_ENABLED

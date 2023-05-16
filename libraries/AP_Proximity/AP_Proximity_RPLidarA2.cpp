@@ -400,6 +400,9 @@ void AP_Proximity_RPLidarA2::parse_response_data()
             }
             // update OA database
             database_push(_last_angle_deg, _last_distance_m);
+
+            // add distance to sweep
+            sweep.add_distance(angle_deg, distance_m);
         }
     }
 }
@@ -411,6 +414,20 @@ void AP_Proximity_RPLidarA2::parse_response_health()
         Debug(1, "LIDAR Error");
     }
     Debug(1, "LIDAR Healthy");
+}
+
+// sweep accessors
+// dist_jump is the distance change in meters used to detect the edge of objects
+void AP_Proximity_RPLidarA2::set_sweep_params(uint8_t debug, float dist_jump_m, float angle_min_deg, float angle_max_deg)
+{
+    sweep.set_params(debug, dist_jump_m, angle_min_deg, angle_max_deg);
+}
+
+// get the angle and distance to the closest object
+// returns true on success, false on failure
+bool AP_Proximity_RPLidarA2::get_closest_sweep_object(float &angle_deg) const
+{
+    return sweep.get_closest_object(angle_deg);
 }
 
 #endif // AP_PROXIMITY_RPLIDARA2_ENABLED
