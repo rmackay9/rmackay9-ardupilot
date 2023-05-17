@@ -72,10 +72,11 @@ private:
     uint8_t internal_sweep_index;                   // the internal sweep's index in the items array
     //ModeFilterFloat_Size3 dist_filt{1};             // mode filter to reduce noise in distance measurements
 
-    enum class SweepDirection {
+    /*enum class SweepDirection {
         ANGLE_DECREASING = 0,
         ANGLE_INCREASING = 1
     } internal_sweep_dir;                           // direction of internal sweep
+    (*/
     float prev_angle_deg;                           // previous recorded angle from sensor.  Used to check sweep direction
 
     bool angle_in_range;                            // true if most recent reading is between angle min and max
