@@ -27,7 +27,8 @@ public:
         Vector3f pos;           // position of the object as an offset in meters from the EKF origin
         uint32_t timestamp_ms;  // system time that object was last updated
         float radius;           // objects radius in meters
-        uint8_t send_to_gcs;    // bitmask of mavlink comports to which details of this object should be sent
+        uint8_t send_to_gcs;    // bitmask of mavlink channels to which details of this object should be sent
+        uint8_t object_id;      // id of the object this item is part of
         OA_DbItemImportance importance;
     };
 
@@ -52,6 +53,11 @@ public:
     // send ADSB_VEHICLE mavlink messages
     void send_adsb_vehicle(mavlink_channel_t chan, uint16_t interval_ms);
 
+    // find earth-frame yaw angle to largest object
+    // veh_pos should be the vehicle's horiztonal position in meters offset from the EKF origin
+    // returns true on success and fills in yaw_to_object_rad
+    bool dir_to_largest_object(const Vector2f &veh_posxy, float& yaw_to_object_rad) const;
+
     static const struct AP_Param::GroupInfo var_info[];
 
 private:
@@ -69,9 +75,6 @@ private:
     // get bitmask of gcs channels item should be sent to based on its importance
     // returns 0xFF (send to all channels) if should be sent or 0 if it should not be sent
     uint8_t get_send_to_gcs_flags(const OA_DbItemImportance importance);
-
-    // returns true if database item "index" is close to "item"
-    bool is_close_to_item_in_database(const uint16_t index, const OA_DbItem &item) const;
 
     // enum for use with _OUTPUT parameter
     enum class OutputLevel {
@@ -107,6 +110,10 @@ private:
     uint16_t _next_index_to_send[MAVLINK_COMM_NUM_BUFFERS]; // index of next object in _database to send to GCS
     uint16_t _highest_index_sent[MAVLINK_COMM_NUM_BUFFERS]; // highest index in _database sent to GCS
     uint32_t _last_send_to_gcs_ms[MAVLINK_COMM_NUM_BUFFERS];// system time that send_adsb_vehicle was last called
+
+    // object id handling
+    uint8_t get_next_object_id();                           // returns the next new object id.  UINT8_MAX if no more available object ids (e.g. too many objects)
+    uint8_t _object_item_count[UINT8_MAX-1];                // number of items in each object
 
     static AP_OADatabase *_singleton;
 };

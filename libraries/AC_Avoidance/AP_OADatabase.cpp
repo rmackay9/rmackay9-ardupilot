@@ -140,6 +140,30 @@ void AP_OADatabase::update()
 
     process_queue();
     database_items_remove_all_expired();
+
+    // calculate distance to closest object
+    static uint32_t last_closest_object_ms = 0;
+    uint32_t now_ms = AP_HAL::millis();
+    if (now_ms - last_closest_object_ms > 5000) {
+        last_closest_object_ms = now_ms;
+        Vector2f veh_pos_NE;
+        if (AP::ahrs().get_relative_position_NE_origin(veh_pos_NE)) {
+            float yaw_to_obj_rad;
+            if (dir_to_largest_object(veh_pos_NE, yaw_to_obj_rad)) {
+                gcs().send_text(MAV_SEVERITY_INFO, "OAdb: dir to obj:%4.1f", (double)degrees(yaw_to_obj_rad));
+            } else {
+                gcs().send_text(MAV_SEVERITY_INFO, "OAdb: no object");
+            }
+        }
+        // display largest objects
+        //uint8_t object_count = 0;
+        //for (uint8_t i=0; i<ARRAY_SIZE(_object_item_count) && (object_count < 10); i++) {
+        //    if (_object_item_count[i] > 0) {
+        //        object_count++;
+        //        gcs().send_text(MAV_SEVERITY_INFO, "OAdb: obj:%u cnt:%u", (unsigned)i, (unsigned)_object_item_count[i]);
+        //    }
+        //}
+    }
 }
 
 // push a location into the database
@@ -261,17 +285,39 @@ bool AP_OADatabase::process_queue()
 
         item.send_to_gcs = get_send_to_gcs_flags(item.importance);
 
-        // compare item to all items in database. If found a similar item, update the existing, else add it as a new one
+        // compare item to all items in database. If an existing point is close, update its timestamp
         bool found = false;
+        float distance_sq_min = 0;
+        uint16_t distance_sq_min_index = INT16_MAX;
+        const float item_radius_sq = sq(item.radius);
         for (uint16_t i=0; i<_database.count; i++) {
-            if (is_close_to_item_in_database(i, item)) {
+            // calculate distance (squared) to existing item in database
+            const float distance_sq = (_database.items[i].pos - item.pos).length_squared();
+
+            // record index and distance of the closest item
+            if (distance_sq_min_index == INT16_MAX || distance_sq < distance_sq_min) {
+                distance_sq_min_index = i;
+                distance_sq_min = distance_sq;
+            }
+
+            // if existing item is close, update its timestamp
+            if ((distance_sq < item_radius_sq) || (distance_sq < sq(_database.items[i].radius))) {
                 database_item_refresh(i, item.timestamp_ms, item.radius);
                 found = true;
                 break;
             }
         }
 
+        // if no existing items are close, add new item
         if (!found) {
+            // use object id of closest item if within twice the radius
+            const float item_radius_x2_sq = sq(2.0 * item.radius);
+            if ((distance_sq_min_index != INT16_MAX) && (distance_sq_min < item_radius_x2_sq)) {
+                item.object_id = _database.items[distance_sq_min_index].object_id;
+            } else {
+                // otherwise use new object id
+                item.object_id = get_next_object_id();
+            }
             database_item_add(item);
         }
     }
@@ -286,6 +332,11 @@ void AP_OADatabase::database_item_add(const OA_DbItem &item)
     _database.items[_database.count] = item;
     _database.items[_database.count].send_to_gcs = get_send_to_gcs_flags(_database.items[_database.count].importance);
     _database.count++;
+
+    // update object count
+    if (item.object_id < ARRAY_SIZE(_object_item_count)) {
+        _object_item_count[item.object_id]++;
+    }
 }
 
 void AP_OADatabase::database_item_remove(const uint16_t index)
@@ -293,6 +344,12 @@ void AP_OADatabase::database_item_remove(const uint16_t index)
     if (index >= _database.count || _database.count == 0) {
         // index out of range
         return;
+    }
+
+    // update object count
+    const uint8_t object_id = _database.items[index].object_id;
+    if ((object_id < ARRAY_SIZE(_object_item_count)) && (_object_item_count[object_id] > 0)) {
+        _object_item_count[object_id]--;
     }
 
     // radius of 0 tells the GCS we don't care about it any more (aka it expired)
@@ -351,18 +408,6 @@ void AP_OADatabase::database_items_remove_all_expired()
             index++;
         }
     }
-}
-
-// returns true if a similar object already exists in database
-bool AP_OADatabase::is_close_to_item_in_database(const uint16_t index, const OA_DbItem &item) const
-{
-    if (index >= _database.count) {
-        // index out of range
-        return false;
-    }
-
-    const float distance_sq = (_database.items[index].pos - item.pos).length_squared();
-    return ((distance_sq < sq(item.radius)) || (distance_sq < sq(_database.items[index].radius)));
 }
 
 // send ADSB_VEHICLE mavlink messages
@@ -468,6 +513,64 @@ void AP_OADatabase::send_adsb_vehicle(mavlink_channel_t chan, uint16_t interval_
         // update count sent
         num_sent++;
     }
+}
+
+// returns the next new object id
+uint8_t AP_OADatabase::get_next_object_id()
+{
+    // find lowest object id with no items
+    for (uint8_t i=0; i<ARRAY_SIZE(_object_item_count); i++) {
+        if (_object_item_count[i] == 0) {
+            return i;
+        }
+    }
+    // if we got this far then we've run out of object ids
+    return UINT8_MAX;
+}
+
+// find earth-frame yaw angle to largest object
+// veh_pos should be the vehicle's horiztonal position in meters offset from the EKF origin
+// returns true on success and fills in yaw_to_object_rad
+bool AP_OADatabase::dir_to_largest_object(const Vector2f &veh_posxy, float& yaw_to_object_rad) const
+{
+    // find object with the most items
+    uint8_t largest_object_id = 0;
+    for (uint8_t i=1; i<ARRAY_SIZE(_object_item_count); i++) {
+        if (_object_item_count[i] > _object_item_count[largest_object_id]) {
+            largest_object_id = i;
+        }
+    }
+
+    // return failure if no objects found
+    if (_object_item_count[largest_object_id] == 0) {
+        gcs().send_text(MAV_SEVERITY_INFO, "dtlo: zero objects");
+        return false;
+    }
+    gcs().send_text(MAV_SEVERITY_INFO, "dtlo: obj:%u cnt:%u", (unsigned)largest_object_id, (unsigned)_object_item_count[largest_object_id]);
+
+    // calculate average position of items in object
+    Vector2f posxy_sum;
+    uint16_t posxy_sum_count = 0;
+    for (uint16_t i=0; i<_database.count; i++) {
+        if (_database.items[i].object_id == largest_object_id) {
+            posxy_sum += _database.items[i].pos.xy();
+            posxy_sum_count++;
+        }
+    }
+    if (posxy_sum_count == 0) {
+        // this should never happen because we have already checked above
+        return false;
+    }
+    posxy_sum /= posxy_sum_count;
+
+    // calculate angle to average position
+    Vector2f posxy_diff = posxy_sum - veh_posxy;
+    if (posxy_diff.is_zero()) {
+        // catch unlikely case that average position is exactly on vehicle
+        return false;
+    }
+    yaw_to_object_rad = posxy_diff.angle();
+    return true;
 }
 
 // singleton instance
