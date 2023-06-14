@@ -353,7 +353,7 @@ void AP_OADatabase::database_items_remove_all_expired()
     }
 }
 
-// returns true if a similar object already exists in database. When true, the object timer is also reset
+// returns true if a similar object already exists in database
 bool AP_OADatabase::is_close_to_item_in_database(const uint16_t index, const OA_DbItem &item) const
 {
     if (index >= _database.count) {
