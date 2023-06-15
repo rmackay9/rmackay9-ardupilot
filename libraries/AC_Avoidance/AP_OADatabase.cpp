@@ -576,7 +576,7 @@ bool AP_OADatabase::get_largest_object(Location& obj_loc, float& yaw_ef_deg) con
     yaw_ef_deg = degrees(pos_diff.xy().angle());
 
     // convert object position to Location
-    obj_loc = Location(obj_pos_sum, Location::AltFrame::ABOVE_ORIGIN);
+    obj_loc = Location(obj_pos_sum * 100.0, Location::AltFrame::ABOVE_ORIGIN);
 
     return true;
 }
