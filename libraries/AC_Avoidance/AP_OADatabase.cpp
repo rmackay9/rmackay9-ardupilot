@@ -147,9 +147,10 @@ void AP_OADatabase::update()
     if (now_ms - last_closest_object_ms > 5000) {
         last_closest_object_ms = now_ms;
         Vector2f veh_pos_NE;
-        float yaw_to_obj_deg;
-        if (dir_to_largest_object(yaw_to_obj_deg)) {
-            gcs().send_text(MAV_SEVERITY_INFO, "OAdb: dir to obj:%4.1f", (double)yaw_to_obj_deg);
+        Location obj_loc;
+        float yaw_to_obj_ef_deg;
+        if (get_largest_object(obj_loc, yaw_to_obj_ef_deg)) {
+            gcs().send_text(MAV_SEVERITY_INFO, "OAdb: dir to obj:%4.1f", (double)yaw_to_obj_ef_deg);
         } else {
             gcs().send_text(MAV_SEVERITY_INFO, "OAdb: no object");
         }
@@ -526,13 +527,13 @@ uint8_t AP_OADatabase::get_next_object_id()
     return UINT8_MAX;
 }
 
-// find earth-frame yaw angle to largest object
-// returns true on success and fills in yaw_to_object_deg
-bool AP_OADatabase::dir_to_largest_object(float& yaw_to_object_deg) const
+// find Location and earth-frame yaw to largest object
+// returns true on success and fills in obj_loc and yaw_ef_deg
+bool AP_OADatabase::get_largest_object(Location& obj_loc, float& yaw_ef_deg) const
 {
     // get vehicle's current position as an offset from the EKF origin
-    Vector2f veh_posxy;
-    if (!AP::ahrs().get_relative_position_NE_origin(veh_posxy)) {
+    Vector3f veh_pos_ned;
+    if (!AP::ahrs().get_relative_position_NED_origin(veh_pos_ned)) {
         return false;
     }
 
@@ -552,27 +553,31 @@ bool AP_OADatabase::dir_to_largest_object(float& yaw_to_object_deg) const
     gcs().send_text(MAV_SEVERITY_INFO, "dtlo: obj:%u cnt:%u", (unsigned)largest_object_id, (unsigned)_object_item_count[largest_object_id]);
 
     // calculate average position of items in object
-    Vector2f posxy_sum;
-    uint16_t posxy_sum_count = 0;
+    Vector3f obj_pos_sum;
+    uint16_t obj_pos_sum_count = 0;
     for (uint16_t i=0; i<_database.count; i++) {
         if (_database.items[i].object_id == largest_object_id) {
-            posxy_sum += _database.items[i].pos.xy();
-            posxy_sum_count++;
+            obj_pos_sum += _database.items[i].pos;
+            obj_pos_sum_count++;
         }
     }
-    if (posxy_sum_count == 0) {
+    if (obj_pos_sum_count == 0) {
         // this should never happen because we have already checked above
         return false;
     }
-    posxy_sum /= posxy_sum_count;
+    obj_pos_sum /= obj_pos_sum_count;
 
     // calculate angle to average position
-    Vector2f posxy_diff = posxy_sum - veh_posxy;
-    if (posxy_diff.is_zero()) {
+    Vector3f pos_diff = obj_pos_sum - veh_pos_ned;
+    if (pos_diff.is_zero()) {
         // catch unlikely case that average position is exactly on vehicle
         return false;
     }
-    yaw_to_object_deg = degrees(posxy_diff.angle());
+    yaw_ef_deg = degrees(pos_diff.xy().angle());
+
+    // convert object position to Location
+    obj_loc = Location(obj_pos_sum, Location::AltFrame::ABOVE_ORIGIN);
+
     return true;
 }
 

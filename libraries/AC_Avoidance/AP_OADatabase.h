@@ -3,6 +3,7 @@
 #include <AP_HAL/Semaphores.h>
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
+#include <AP_Common/Location.h>
 #include <AP_Param/AP_Param.h>
 
 class AP_OADatabase {
@@ -53,9 +54,9 @@ public:
     // send ADSB_VEHICLE mavlink messages
     void send_adsb_vehicle(mavlink_channel_t chan, uint16_t interval_ms);
 
-    // find earth-frame yaw angle to largest object
-    // returns true on success and fills in yaw_to_object_rad
-    bool dir_to_largest_object(float& yaw_to_object_deg) const;
+    // find Location and earth-frame yaw to largest object
+    // returns true on success and fills in obj_loc and yaw_ef_deg
+    bool get_largest_object(Location& obj_loc, float& yaw_ef_deg) const;
 
     static const struct AP_Param::GroupInfo var_info[];
 
