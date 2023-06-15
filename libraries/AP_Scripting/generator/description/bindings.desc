@@ -178,6 +178,11 @@ singleton AP_Proximity method get_object_count uint8_t
 singleton AP_Proximity method get_closest_object boolean float'Null float'Null
 singleton AP_Proximity method get_object_angle_and_distance boolean uint8_t'skip_check float'Null float'Null
 
+include AC_Avoidance/AP_OADatabase.h
+singleton AP_OADatabase depends APM_BUILD_COPTER_OR_HELI
+singleton AP_OADatabase rename oadatabase
+singleton AP_OADatabase method dir_to_largest_object boolean float'Null
+
 include AP_RangeFinder/AP_RangeFinder.h
 include AP_RangeFinder/AP_RangeFinder_Backend.h
 
