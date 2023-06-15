@@ -81,10 +81,12 @@ void AP_Camera::take_picture()
 {
     WITH_SEMAPHORE(_rsem);
 
-    if (primary == nullptr) {
-        return;
+    // call each instance
+    for (uint8_t instance = 0; instance < AP_CAMERA_MAX_INSTANCES; instance++) {
+        if (_backends[instance] != nullptr) {
+            _backends[instance]->take_picture();
+        }
     }
-    primary->take_picture();
 }
 
 // start/stop recording video
@@ -342,10 +344,12 @@ void AP_Camera::control(float session, float zoom_pos, float zoom_step, float fo
 {
     WITH_SEMAPHORE(_rsem);
 
-    if (primary == nullptr) {
-        return;
+    // call each instance
+    for (uint8_t instance = 0; instance < AP_CAMERA_MAX_INSTANCES; instance++) {
+        if (_backends[instance] != nullptr) {
+            _backends[instance]->control(session, zoom_pos, zoom_step, focus_lock, shooting_cmd, cmd_id);
+        }
     }
-    primary->control(session, zoom_pos, zoom_step, focus_lock, shooting_cmd, cmd_id);
 }
 
 void AP_Camera::control(uint8_t instance, float session, float zoom_pos, float zoom_step, float focus_lock, float shooting_cmd, float cmd_id)
