@@ -54,9 +54,8 @@ public:
     void send_adsb_vehicle(mavlink_channel_t chan, uint16_t interval_ms);
 
     // find earth-frame yaw angle to largest object
-    // veh_pos should be the vehicle's horiztonal position in meters offset from the EKF origin
     // returns true on success and fills in yaw_to_object_rad
-    bool dir_to_largest_object(const Vector2f &veh_posxy, float& yaw_to_object_rad) const;
+    bool dir_to_largest_object(float& yaw_to_object_deg) const;
 
     static const struct AP_Param::GroupInfo var_info[];
 

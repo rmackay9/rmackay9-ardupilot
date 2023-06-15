@@ -147,13 +147,11 @@ void AP_OADatabase::update()
     if (now_ms - last_closest_object_ms > 5000) {
         last_closest_object_ms = now_ms;
         Vector2f veh_pos_NE;
-        if (AP::ahrs().get_relative_position_NE_origin(veh_pos_NE)) {
-            float yaw_to_obj_rad;
-            if (dir_to_largest_object(veh_pos_NE, yaw_to_obj_rad)) {
-                gcs().send_text(MAV_SEVERITY_INFO, "OAdb: dir to obj:%4.1f", (double)degrees(yaw_to_obj_rad));
-            } else {
-                gcs().send_text(MAV_SEVERITY_INFO, "OAdb: no object");
-            }
+        float yaw_to_obj_deg;
+        if (dir_to_largest_object(yaw_to_obj_deg)) {
+            gcs().send_text(MAV_SEVERITY_INFO, "OAdb: dir to obj:%4.1f", (double)yaw_to_obj_deg);
+        } else {
+            gcs().send_text(MAV_SEVERITY_INFO, "OAdb: no object");
         }
         // display largest objects
         //uint8_t object_count = 0;
@@ -529,10 +527,15 @@ uint8_t AP_OADatabase::get_next_object_id()
 }
 
 // find earth-frame yaw angle to largest object
-// veh_pos should be the vehicle's horiztonal position in meters offset from the EKF origin
-// returns true on success and fills in yaw_to_object_rad
-bool AP_OADatabase::dir_to_largest_object(const Vector2f &veh_posxy, float& yaw_to_object_rad) const
+// returns true on success and fills in yaw_to_object_deg
+bool AP_OADatabase::dir_to_largest_object(float& yaw_to_object_deg) const
 {
+    // get vehicle's current position as an offset from the EKF origin
+    Vector2f veh_posxy;
+    if (!AP::ahrs().get_relative_position_NE_origin(veh_posxy)) {
+        return false;
+    }
+
     // find object with the most items
     uint8_t largest_object_id = 0;
     for (uint8_t i=1; i<ARRAY_SIZE(_object_item_count); i++) {
@@ -569,7 +572,7 @@ bool AP_OADatabase::dir_to_largest_object(const Vector2f &veh_posxy, float& yaw_
         // catch unlikely case that average position is exactly on vehicle
         return false;
     }
-    yaw_to_object_rad = posxy_diff.angle();
+    yaw_to_object_deg = degrees(posxy_diff.angle());
     return true;
 }
 
