@@ -73,6 +73,7 @@ void AP_Camera_Backend::update()
 // take a picture.  returns true on success
 bool AP_Camera_Backend::take_picture()
 {
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "cam%u took pic",(unsigned)_instance);
     // setup feedback pin interrupt or timer
     setup_feedback_callback();
 
