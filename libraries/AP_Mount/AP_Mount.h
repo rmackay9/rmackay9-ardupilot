@@ -158,6 +158,9 @@ public:
     void set_roi_target(const Location &target_loc) { set_roi_target(_primary,target_loc); }
     void set_roi_target(uint8_t instance, const Location &target_loc);
 
+    // set_roi_target with pitch override
+    void set_roi_and_pitch_target(uint8_t instance, const Location &target_loc, float pitch_degs);
+
     // clear_roi_target - clears target location that mount should attempt to point towards
     void clear_roi_target() { clear_roi_target(_primary); }
     void clear_roi_target(uint8_t instance);

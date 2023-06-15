@@ -87,6 +87,9 @@ public:
     // clear_roi_target - clears target location that mount should attempt to point towards
     void clear_roi_target();
 
+    // set_roi_target with pitch override
+    void set_roi_and_pitch_target(const Location &target_loc, float pitch_degs);
+
     // set_sys_target - sets system that mount should attempt to point towards
     void set_target_sysid(uint8_t sysid);
 
@@ -242,6 +245,8 @@ protected:
 
     Location _roi_target;           // roi target location
     bool _roi_target_set;           // true if the roi target has been set
+    float _roi_pitch_deg;           // roi control pitch override
+    bool _roi_pitch_set;            // true if the roi pitch override has been set
 
     uint8_t _target_sysid;          // sysid to track
     Location _target_sysid_location;// sysid target location

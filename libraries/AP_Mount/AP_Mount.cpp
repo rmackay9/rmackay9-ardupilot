@@ -686,6 +686,16 @@ void AP_Mount::set_roi_target(uint8_t instance, const Location &target_loc)
     backend->set_roi_target(target_loc);
 }
 
+// set_roi_target with pitch override
+void AP_Mount::set_roi_and_pitch_target(uint8_t instance, const Location &target_loc, float pitch_degs)
+{
+    auto *backend = get_instance(instance);
+    if (backend == nullptr) {
+        return;
+    }
+    backend->set_roi_and_pitch_target(target_loc, pitch_degs);
+}
+
 // clear_roi_target - clears target location that mount should attempt to point towards
 void AP_Mount::clear_roi_target(uint8_t instance)
 {

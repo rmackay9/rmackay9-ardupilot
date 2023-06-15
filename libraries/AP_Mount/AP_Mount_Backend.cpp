@@ -74,6 +74,7 @@ void AP_Mount_Backend::set_roi_target(const Location &target_loc)
     // set the target gps location
     _roi_target = target_loc;
     _roi_target_set = true;
+    _roi_pitch_set = false;
 
     // set the mode to GPS tracking mode
     set_mode(MAV_MOUNT_MODE_GPS_POINT);
@@ -84,12 +85,25 @@ void AP_Mount_Backend::clear_roi_target()
 {
     // clear the target GPS location
     _roi_target_set = false;
+    _roi_pitch_set = false;
 
     // reset the mode if in GPS tracking mode
     if (_mode == MAV_MOUNT_MODE_GPS_POINT) {
         MAV_MOUNT_MODE default_mode = (MAV_MOUNT_MODE)_params.default_mode.get();
         set_mode(default_mode);
     }
+}
+
+void AP_Mount_Backend::set_roi_and_pitch_target(const Location &target_loc, float pitch_degs)
+{
+    // set the target gps location
+    _roi_target = target_loc;
+    _roi_target_set = true;
+    _roi_pitch_deg = pitch_degs;
+    _roi_pitch_set = true;
+
+    // set the mode to GPS tracking mode
+    set_mode(MAV_MOUNT_MODE_GPS_POINT);
 }
 
 // set_sys_target - sets system that mount should attempt to point towards
@@ -474,7 +488,13 @@ bool AP_Mount_Backend::get_angle_target_to_roi(MountTarget& angle_rad) const
     if (!_roi_target_set) {
         return false;
     }
-    return get_angle_target_to_location(_roi_target, angle_rad);
+    if (!get_angle_target_to_location(_roi_target, angle_rad)) {
+        return false;
+    }
+    if (_roi_pitch_set) {
+        angle_rad.pitch = radians(_roi_pitch_deg);
+    }
+    return true;
 }
 
 // return body-frame yaw angle from a mount target
