@@ -17,10 +17,7 @@ function bind_add_param(name, idx, default_value)
     return Parameter(PARAM_TABLE_PREFIX .. name)
 end
 
-local JUMP_DIST = bind_add_param("JUMP_DIST", 1, 0.5)   -- object edge detected by a lidar jump of this many meters
 local DEBUG = bind_add_param("DEBUG", 2, 0)             -- debug 0:Disabled, 1:Enabled
-local ANGLE_MIN = bind_add_param("ANGLE_MIN", 3, -45)   -- minimum angle to check for obstacles
-local ANGLE_MAX = bind_add_param("ANGLE_MAX", 4, 45)    -- maximum angle to check for obstacles
 local PITCH = bind_add_param("PITCH", 5, 0)             -- pitch angle default in degrees (+ve up, -ve down).  zero to use current pitch target
 
 local INIT_INTERVAL_MS = 3000       -- attempt to initialise at this interval
@@ -137,12 +134,11 @@ function update()
     -- pitch angle comes from parameter if non-zero, otherwise uses current target pitch angle
     local target_pitch = PITCH:get()
     if target_pitch == 0 then
-      local _curr_target_roll, curr_target_pitch, _curr_target_yaw, _yaw_is_ef = mount:get_angle_target(0)
+      local _, curr_target_pitch, _, _ = mount:get_angle_target(0)
       if curr_target_pitch then
         target_pitch = curr_target_pitch
       end
     end
-    --mount:set_angle_target(0, target_pitch, 0, angle_deg, false)
     mount:set_roi_and_pitch_target(0, obj_loc, target_pitch)
 
     -- send feedback to GCS so it can display icon on map
