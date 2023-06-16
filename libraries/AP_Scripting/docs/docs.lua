@@ -1214,6 +1214,12 @@ function mount:set_roi_target(instance, target_loc) end
 
 -- desc
 ---@param instance integer
+---@param target_loc Location_ud
+---@param pitch_degs number
+function mount:set_roi_and_pitch_target(instance, target_loc, pitch_degs) end
+
+-- desc
+---@param instance integer
 ---@param roll_degs number
 ---@param pitch_degs number
 ---@param yaw_degs number
