@@ -575,9 +575,9 @@ bool AP_OADatabase::get_largest_object(Location& obj_loc, float& yaw_ef_deg) con
     }
     yaw_ef_deg = degrees(pos_diff.xy().angle());
 
-    // convert object position to Location
+    // convert object position to Location with alt-above-home
     obj_loc = Location(obj_pos_sum * 100.0, Location::AltFrame::ABOVE_ORIGIN);
-
+    IGNORE_RETURN(obj_loc.change_alt_frame(Location::AltFrame::ABOVE_HOME));
     return true;
 }
 
