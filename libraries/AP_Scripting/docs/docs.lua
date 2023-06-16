@@ -2444,6 +2444,14 @@ function proximity:num_sensors() end
 ---@return integer
 function proximity:get_status() end
 
+-- desc
+---@class oadatabase
+oadatabase = {}
+
+-- desc
+---@return Location_ud|nil
+---@return number|nil
+function oadatabase:get_object_angle_and_distance(obj_loc, angle_deg) end
 
 -- desc
 ---@class notify
