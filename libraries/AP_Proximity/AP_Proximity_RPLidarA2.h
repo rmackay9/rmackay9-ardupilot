@@ -55,6 +55,9 @@ public:
 
     using AP_Proximity_Backend_Serial::AP_Proximity_Backend_Serial;
 
+    // default rx buffer space
+    uint16_t rxspace() const override { return 2560; };
+
     // update state
     void update(void) override;
 
@@ -90,6 +93,7 @@ private:
 
     uint8_t _sync_error;
     uint16_t _byte_count;
+    uint32_t _error_count;
 
     // request related variables
     uint32_t  _last_distance_received_ms;     ///< system time of last distance measurement received from sensor

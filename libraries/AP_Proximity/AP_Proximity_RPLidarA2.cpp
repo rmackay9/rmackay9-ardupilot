@@ -35,6 +35,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Proximity_RPLidarA2.h"
 #include <AP_InternalError/AP_InternalError.h>
+#include <AP_Logger/AP_Logger.h>
 
 #include <ctype.h>
 #include <stdio.h>
@@ -49,6 +50,7 @@
 #endif
 
 #define COMM_ACTIVITY_TIMEOUT_MS        200
+#define COMM_QUALITY_MIN                10
 
 // Commands
 //-----------------------------------------
@@ -82,6 +84,13 @@ void AP_Proximity_RPLidarA2::update(void)
         send_request_for_device_info();
         _state = State::AWAITING_RESPONSE;
         _byte_count = 0;
+    }
+
+    // debug output of error count
+    static uint32_t last_error_print_ms = 0;
+    if (now_ms - last_error_print_ms > 5000) {
+        last_error_print_ms = now_ms;
+        gcs().send_text(MAV_SEVERITY_INFO, "RP2 Err:%lu", (unsigned long)_error_count);
     }
 
     get_readings();
@@ -180,6 +189,7 @@ void AP_Proximity_RPLidarA2::reset()
 {
     _state = State::RESET;
     _byte_count = 0;
+    _error_count++;
 }
 
 bool AP_Proximity_RPLidarA2::make_first_byte_in_payload(uint8_t desired_byte)
@@ -230,6 +240,7 @@ void AP_Proximity_RPLidarA2::get_readings()
             // bytes.  Avoid looping forever.
             INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
             _uart = nullptr;
+            _error_count++;
             return;
         }
         previous_loop_byte_count = _byte_count;
@@ -289,6 +300,7 @@ void AP_Proximity_RPLidarA2::get_readings()
             } else if (memcmp((void*)&_payload[0], HEALTH_DESCRIPTOR, sizeof(_descriptor)) == 0) {
                 _state = State::AWAITING_HEALTH;
             } else {
+                _error_count++;
                 // unknown descriptor.  Ignore it.
             }
             consume_bytes(sizeof(_descriptor));
@@ -339,6 +351,7 @@ void AP_Proximity_RPLidarA2::parse_response_device_info()
         device_type = "S1";
         break;
     default:
+        _error_count++;
         Debug(1, "Unknown device (%u)", _payload.device_info.model);
     }
     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "RPLidar %s hw=%u fw=%u.%u", device_type, _payload.device_info.hardware, _payload.device_info.firmware_minor, _payload.device_info.firmware_major);
@@ -364,18 +377,19 @@ void AP_Proximity_RPLidarA2::parse_response_data()
     if (!((_payload.sensor_scan.startbit == !_payload.sensor_scan.not_startbit) && _payload.sensor_scan.checkbit)) {
         Debug(1, "Invalid Payload");
         _sync_error++;
+        _error_count++;
         return;
     }
 
     const float angle_sign = (params.orientation == 1) ? -1.0f : 1.0f;
     const float angle_deg = wrap_360(_payload.sensor_scan.angle_q6/64.0f * angle_sign + params.yaw_correction);
     const float distance_m = (_payload.sensor_scan.distance_q2/4000.0f);
-#if RP_DEBUG_LEVEL >= 2
     const float quality = _payload.sensor_scan.quality;
+#if RP_DEBUG_LEVEL >= 2
     Debug(2, "   D%02.2f A%03.1f Q%0.2f", distance_m, angle_deg, quality);
 #endif
     _last_distance_received_ms = AP_HAL::millis();
-    if (!ignore_reading(angle_deg, distance_m)) {
+    if ((quality >= COMM_QUALITY_MIN) && !ignore_reading(angle_deg, distance_m)) {
         const AP_Proximity_Boundary_3D::Face face = frontend.boundary.get_face(angle_deg);
 
         if (face != _last_face) {
@@ -402,6 +416,12 @@ void AP_Proximity_RPLidarA2::parse_response_data()
             database_push(_last_angle_deg, _last_distance_m);
         }
     }
+    // debug -- log raw distance
+    AP::logger().Write("RP2", "TimeUS,Ang,Dist,Qual", "Qfff",
+                                        AP_HAL::micros64(),
+                                        (double)angle_deg,
+                                        (double)distance_m,
+                                        (double)quality);
 }
 
 void AP_Proximity_RPLidarA2::parse_response_health()
