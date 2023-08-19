@@ -63,6 +63,23 @@ void AP_Mount_Siyi::update()
     if ((now_ms - _last_req_current_angle_rad_ms) >= 50) {
         request_gimbal_attitude();
         _last_req_current_angle_rad_ms = now_ms;
+        if (att_request_start_ms == 0) {
+            att_request_start_ms = now_ms;
+        }
+    }
+
+    // debug
+    static uint32_t last_print_ms = 0;
+    if (now_ms - last_print_ms > 5000) {
+        last_print_ms = now_ms;
+        const float update_time_sec = (now_ms - att_request_start_ms) * 0.001;
+        if (update_time_sec > 0) {
+            const float request_rate_hz = att_request_count / update_time_sec;
+            const float reply_rate_hz = att_reply_count / update_time_sec;
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Siyi: req:%u (%.1f hz) reply:%u (%.1f hz)",
+                            (unsigned)att_request_count, (double)request_rate_hz,
+                            (unsigned)att_reply_count, (double)reply_rate_hz);
+        }
     }
 
     // run zoom control
@@ -463,6 +480,7 @@ void AP_Mount_Siyi::process_packet()
         _current_angle_rad.z = -radians((int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+1], _msg_buff[_msg_buff_data_start]) * 0.1);   // yaw angle
         _current_angle_rad.y = radians((int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+3], _msg_buff[_msg_buff_data_start+2]) * 0.1);  // pitch angle
         _current_angle_rad.x = radians((int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+5], _msg_buff[_msg_buff_data_start+4]) * 0.1);  // roll angle
+        att_reply_count++;
         //const float yaw_rate_degs = -(int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+7], _msg_buff[_msg_buff_data_start+6]) * 0.1;   // yaw rate
         //const float pitch_rate_deg = (int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+9], _msg_buff[_msg_buff_data_start+8]) * 0.1;   // pitch rate
         //const float roll_rate_deg = (int16_t)UINT16_VALUE(_msg_buff[_msg_buff_data_start+11], _msg_buff[_msg_buff_data_start+10]) * 0.1;  // roll rate

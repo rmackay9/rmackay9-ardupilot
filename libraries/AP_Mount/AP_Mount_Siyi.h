@@ -166,7 +166,7 @@ private:
     void request_hardware_id() { send_packet(SiyiCommandId::HARDWARE_ID, nullptr, 0); }
     void request_configuration() { send_packet(SiyiCommandId::ACQUIRE_GIMBAL_CONFIG_INFO, nullptr, 0); }
     void request_function_feedback_info() { send_packet(SiyiCommandId::FUNCTION_FEEDBACK_INFO, nullptr, 0); }
-    void request_gimbal_attitude() { send_packet(SiyiCommandId::ACQUIRE_GIMBAL_ATTITUDE, nullptr, 0); }
+    void request_gimbal_attitude() { send_packet(SiyiCommandId::ACQUIRE_GIMBAL_ATTITUDE, nullptr, 0); att_request_count++; }
 
     // rotate gimbal.  pitch_rate and yaw_rate are scalars in the range -100 ~ +100
     // yaw_is_ef should be true if gimbal should maintain an earth-frame target (aka lock)
@@ -241,6 +241,11 @@ private:
     float _zoom_mult_target;                        // current zoom multiple target.  0 if no target
     float _zoom_mult;                               // most recent actual zoom multiple received from camera
     uint32_t _last_zoom_control_ms;                 // system time that zoom control was last run
+
+    // debug
+    uint32_t att_request_count;
+    uint32_t att_reply_count;
+    uint32_t att_request_start_ms;
 };
 
 #endif // HAL_MOUNT_SIYISERIAL_ENABLED
