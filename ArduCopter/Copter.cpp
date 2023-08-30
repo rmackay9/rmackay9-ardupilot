@@ -445,6 +445,12 @@ bool Copter::has_ekf_failsafed() const
     return failsafe.ekf;
 }
 
+// returns true if the RC failsafe has triggered.  Only used by Lua scripts
+bool Copter::has_rc_failsafed() const
+{
+    return failsafe.radio;
+}
+
 #endif // AP_SCRIPTING_ENABLED
 
 // returns true if vehicle is landing. Only used by Lua scripts

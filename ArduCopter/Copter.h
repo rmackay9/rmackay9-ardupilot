@@ -691,9 +691,10 @@ private:
     bool nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2, int16_t &arg3, int16_t &arg4) override;
     void nav_script_time_done(uint16_t id) override;
 #endif
-    // lua scripts use this to retrieve EKF failsafe state
-    // returns true if the EKF failsafe has triggered
+    // lua scripts use this to retrieve EKF or RC failsafe state
+    // returns true if the failsafe has triggered
     bool has_ekf_failsafed() const override;
+    bool has_rc_failsafed() const override;
 #endif // AP_SCRIPTING_ENABLED
     bool is_landing() const override;
     bool is_taking_off() const override;
