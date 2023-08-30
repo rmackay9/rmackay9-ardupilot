@@ -193,8 +193,9 @@ public:
     // allow for VTOL velocity matching of a target
     virtual bool set_velocity_match(const Vector2f &velocity) { return false; }
 
-    // returns true if the EKF failsafe has triggered
+    // returns true if the EKF or RC failsafes have triggered
     virtual bool has_ekf_failsafed() const { return false; }
+    virtual bool has_rc_failsafed() const { return false; }
 
     // allow for landing descent rate to be overridden by a script, may be -ve to climb
     virtual bool set_land_descent_rate(float descent_rate) { return false; }
