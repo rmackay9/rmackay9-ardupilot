@@ -181,12 +181,33 @@ function is_protected_mode()
    return false
 end
 
+-- modes deadreckoning may be activated from because of RC failsafe (after an EKF/GPS failsafe)
+-- this list should only include pilot controlled modes that do not require GPS
+-- there should be no overlap with the "protected_mode_array" above
+local rc_protected_mode_array = {
+         0, --STABILIZE
+         1, --ACRO
+         2, --ALT_HOLD
+        }
+function is_rc_protected_mode(curr_mode)
+   if curr_mode == nil then
+     curr_mode = vehicle:get_mode()
+   end
+   for i = 1, #rc_protected_mode_array do
+     if curr_mode == rc_protected_mode_array[i] then
+       return true
+     end
+   end
+   return false
+end
+
 local copter_guided_nogps_mode = 20 -- Guided_NoGPS is mode 20 on Copter
 local copter_RTL_mode = 6           -- RTL is mode 6 on Copter
 local recovery_delay_ms = 3000      -- switch to NEXT_MODE happens this many milliseconds after GPS and EKF failsafe recover
 
 local gps_bad = false               -- true if GPS is failing checks
 local ekf_bad = false               -- true if EKF failsafe has triggered
+local rc_bad = false                -- true if RC failsafe has triggered
 local gps_or_ekf_bad = true         -- true if GPS and/or EKF is bad, true once both have recovered
 
 local flight_stage = 0  -- 0. wait for good-gps and dist-from-home, 1=wait for bad gps or ekf, 2=level vehicle, 3=deadreckon home
@@ -251,6 +272,17 @@ function update()
     ekf_bad = fs_ekf
   end
 
+  -- check RC failsafe
+  local fs_rc = vehicle:has_rc_failsafed()
+  if rc_bad ~= fs_rc then
+    rc_bad = fs_rc
+    if (rc_bad) then
+      gcs:send_text(0, "DR: lost RC")
+    else
+      gcs:send_text(0, "DR: RC recovered")
+    end
+  end
+
   -- check for GPS and/or EKF going bad
   if not gps_or_ekf_bad and (gps_bad or ekf_bad) then
     gps_or_ekf_bad = true
@@ -310,7 +342,7 @@ function update()
 
   -- flight_stage 1: wait for bad gps or ekf
   if (flight_stage == 1) then
-    if (gps_or_ekf_bad and is_protected_mode()) then
+    if (gps_or_ekf_bad and (is_protected_mode() or (vehicle:has_rc_failsafed() and is_rc_protected_mode()))) then
       -- change to Guided_NoGPS and initialise stage2
       if (vehicle:set_mode(copter_guided_nogps_mode)) then
         flight_stage = 2
@@ -397,6 +429,11 @@ function update()
       local recovery_mode = stage1_flight_mode
       if (next_mode:get() >= 0) then
         recovery_mode = next_mode:get()
+        if (vehicle:has_rc_failsafed() and is_rc_protected_mode(recovery_mode)) then
+          -- protect against switching to pilot controlled mode during RC failsafe
+          gcs:send_text(0, "DR: NEXT_MODE=" .. recovery_mode .. " but RC failsafe so RTL")
+          recovery_mode = copter_RTL_mode
+        end
       end
       if (recovery_mode == nil) then
         recovery_mode = copter_RTL_mode
