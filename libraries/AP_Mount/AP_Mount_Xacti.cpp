@@ -569,12 +569,13 @@ void AP_Mount_Xacti::handle_param_save_response(AP_UAVCAN* ap_dronecan, const ui
 }
 
 // get parameter name for a particular param enum value
+// returns an empty string if not found (which should never happen)
 const char* AP_Mount_Xacti::get_param_name_str(Param param) const
 {
     // check to avoid reading beyond end of array.  This should never happen
     if ((uint8_t)param > ARRAY_SIZE(_param_names)) {
         INTERNAL_ERROR(AP_InternalError::error_t::invalid_arg_or_result);
-        return nullptr;
+        return "";
     }
     return _param_names[(uint8_t)param];
 }
@@ -619,10 +620,6 @@ bool AP_Mount_Xacti::get_param_string(Param param)
 
     // convert param to string
     const char* param_name_str = get_param_name_str(param);
-    if (param_name_str == nullptr) {
-        return false;
-    }
-
     if (_detected_modules[_instance].ap_dronecan->get_parameter_on_node(_detected_modules[_instance].node_id, param_name_str, &param_string_cb)) {
         last_send_getset_param_ms = AP_HAL::millis();
         return true;
@@ -641,9 +638,6 @@ bool AP_Mount_Xacti::process_set_param_int32_queue()
     if (_set_param_int32_queue->pop(param_to_set)) {
         // convert param to string
         const char* param_name_str = get_param_name_str(param_to_set.param);
-        if (param_name_str == nullptr) {
-            return false;
-        }
         if (_detected_modules[_instance].ap_dronecan->set_parameter_on_node(_detected_modules[_instance].node_id, param_name_str, param_to_set.value, &param_int_cb)) {
             last_send_getset_param_ms = AP_HAL::millis();
             return true;
