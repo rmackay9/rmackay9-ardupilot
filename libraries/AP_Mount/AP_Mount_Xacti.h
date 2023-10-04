@@ -278,6 +278,10 @@ private:
         int32_t value;                              // parameter value
     };
     ObjectArray<SetParamQueueItem> *_set_param_int32_queue; // queue of set-parameter items
+
+    // debug
+    static uint16_t image_count;               // latest image number taken
+    static uint16_t gns_request_count;         // gns request count
 };
 
 #endif // HAL_MOUNT_XACTI_ENABLED

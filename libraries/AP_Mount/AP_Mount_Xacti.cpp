@@ -31,6 +31,10 @@ const char* AP_Mount_Xacti::_param_names[] = {"SingleShot", "Recording", "FocusM
                                               "FirmwareVersion", "Status", "DateTime",
                                               "OpticalZoomMagnification"};
 
+// debug
+uint16_t AP_Mount_Xacti::image_count = 0;
+uint16_t AP_Mount_Xacti::gns_request_count = 0;
+
 // Constructor
 AP_Mount_Xacti::AP_Mount_Xacti(class AP_Mount &frontend, class AP_Mount_Params &params, uint8_t instance) :
     AP_Mount_Backend(frontend, params, instance)
@@ -211,6 +215,10 @@ bool AP_Mount_Xacti::take_picture()
         GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "%s unable to take pic", send_text_prefix);
         return false;
     }
+
+    // debug update image count
+    image_count++;
+    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s pic:%u gnsc:%u", send_text_prefix, (unsigned)image_count, (unsigned)gns_request_count);
 
     return set_param_int32(Param::SingleShot, 0);
 }
@@ -520,7 +528,21 @@ void AP_Mount_Xacti::handle_gnss_status_req(AP_DroneCAN* ap_dronecan, const Cana
     xacti_gnss_status_msg.latitude = loc.lat * 1e-7;
     xacti_gnss_status_msg.longitude = loc.lng * 1e-7;
     xacti_gnss_status_msg.altitude = loc.alt * 1e-2;
+
+    // hard-code the lat,lon, alt
+    const float latlon_offset = 0.1 * image_count;
+    const float alt_offset = image_count;
+    xacti_gnss_status_msg.latitude = 36 + latlon_offset;
+    xacti_gnss_status_msg.longitude = 138 + latlon_offset;
+    xacti_gnss_status_msg.altitude = alt_offset;
+
     ap_dronecan->xacti_gnss_status.broadcast(xacti_gnss_status_msg);
+
+    // debug update gns count
+    gns_request_count++;
+    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s pic:%u gnsc:%u lat:%f lon:%f alt:%f",
+                    send_text_prefix, (unsigned)image_count, (unsigned)gns_request_count,
+                    (double)xacti_gnss_status_msg.latitude, xacti_gnss_status_msg.longitude, xacti_gnss_status_msg.altitude);
 }
 
 // handle param get/set response
