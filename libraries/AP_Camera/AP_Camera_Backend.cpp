@@ -328,6 +328,7 @@ void AP_Camera_Backend::prep_mavlink_msg_camera_feedback(uint64_t timestamp_us)
     camera_feedback.roll = degrees(ahrs.roll);
     camera_feedback.pitch = degrees(ahrs.pitch);
     camera_feedback.yaw = degrees(ahrs.yaw);
+    bool used_mount_att = false;
 
     // overwrite with gimbal mount attitude if available
 #if HAL_MOUNT_ENABLED
@@ -337,9 +338,11 @@ void AP_Camera_Backend::prep_mavlink_msg_camera_feedback(uint64_t timestamp_us)
         if (mount->get_attitude_euler(mount_instance, camera_feedback.roll, camera_feedback.pitch, camera_feedback.yaw)) {
             // convert yaw to earth-frame and 0~360 range
             camera_feedback.yaw = wrap_360(camera_feedback.yaw + degrees(ahrs.yaw));
+            used_mount_att = true;
         }
     }
 #endif
+    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Cam: R:%4.1f p:%4.1f y:%4.1f m:%d", (double)camera_feedback.roll, (double)camera_feedback.pitch, (double)camera_feedback.yaw, (int)used_mount_att);
 
     camera_feedback.feedback_trigger_logged_count = feedback_trigger_logged_count;
 
