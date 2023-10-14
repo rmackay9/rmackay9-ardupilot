@@ -124,6 +124,13 @@ protected:
     void feedback_pin_timer();
     void check_feedback();
 
+    // returns true if this camera provides feedback when a picture is taken (not using a pin)
+    virtual bool has_nonpin_shutter_feedback() const { return false; }
+
+    // get the total count and timestamp of the latest non-pin shutter feedback event
+    // returns true on success and fills in count and timestamp (in microseconds)
+    virtual bool get_nonpin_shutter_feedback(uint16_t& count, uint64_t& timestamp_us) { return false; }
+
     // store location and attitude for use in camera_feedback message to GCS
     // also calls gcs objects to send camera_feedback messages for all camera backends
     void prep_mavlink_msg_camera_feedback(uint64_t timestamp_us);

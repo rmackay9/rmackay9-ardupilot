@@ -59,6 +59,15 @@ public:
 
     // send camera settings message to GCS
     void send_camera_settings(mavlink_channel_t chan) const override;
+
+protected:
+
+    // returns true if this camera provides feedback when a picture is taken (not using a pin)
+    bool has_nonpin_shutter_feedback() const override;
+
+    // get the total count and timestamp of the latest non-pin shutter feedback event
+    // returns true on success and fills in count and timestamp (in microseconds)
+    bool get_nonpin_shutter_feedback(uint16_t& count, uint64_t& timestamp_us) override;
 };
 
 #endif // AP_CAMERA_MOUNT_ENABLED

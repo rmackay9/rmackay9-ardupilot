@@ -299,6 +299,16 @@ void AP_Camera_Backend::feedback_pin_timer()
 // log and send camera feedback to GCS if necessary
 void AP_Camera_Backend::check_feedback()
 {
+    // check for feedback not received through a pin
+    if (_params.feedback_pin <= 0) {
+        uint16_t count;
+        uint64_t timestamp_us;
+        if (get_nonpin_shutter_feedback(count, timestamp_us)) {
+            feedback_trigger_logged_count = count;
+            feedback_trigger_timestamp_us = timestamp_us;
+        }
+    }
+
     if (feedback_trigger_logged_count != feedback_trigger_count) {
         const uint32_t timestamp32 = feedback_trigger_timestamp_us;
         feedback_trigger_logged_count = feedback_trigger_count;
@@ -352,15 +362,15 @@ void AP_Camera_Backend::prep_mavlink_msg_camera_feedback(uint64_t timestamp_us)
 // log picture
 void AP_Camera_Backend::log_picture()
 {
-    const bool using_feedback_pin = _params.feedback_pin > 0;
+    const bool using_feedback = (_params.feedback_pin > 0) || has_nonpin_shutter_feedback();
 
-    if (!using_feedback_pin) {
+    if (!using_feedback) {
         // call gcs objects to send camera_feedback messages for all camera backends
         // if not using a feedback pin we use current time
         prep_mavlink_msg_camera_feedback(AP_HAL::micros());
     }
 
-    if (!using_feedback_pin) {
+    if (!using_feedback) {
         Write_Camera();
     } else {
         Write_Trigger();

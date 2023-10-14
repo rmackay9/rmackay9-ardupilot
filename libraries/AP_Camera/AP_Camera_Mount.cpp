@@ -88,4 +88,25 @@ void AP_Camera_Mount::send_camera_settings(mavlink_channel_t chan) const
     }
 }
 
+// returns true if this camera provides feedback when a picture is taken (not using a pin)
+bool AP_Camera_Mount::has_nonpin_shutter_feedback() const
+{
+    AP_Mount* mount = AP::mount();
+    if (mount != nullptr) {
+        return mount->has_nonpin_shutter_feedback(get_mount_instance());
+    }
+    return false;
+}
+
+// get the total count and timestamp of the latest non-pin shutter feedback event
+// returns true on success and fills in count and timestamp (in microseconds)
+bool AP_Camera_Mount::get_nonpin_shutter_feedback(uint16_t& count, uint64_t& timestamp_us)
+{
+    AP_Mount* mount = AP::mount();
+    if (mount != nullptr) {
+        return mount->get_nonpin_shutter_feedback(get_mount_instance(), count, timestamp_us);
+    }
+    return false;
+}
+
 #endif // AP_CAMERA_MOUNT_ENABLED
