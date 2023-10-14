@@ -124,7 +124,8 @@ protected:
     void feedback_pin_timer();
     void check_feedback();
 
-    // store vehicle location and attitude for use in camera_feedback message to GCS
+    // store location and attitude for use in camera_feedback message to GCS
+    // also calls gcs objects to send camera_feedback messages for all camera backends
     void prep_mavlink_msg_camera_feedback(uint64_t timestamp_us);
     struct {
         uint64_t timestamp_us;      // system time of most recent image

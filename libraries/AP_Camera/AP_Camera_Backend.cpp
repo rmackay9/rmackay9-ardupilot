@@ -295,14 +295,16 @@ void AP_Camera_Backend::feedback_pin_timer()
     last_pin_state = pin_state;
 }
 
-// check for feedback pin update and log if necessary
+// check for feedback pin update
+// log and send camera feedback to GCS if necessary
 void AP_Camera_Backend::check_feedback()
 {
     if (feedback_trigger_logged_count != feedback_trigger_count) {
         const uint32_t timestamp32 = feedback_trigger_timestamp_us;
         feedback_trigger_logged_count = feedback_trigger_count;
 
-        // we should consider doing this inside the ISR and pin_timer
+        // call gcs objects to send camera_feedback messages for all camera backends
+        // if not using a feedback pin we use current time
         prep_mavlink_msg_camera_feedback(feedback_trigger_timestamp_us);
 
         // log camera message
@@ -312,6 +314,8 @@ void AP_Camera_Backend::check_feedback()
     }
 }
 
+// store location and attitude for use in camera_feedback message to GCS
+// also calls gcs objects to send camera_feedback messages for all camera backends
 void AP_Camera_Backend::prep_mavlink_msg_camera_feedback(uint64_t timestamp_us)
 {
     const AP_AHRS &ahrs = AP::ahrs();
