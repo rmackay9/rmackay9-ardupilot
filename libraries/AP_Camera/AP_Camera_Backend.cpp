@@ -323,9 +323,24 @@ void AP_Camera_Backend::prep_mavlink_msg_camera_feedback(uint64_t timestamp_us)
         // completely ignore this failure!  AHRS will provide its best guess.
     }
     camera_feedback.timestamp_us = timestamp_us;
+
+    // default to vehicle attitude
     camera_feedback.roll = degrees(ahrs.roll);
     camera_feedback.pitch = degrees(ahrs.pitch);
     camera_feedback.yaw = degrees(ahrs.yaw);
+
+    // overwrite with gimbal mount attitude if available
+#if HAL_MOUNT_ENABLED
+    const uint8_t mount_instance = get_mount_instance();
+    AP_Mount* mount = AP::mount();
+    if (mount != nullptr) {
+        if (mount->get_attitude_euler(mount_instance, camera_feedback.roll, camera_feedback.pitch, camera_feedback.yaw)) {
+            // convert yaw to earth-frame and 0~360 range
+            camera_feedback.yaw = wrap_360(camera_feedback.yaw + degrees(ahrs.yaw));
+        }
+    }
+#endif
+
     camera_feedback.feedback_trigger_logged_count = feedback_trigger_logged_count;
 
     GCS_SEND_MESSAGE(MSG_CAMERA_FEEDBACK);
