@@ -846,6 +846,27 @@ void AP_Mount::send_camera_settings(uint8_t instance, mavlink_channel_t chan) co
     backend->send_camera_settings(chan);
 }
 
+// returns true if this camera mount provides feedback when a picture is taken (not using a pin)
+bool AP_Mount::has_nonpin_shutter_feedback(uint8_t instance) const
+{
+    auto *backend = get_instance(instance);
+    if (backend == nullptr) {
+        return false;
+    }
+    return backend->has_nonpin_shutter_feedback();  
+}
+
+// get the total count and timestamp of the latest non-pin shutter feedback event
+// returns true on success and fills in count and timestamp (in microseconds)
+bool AP_Mount::get_nonpin_shutter_feedback(uint8_t instance, uint16_t& count, uint64_t& timestamp_us)
+{
+    auto *backend = get_instance(instance);
+    if (backend == nullptr) {
+        return false;
+    }
+    return backend->get_nonpin_shutter_feedback(count, timestamp_us);
+}
+
 // get rangefinder distance.  Returns true on success
 bool AP_Mount::get_rangefinder_distance(uint8_t instance, float& distance_m) const
 {

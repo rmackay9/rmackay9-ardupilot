@@ -356,6 +356,16 @@ void AP_Mount_Xacti::send_camera_settings(mavlink_channel_t chan) const
         NaN);               // focusLevel float, percentage from 0 to 100, NaN if unknown
 }
 
+// get the total count and timestamp of the latest non-pin shutter feedback event
+// returns true on success and fills in count and timestamp (in microseconds)
+bool AP_Mount_Xacti::get_nonpin_shutter_feedback(uint16_t& count, uint64_t& timestamp_us)
+{
+    WITH_SEMAPHORE(_shutter_feedback.sem);
+    count = _shutter_feedback.image_count;
+    timestamp_us = _shutter_feedback.timestamp_us;
+    return true;
+}
+
 // get attitude as a quaternion.  returns true on success
 bool AP_Mount_Xacti::get_attitude_quaternion(Quaternion& att_quat)
 {
@@ -533,6 +543,10 @@ bool AP_Mount_Xacti::handle_param_get_set_response_int(AP_DroneCAN* ap_dronecan,
     if (strcmp(name, get_param_name_str(Param::SingleShot)) == 0) {
         if (value < 0) {
             GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "%s take pic", err_prefix_str);
+        } else {
+            WITH_SEMAPHORE(_shutter_feedback.sem);
+            _shutter_feedback.image_count++;
+            _shutter_feedback.timestamp_us = AP_HAL::micros64();
         }
         return false;
     }
