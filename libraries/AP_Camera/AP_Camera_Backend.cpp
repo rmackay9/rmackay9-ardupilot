@@ -196,9 +196,9 @@ void AP_Camera_Backend::send_camera_feedback(mavlink_channel_t chan)
         camera_feedback.location.lng,       // longitude
         altitude*1e-2f,                     // alt MSL
         altitude_rel*1e-2f,                 // alt relative to home
-        camera_feedback.roll_sensor*1e-2f,  // roll angle (deg)
-        camera_feedback.pitch_sensor*1e-2f, // pitch angle (deg)
-        camera_feedback.yaw_sensor*1e-2f,   // yaw angle (deg)
+        camera_feedback.roll,               // roll angle (deg)
+        camera_feedback.pitch,              // pitch angle (deg)
+        camera_feedback.yaw,                // yaw angle (deg)
         0.0f,                               // focal length
         CAMERA_FEEDBACK_PHOTO,              // flags
         camera_feedback.feedback_trigger_logged_count); // completed image captures
@@ -323,9 +323,9 @@ void AP_Camera_Backend::prep_mavlink_msg_camera_feedback(uint64_t timestamp_us)
         // completely ignore this failure!  AHRS will provide its best guess.
     }
     camera_feedback.timestamp_us = timestamp_us;
-    camera_feedback.roll_sensor = ahrs.roll_sensor;
-    camera_feedback.pitch_sensor = ahrs.pitch_sensor;
-    camera_feedback.yaw_sensor = ahrs.yaw_sensor;
+    camera_feedback.roll = degrees(ahrs.roll);
+    camera_feedback.pitch = degrees(ahrs.pitch);
+    camera_feedback.yaw = degrees(ahrs.yaw);
     camera_feedback.feedback_trigger_logged_count = feedback_trigger_logged_count;
 
     GCS_SEND_MESSAGE(MSG_CAMERA_FEEDBACK);

@@ -130,9 +130,9 @@ protected:
     struct {
         uint64_t timestamp_us;      // system time of most recent image
         Location location;          // location where most recent image was taken
-        int32_t roll_sensor;        // vehicle roll in centi-degrees
-        int32_t pitch_sensor;       // vehicle pitch in centi-degrees
-        int32_t yaw_sensor;         // vehicle yaw in centi-degrees
+        float roll;                 // vehicle or mount roll in deg
+        float pitch;                // vehicle or mount pitch in deg
+        float yaw;                  // vehicle or mount yaw in deg (0 to 360)
         uint32_t feedback_trigger_logged_count; // ID sequence number
     } camera_feedback;
 
