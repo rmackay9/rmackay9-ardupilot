@@ -337,10 +337,9 @@ void AP_Camera_Backend::log_picture()
     const bool using_feedback_pin = _params.feedback_pin > 0;
 
     if (!using_feedback_pin) {
-        // if we're using a feedback pin then when the event occurs we
-        // stash the feedback data.  Since we're not using a feedback
-        // pin, we just use "now".
-        prep_mavlink_msg_camera_feedback(AP::gps().time_epoch_usec());
+        // call gcs objects to send camera_feedback messages for all camera backends
+        // if not using a feedback pin we use current time
+        prep_mavlink_msg_camera_feedback(AP_HAL::micros());
     }
 
     if (!using_feedback_pin) {
