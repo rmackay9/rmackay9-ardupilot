@@ -56,6 +56,10 @@
 #define AP_DRONECAN_HIMARK_SERVO_ENABLED (BOARD_FLASH_SIZE>1024)
 #endif
 
+#ifndef AP_DRONECAN_XACTI_MOUNT_ENABLED
+#define AP_DRONECAN_XACTI_MOUNT_ENABLED (BOARD_FLASH_SIZE>1024)
+#endif
+
 // fwd-declare callback classes
 class ButtonCb;
 class TrafficReportCb;
@@ -78,6 +82,10 @@ class HobbywingStatus1Cb;
 class HobbywingStatus2Cb;
 #endif
 
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+class XactiGnssStatusReqCb;
+class XactiGimbalAttitudeStatusCb;
+#endif
 
 #if defined(__GNUC__) && (__GNUC__ > 8)
 #define DISABLE_W_CAST_FUNCTION_TYPE_PUSH \
@@ -154,6 +162,12 @@ public:
 
     // send RTCMStream packets
     void send_RTCMStream(const uint8_t *data, uint32_t len);
+
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+    void set_xacti_gimbal_control(uint8_t mode, int16_t pitch_cd, int16_t yaw_cd);
+    void trigger_send_xacti_copter_att_status();
+    void trigger_send_gnss_status(uint8_t requirement);
+#endif
 
     // Send Reboot command
     // Note: Do not call this from outside UAVCAN thread context,
@@ -410,7 +424,27 @@ private:
     bool himark_enabled;
     static void handle_himark_servoinfo(AP_UAVCAN* ap_uavcan, uint8_t node_id, const HimarkServoInfoCb &cb);
 #endif
-    
+
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+    // xacti specific message handlers
+    struct {
+        HAL_Semaphore sem;              // semaphore to protect against simultaneous update
+        uint8_t mode;                   // target gimbal mode (angle or rate)
+        int16_t pitch_cd;               // target gimbal pitch angle or rate
+        int16_t yaw_cd;                 // target gimbal yaw angle or rate
+        int8_t gnss_status_requirement; // gnss status requirement value
+        uint8_t send_target_seq;        // send target sequence id (when updated this triggers send of the target angle or rates)
+        uint8_t send_copter_att_seq;    // send vehicle attitude sequence id (when updated this triggers send of vehicle attitude to gimbal)
+        uint8_t send_gnss_status_seq;   // send gnss sequence id (when updated this triggers send of gnss status to gimbal)
+    } xacti;
+    uint8_t xacti_last_send_target_seq; // last sent target sequence id (used to detect updates from caller)
+    uint8_t xacti_last_send_copter_att_seq;     // last sent vehicle attitude sequence id (used to detect updates from caller)
+    uint8_t xacti_last_send_gnss_status_seq;    // last sent vehicle attitude sequence id (used to detect updates from caller)
+    void send_xacti_gimbal_control();
+    void send_xacti_copter_att_status();
+    void send_xacti_gnss_status();
+#endif
+
     // incoming button handling
     static void handle_button(AP_UAVCAN* ap_uavcan, uint8_t node_id, const ButtonCb &cb);
     static void handle_traffic_report(AP_UAVCAN* ap_uavcan, uint8_t node_id, const TrafficReportCb &cb);

@@ -63,6 +63,14 @@
 #include <com/hobbywing/esc/RawCommand.hpp>
 #endif
 
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+#include <com/xacti/GnssStatus.hpp>
+#include <com/xacti/CopterAttStatus.hpp>
+#include <com/xacti/GimbalControlData.hpp>
+#include <AP_Mount/AP_Mount_config.h>
+#include <AP_Mount/AP_Mount_Xacti.h>
+#endif
+
 #include <AP_Arming/AP_Arming.h>
 #include <AP_Baro/AP_Baro_UAVCAN.h>
 #include <AP_RangeFinder/AP_RangeFinder_UAVCAN.h>
@@ -249,6 +257,12 @@ static uavcan::Subscriber<uavcan::equipment::esc::Status, ESCStatusCb> *esc_stat
 static uavcan::Publisher<com::himark::servo::ServoCmd>* himark_out[HAL_MAX_CAN_PROTOCOL_DRIVERS];
 UC_REGISTRY_BINDER(HimarkServoInfoCb, com::himark::servo::ServoInfo);
 static uavcan::Subscriber<com::himark::servo::ServoInfo, HimarkServoInfoCb> *himark_servoinfo_listener[HAL_MAX_CAN_PROTOCOL_DRIVERS];
+#endif
+
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+static uavcan::Publisher<com::xacti::CopterAttStatus>* xacti_copter_att_status[HAL_MAX_CAN_PROTOCOL_DRIVERS];
+static uavcan::Publisher<com::xacti::GimbalControlData>* xacti_gimbal_control_data[HAL_MAX_CAN_PROTOCOL_DRIVERS];
+static uavcan::Publisher<com::xacti::GnssStatus>* xacti_gnss_status[HAL_MAX_CAN_PROTOCOL_DRIVERS];
 #endif
 
 // handler DEBUG
@@ -468,7 +482,23 @@ void AP_UAVCAN::init(uint8_t driver_index, bool enable_filters)
         }
     }
 #endif // AP_DRONECAN_HOBBYWING_ESC_ENABLED
-    
+
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+    xacti_copter_att_status[driver_index] = new uavcan::Publisher<com::xacti::CopterAttStatus>(*_node);
+    xacti_copter_att_status[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
+    xacti_copter_att_status[driver_index]->setPriority(uavcan::TransferPriority::OneLowerThanHighest);
+
+    xacti_gimbal_control_data[driver_index] = new uavcan::Publisher<com::xacti::GimbalControlData>(*_node);
+    xacti_gimbal_control_data[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
+    xacti_gimbal_control_data[driver_index]->setPriority(uavcan::TransferPriority::OneLowerThanHighest);
+
+    xacti_gnss_status[driver_index] = new uavcan::Publisher<com::xacti::GnssStatus>(*_node);
+    xacti_gnss_status[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
+    xacti_gnss_status[driver_index]->setPriority(uavcan::TransferPriority::OneLowerThanHighest);
+
+    AP_Mount_Xacti::subscribe_msgs(this);
+#endif // AP_DRONECAN_XACTI_MOUNT_ENABLED
+
     rgb_led[driver_index] = new uavcan::Publisher<uavcan::equipment::indication::LightsCommand>(*_node);
     rgb_led[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
     rgb_led[driver_index]->setPriority(uavcan::TransferPriority::OneHigherThanLowest);
@@ -650,6 +680,11 @@ void AP_UAVCAN::loop(void)
         logging();
 #if AP_DRONECAN_HOBBYWING_ESC_ENABLED
         hobbywing_ESC_update();
+#endif
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+        send_xacti_gimbal_control();
+        send_xacti_copter_att_status();
+        send_xacti_gnss_status();
 #endif
     }
 }
@@ -1454,6 +1489,127 @@ bool AP_UAVCAN::is_esc_data_index_valid(const uint8_t index) {
     }
     return true;
 }
+
+#if AP_DRONECAN_XACTI_MOUNT_ENABLED
+// xacti specific message handlers
+// set xacti gimbal target
+// mode is 2:angle control or 3:rate control
+// pitch_cd is pitch angle in centi-degrees or pitch rate in cds
+// yaw_cd is angle in centi-degrees or yaw rate in cds
+void AP_UAVCAN::set_xacti_gimbal_control(uint8_t mode, int16_t pitch_cd, int16_t yaw_cd)
+{
+    WITH_SEMAPHORE(xacti.sem);
+    xacti.mode = mode;
+    xacti.pitch_cd = pitch_cd;
+    xacti.yaw_cd = yaw_cd;
+    xacti_last_send_target_seq++;
+}
+
+// trigger sending latest vehicle attitude to gimbal
+void AP_UAVCAN::trigger_send_xacti_copter_att_status()
+{
+    WITH_SEMAPHORE(xacti.sem);
+    xacti.send_copter_att_seq++;
+}
+
+// trigger sending latest gnss status to gimbal
+void AP_UAVCAN::trigger_send_gnss_status(uint8_t requirement)
+{
+    WITH_SEMAPHORE(xacti.sem);
+    xacti.gnss_status_requirement = requirement;
+    xacti.send_gnss_status_seq++;
+}
+
+// send gimbal control message via DroneCAN
+void AP_UAVCAN::send_xacti_gimbal_control()
+{
+    WITH_SEMAPHORE(xacti.sem);
+
+    // check sequence number has been updated
+    if (xacti.send_target_seq == xacti_last_send_target_seq) {
+        return;
+    }
+    xacti_last_send_target_seq = xacti.send_target_seq;
+
+    // send xacti specific gimbal control message
+    com::xacti::GimbalControlData gimbal_control_data_msg {};
+    gimbal_control_data_msg.pitch_cmd_type = xacti.mode;
+    gimbal_control_data_msg.yaw_cmd_type = xacti.mode;
+    gimbal_control_data_msg.pitch_cmd_value = xacti.pitch_cd;
+    gimbal_control_data_msg.yaw_cmd_value = -xacti.yaw_cd;
+    xacti_gimbal_control_data[_driver_index]->broadcast(gimbal_control_data_msg);
+    //GCS_SEND_TEXT(MAV_SEVERITY_INFO, "UAVCAN: xacti M:%d P:%d Y:%d", (int)gimbal_control_data_msg.pitch_cmd_type, (int)gimbal_control_data_msg.pitch_cmd_value, (int)gimbal_control_data_msg.yaw_cmd_value);
+}
+
+// send copter attitude status message to gimbal
+void AP_UAVCAN::send_xacti_copter_att_status()
+{
+    WITH_SEMAPHORE(xacti.sem);
+
+    // check for new request to send copter attitude to gimbal
+    if (xacti_last_send_copter_att_seq == xacti.send_copter_att_seq) {
+        return;
+    }
+    xacti_last_send_copter_att_seq = xacti.send_copter_att_seq;
+
+    // send xacti specific vehicle attitude message
+    Quaternion veh_att;
+    if (!AP::ahrs().get_quaternion(veh_att)) {
+        return;
+    }
+
+    com::xacti::CopterAttStatus copter_att_status_msg {};
+    copter_att_status_msg.quaternion_wxyz_e4[0] = veh_att.q1 * 1e4;
+    copter_att_status_msg.quaternion_wxyz_e4[1] = veh_att.q2 * 1e4;
+    copter_att_status_msg.quaternion_wxyz_e4[2] = veh_att.q3 * 1e4;
+    copter_att_status_msg.quaternion_wxyz_e4[3] = veh_att.q4 * 1e4;
+    copter_att_status_msg.reserved.push_back(0);
+    copter_att_status_msg.reserved.push_back(0);
+    xacti_copter_att_status[_driver_index]->broadcast(copter_att_status_msg);
+    //GCS_SEND_TEXT(MAV_SEVERITY_INFO, "UAVCAN: xacti sent copter att");
+}
+
+void AP_UAVCAN::send_xacti_gnss_status()
+{
+    WITH_SEMAPHORE(xacti.sem);
+
+    // check for new request to send gnss status to gimbal
+    if (xacti_last_send_gnss_status_seq == xacti.send_gnss_status_seq) {
+        return;
+    }
+    xacti_last_send_gnss_status_seq = xacti.send_gnss_status_seq;
+
+    // get current location
+    uint8_t gps_status = 3;
+    Location loc;
+    if (!AP::ahrs().get_location(loc)) {
+        gps_status = 0;
+    }
+
+    // get date and time
+    uint16_t year;
+    uint8_t month, day, hour, min, sec;
+    if (!AP::rtc().get_date_and_time_utc(year, month, day, hour, min, sec)) {
+        year = month = day = hour = min = sec = 0;
+    }
+
+    // send xacti specific gnss status message
+    com::xacti::GnssStatus xacti_gnss_status_msg {};
+    xacti_gnss_status_msg.gps_status = gps_status;
+    xacti_gnss_status_msg.order = xacti.gnss_status_requirement;
+    xacti_gnss_status_msg.remain_buffer = 1;
+    xacti_gnss_status_msg.utc_year = year;
+    xacti_gnss_status_msg.utc_month = month;
+    xacti_gnss_status_msg.utc_day = day;
+    xacti_gnss_status_msg.utc_hour = hour;
+    xacti_gnss_status_msg.utc_minute = min;
+    xacti_gnss_status_msg.utc_seconds = sec;
+    xacti_gnss_status_msg.latitude = loc.lat * 1e-7;
+    xacti_gnss_status_msg.longitude = loc.lng * 1e-7;
+    xacti_gnss_status_msg.altitude = loc.alt * 1e-2;
+    xacti_gnss_status[_driver_index]->broadcast(xacti_gnss_status_msg);
+}
+#endif // AP_DRONECAN_XACTI_MOUNT_ENABLED
 
 /*
   handle LogMessage debug
