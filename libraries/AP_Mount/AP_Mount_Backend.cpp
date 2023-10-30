@@ -7,6 +7,12 @@ extern const AP_HAL::HAL& hal;
 
 #define AP_MOUNT_UPDATE_DT 0.02     // update rate in seconds.  update() should be called at this rate
 
+// set device id of this instance, for MNTx_DEVID parameter
+void AP_Mount_Backend::set_dev_id(uint32_t id)
+{
+    _params.dev_id.set_and_save(int32_t(id));
+}
+
 // set angle target in degrees
 // yaw_is_earth_frame (aka yaw_lock) should be true if yaw angle is earth-frame, false if body-frame
 void AP_Mount_Backend::set_angle_target(float roll_deg, float pitch_deg, float yaw_deg, bool yaw_is_earth_frame)
