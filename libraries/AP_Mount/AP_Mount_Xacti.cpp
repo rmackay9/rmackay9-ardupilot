@@ -6,9 +6,15 @@
 #include <GCS_MAVLink/GCS.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_CANManager/AP_CANManager.h>
-#include <AP_DroneCAN/AP_DroneCAN.h>
+#include <AP_UAVCAN/AP_UAVCAN.h>
+#include <com/xacti/GnssStatusReq.hpp>
+#include <com/xacti/GimbalAttitudeStatus.hpp>
 
 extern const AP_HAL::HAL& hal;
+
+// DroneCAN Frontend Registry Binder
+UC_REGISTRY_BINDER(XactiGimbalAttitudeStatusCb, com::xacti::GimbalAttitudeStatus);
+UC_REGISTRY_BINDER(XactiGnssStatusReqCb, com::xacti::GnssStatusReq);
 
 #define LOG_TAG "Mount"
 #define XACTI_PARAM_SINGLESHOT "SingleShot"
@@ -28,8 +34,8 @@ AP_Mount_Xacti::AP_Mount_Xacti(class AP_Mount &frontend, class AP_Mount_Params &
 {
     register_backend();
 
-    param_int_cb = FUNCTOR_BIND_MEMBER(&AP_Mount_Xacti::handle_param_get_set_response_int, bool, AP_DroneCAN*, const uint8_t, const char*, int32_t &);
-    param_save_cb = FUNCTOR_BIND_MEMBER(&AP_Mount_Xacti::handle_param_save_response, void, AP_DroneCAN*, const uint8_t, bool);
+    param_int_cb = FUNCTOR_BIND_MEMBER(&AP_Mount_Xacti::handle_param_get_set_response_int, bool, AP_UAVCAN*, const uint8_t, const char*, int32_t &);
+    param_save_cb = FUNCTOR_BIND_MEMBER(&AP_Mount_Xacti::handle_param_save_response, void, AP_UAVCAN*, const uint8_t, bool);
 }
 
 // init - performs any required initialisation for this instance
@@ -162,84 +168,35 @@ bool AP_Mount_Xacti::record_video(bool start_recording)
     return _detected_modules[_instance].ap_dronecan->set_parameter_on_node(_detected_modules[_instance].node_id, XACTI_PARAM_RECORDING, start_recording ? 1 : 0, &param_int_cb);
 }
 
-// set focus specified as rate, percentage or auto
+// set focus in, out or hold.  returns true on success
 // focus in = -1, focus hold = 0, focus out = 1
-bool AP_Mount_Xacti::set_focus(FocusType focus_type, float focus_value)
+bool AP_Mount_Xacti::set_manual_focus_step(int8_t focus_step)
 {
     if (_detected_modules[_instance].ap_dronecan == nullptr) {
         return false;
     }
 
     // convert focus type and value to parameter value
-    uint8_t focus_param_value;
-    switch (focus_type) {
-    case FocusType::RATE:
-    case FocusType::PCT:
-        // focus rate and percentage control not supported so simply switch to manual focus
-        // FocusMode of 0:Manual Focus
-        focus_param_value = 0;
-        break;
-    case FocusType::AUTO:
-        // FocusMode of 1:Single AutoFocus, 2:Continuous AutoFocus
-        focus_param_value = 2;
-        break;
-    default:
-        // unsupported forucs mode
-        return false;
-    }
+    // focus rate and percentage control not supported so simply switch to manual focus
+    // FocusMode of 0:Manual Focus
+    uint8_t focus_param_value = 0;
 
     // set FocusMode parameter
     return _detected_modules[_instance].ap_dronecan->set_parameter_on_node(_detected_modules[_instance].node_id, XACTI_PARAM_FOCUSMODE, focus_param_value, &param_int_cb);
 }
 
-// send camera information message to GCS
-void AP_Mount_Xacti::send_camera_information(mavlink_channel_t chan) const
+// auto focus.  returns true on success
+bool AP_Mount_Xacti::set_auto_focus()
 {
-    // exit immediately if not initialised
-    if (!_initialised) {
-        return;
+    if (_detected_modules[_instance].ap_dronecan == nullptr) {
+        return false;
     }
 
-    static const uint8_t vendor_name[32] = "Xacti";
-    static uint8_t model_name[32] = "CX-GB100";
-    const char cam_definition_uri[140] {};
-    const float NaN = nanf("0x4152");
+    // FocusMode of 1:Single AutoFocus, 2:Continuous AutoFocus
+    uint8_t focus_param_value = 2;
 
-    // capability flags
-    const uint32_t flags = CAMERA_CAP_FLAGS_CAPTURE_VIDEO |
-                           CAMERA_CAP_FLAGS_CAPTURE_IMAGE |
-                           CAMERA_CAP_FLAGS_HAS_BASIC_FOCUS;
-
-    // send CAMERA_INFORMATION message
-    mavlink_msg_camera_information_send(
-        chan,
-        AP_HAL::millis(),       // time_boot_ms
-        vendor_name,            // vendor_name uint8_t[32]
-        model_name,             // model_name uint8_t[32]
-        0,                      // firmware version uint32_t
-        NaN,                    // focal_length float (mm)
-        NaN,                    // sensor_size_h float (mm)
-        NaN,                    // sensor_size_v float (mm)
-        0,                      // resolution_h uint16_t (pix)
-        0,                      // resolution_v uint16_t (pix)
-        0,                      // lens_id uint8_t
-        flags,                  // flags uint32_t (CAMERA_CAP_FLAGS)
-        0,                      // cam_definition_version uint16_t
-        cam_definition_uri);    // cam_definition_uri char[140]
-}
-
-// send camera settings message to GCS
-void AP_Mount_Xacti::send_camera_settings(mavlink_channel_t chan) const
-{
-    const float NaN = nanf("0x4152");
-
-    // send CAMERA_SETTINGS message
-    mavlink_msg_camera_settings_send(
-        chan,
-        AP_HAL::millis(),   // time_boot_ms
-        _recording_video ? CAMERA_MODE_VIDEO : CAMERA_MODE_IMAGE,   // camera mode (0:image, 1:video, 2:image survey)
-        0,                  // zoomLevel float, percentage from 0 to 100, NaN if unknown
-        NaN);               // focusLevel float, percentage from 0 to 100, NaN if unknown
+    // set FocusMode parameter
+    return _detected_modules[_instance].ap_dronecan->set_parameter_on_node(_detected_modules[_instance].node_id, XACTI_PARAM_FOCUSMODE, focus_param_value, &param_int_cb);
 }
 
 // get attitude as a quaternion.  returns true on success
@@ -269,7 +226,7 @@ void AP_Mount_Xacti::send_target_angles(float pitch_rad, float yaw_rad, bool yaw
 }
 
 // subscribe to Xacti DroneCAN messages
-void AP_Mount_Xacti::subscribe_msgs(AP_DroneCAN* ap_dronecan)
+void AP_Mount_Xacti::subscribe_msgs(AP_UAVCAN* ap_dronecan)
 {
     // return immediately if DroneCAN is unavailable
     if (ap_dronecan == nullptr) {
@@ -279,14 +236,36 @@ void AP_Mount_Xacti::subscribe_msgs(AP_DroneCAN* ap_dronecan)
 
     _subscribed = true;
 
-    if (Canard::allocate_sub_arg_callback(ap_dronecan, &handle_gimbal_attitude_status, ap_dronecan->get_driver_index()) == nullptr) {
+    auto* node = ap_dronecan->get_node();
+
+    uavcan::Subscriber<com::xacti::GimbalAttitudeStatus, XactiGimbalAttitudeStatusCb> *xacti_gimbal_attitude_status_listener;
+    xacti_gimbal_attitude_status_listener = new uavcan::Subscriber<com::xacti::GimbalAttitudeStatus, XactiGimbalAttitudeStatusCb>(*node);
+    if (xacti_gimbal_attitude_status_listener == nullptr) {
         AP_BoardConfig::allocation_error("gimbal_attitude_status_sub");
         _subscribed = false;
     }
 
-    if (Canard::allocate_sub_arg_callback(ap_dronecan, &handle_gnss_status_req, ap_dronecan->get_driver_index()) == nullptr) {
+    // register method to handle incoming message
+    const int xacti_gimbal_attitude_status_listener_res = xacti_gimbal_attitude_status_listener->start(XactiGimbalAttitudeStatusCb(ap_dronecan, &handle_gimbal_attitude_status));
+    if (xacti_gimbal_attitude_status_listener_res < 0) {
+        AP_BoardConfig::allocation_error("Xacti: subscriber start problem");
+        _subscribed = false;
+        return;
+    }
+
+    uavcan::Subscriber<com::xacti::GnssStatusReq, XactiGnssStatusReqCb> *xacti_gnss_status_req_listener;
+    xacti_gnss_status_req_listener = new uavcan::Subscriber<com::xacti::GnssStatusReq, XactiGnssStatusReqCb>(*node);
+    if (xacti_gnss_status_req_listener == nullptr) {
         AP_BoardConfig::allocation_error("gnss_status_req_sub");
         _subscribed = false;
+    }
+
+    // register method to handle incoming message
+    const int xacti_gnss_status_req_listener_res = xacti_gnss_status_req_listener->start(XactiGnssStatusReqCb(ap_dronecan, &handle_gnss_status_req));
+    if (xacti_gnss_status_req_listener_res < 0) {
+        AP_BoardConfig::allocation_error("Xacti: subscriber start problem");
+        _subscribed = false;
+        return;
     }
 
     // debug
@@ -313,7 +292,7 @@ void AP_Mount_Xacti::register_backend()
     const uint8_t can_driver_index = AP_HAL::Device::devid_get_bus(devid);
     const uint8_t can_num_drivers = AP::can().get_num_drivers();
     for (uint8_t i = 0; i < can_num_drivers; i++) {
-        AP_DroneCAN *ap_dronecan = AP_DroneCAN::get_dronecan(i);
+        AP_UAVCAN *ap_dronecan = AP_UAVCAN::get_uavcan(i);
         if (ap_dronecan != nullptr && ap_dronecan->get_driver_index() == can_driver_index) {
             _detected_modules[_instance].ap_dronecan = ap_dronecan;
         }
@@ -325,7 +304,7 @@ void AP_Mount_Xacti::register_backend()
 
 // find backend associated with the given dronecan port and node_id.  also associates backends with zero node ids
 // returns pointer to backend on success, nullptr on failure
-AP_Mount_Xacti* AP_Mount_Xacti::get_dronecan_backend(AP_DroneCAN* ap_dronecan, uint8_t node_id)
+AP_Mount_Xacti* AP_Mount_Xacti::get_dronecan_backend(AP_UAVCAN* ap_dronecan, uint8_t node_id)
 {
     WITH_SEMAPHORE(_sem_registry);
 
@@ -361,61 +340,36 @@ AP_Mount_Xacti* AP_Mount_Xacti::get_dronecan_backend(AP_DroneCAN* ap_dronecan, u
     return nullptr;
 }
 
-// handle xacti gimbal attitude status message
-void AP_Mount_Xacti::handle_gimbal_attitude_status(AP_DroneCAN* ap_dronecan, const CanardRxTransfer& transfer, const com_xacti_GimbalAttitudeStatus &msg)
+void AP_Mount_Xacti::handle_gimbal_attitude_status(AP_UAVCAN* ap_dronecan, uint8_t node_id, const XactiGimbalAttitudeStatusCb &cb)
 {
     // fetch the matching backend driver, node id and gimbal id backend instance
-    AP_Mount_Xacti* driver = get_dronecan_backend(ap_dronecan, transfer.source_node_id);
+    AP_Mount_Xacti* driver = get_dronecan_backend(ap_dronecan, node_id);
     if (driver == nullptr) {
         return;
     }
 
     // convert body-frame Euler angles to Quaternion.  Note yaw direction is reversed from normal
-    driver->_current_attitude_quat.from_euler(radians(msg.gimbal_roll * 0.01), radians(msg.gimbal_pitch * 0.01), radians(-msg.gimbal_yaw * 0.01));
+    driver->_current_attitude_quat.from_euler(radians(cb.msg->gimbal_roll * 0.01), radians(cb.msg->gimbal_pitch * 0.01), radians(-cb.msg->gimbal_yaw * 0.01));
     driver->_last_current_attitude_quat_ms = AP_HAL::millis();
+
+    // debug
+    //GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Xacti: r:%d p:%d y:%d", (int)(cb.msg->gimbal_roll * 0.01), (int)(cb.msg->gimbal_pitch * 0.01), (int)(cb.msg->gimbal_yaw * 0.01));
 }
 
-// handle xacti gnss status request message
-void AP_Mount_Xacti::handle_gnss_status_req(AP_DroneCAN* ap_dronecan, const CanardRxTransfer& transfer, const com_xacti_GnssStatusReq &msg)
+void AP_Mount_Xacti::handle_gnss_status_req(AP_UAVCAN* ap_dronecan, uint8_t node_id, const XactiGnssStatusReqCb &cb)
 {
-    // sanity check dronecan port
-    if (ap_dronecan == nullptr) {
+    // fetch the matching backend driver, node id and gimbal id backend instance
+    AP_Mount_Xacti* driver = get_dronecan_backend(ap_dronecan, node_id);
+    if (driver == nullptr) {
         return;
     }
 
-    // get current location
-    uint8_t gps_status = 3;
-    Location loc;
-    if (!AP::ahrs().get_location(loc)) {
-        gps_status = 0;
-    }
-
-    // get date and time
-    uint16_t year;
-    uint8_t month, day, hour, min, sec;
-    if (!AP::rtc().get_date_and_time_utc(year, month, day, hour, min, sec)) {
-        year = month = day = hour = min = sec = 0;
-    }
-
-    // send xacti specific gnss status message
-    com_xacti_GnssStatus xacti_gnss_status_msg {};
-    xacti_gnss_status_msg.gps_status = gps_status;
-    xacti_gnss_status_msg.order = msg.requirement;
-    xacti_gnss_status_msg.remain_buffer = 1;
-    xacti_gnss_status_msg.utc_year = year;
-    xacti_gnss_status_msg.utc_month = month;
-    xacti_gnss_status_msg.utc_day = day;
-    xacti_gnss_status_msg.utc_hour = hour;
-    xacti_gnss_status_msg.utc_minute = min;
-    xacti_gnss_status_msg.utc_seconds = sec;
-    xacti_gnss_status_msg.latitude = loc.lat * 1e-7;
-    xacti_gnss_status_msg.longitude = loc.lng * 1e-7;
-    xacti_gnss_status_msg.altitude = loc.alt * 1e-2;
-    ap_dronecan->xacti_gnss_status.broadcast(xacti_gnss_status_msg);
+    // trigger sending xacti specific gnss status message
+    ap_dronecan->trigger_send_gnss_status(cb.msg->requirement);    
 }
 
 // handle param get/set response
-bool AP_Mount_Xacti::handle_param_get_set_response_int(AP_DroneCAN* ap_dronecan, uint8_t node_id, const char* name, int32_t &value)
+bool AP_Mount_Xacti::handle_param_get_set_response_int(AP_UAVCAN* ap_dronecan, uint8_t node_id, const char* name, int32_t &value)
 {
     // display errors
     const char* err_prefix_str = "Xacti: failed to";
@@ -448,7 +402,7 @@ bool AP_Mount_Xacti::handle_param_get_set_response_int(AP_DroneCAN* ap_dronecan,
     return false;
 }
 
-void AP_Mount_Xacti::handle_param_save_response(AP_DroneCAN* ap_dronecan, const uint8_t node_id, bool success)
+void AP_Mount_Xacti::handle_param_save_response(AP_UAVCAN* ap_dronecan, const uint8_t node_id, bool success)
 {
     // display failure to save parameter
     if (!success) {
@@ -475,12 +429,7 @@ void AP_Mount_Xacti::send_gimbal_control(uint8_t mode, int16_t pitch_cd, int16_t
     last_send_gimbal_control_ms = now_ms;
 
     // send xacti specific gimbal control message
-    com_xacti_GimbalControlData gimbal_control_data_msg {};
-    gimbal_control_data_msg.pitch_cmd_type = mode;
-    gimbal_control_data_msg.yaw_cmd_type = mode;
-    gimbal_control_data_msg.pitch_cmd_value = pitch_cd;
-    gimbal_control_data_msg.yaw_cmd_value = -yaw_cd;
-    _detected_modules[_instance].ap_dronecan->xacti_gimbal_control_data.broadcast(gimbal_control_data_msg);
+    _detected_modules[_instance].ap_dronecan->set_xacti_gimbal_control(mode, pitch_cd, yaw_cd);
 }
 
 // send copter attitude status message to gimbal
@@ -496,23 +445,10 @@ void AP_Mount_Xacti::send_copter_att_status()
     if (now_ms - last_send_copter_att_status_ms < 100) {
         return;
     }
-
-    // send xacti specific vehicle attitude message
-    Quaternion veh_att;
-    if (!AP::ahrs().get_quaternion(veh_att)) {
-        return;
-    }
-
     last_send_copter_att_status_ms = now_ms;
-    com_xacti_CopterAttStatus copter_att_status_msg {};
-    copter_att_status_msg.quaternion_wxyz_e4[0] = veh_att.q1 * 1e4;
-    copter_att_status_msg.quaternion_wxyz_e4[1] = veh_att.q2 * 1e4;
-    copter_att_status_msg.quaternion_wxyz_e4[2] = veh_att.q3 * 1e4;
-    copter_att_status_msg.quaternion_wxyz_e4[3] = veh_att.q4 * 1e4;
-    copter_att_status_msg.reserved.len = 2;
-    copter_att_status_msg.reserved.data[0] = 0;
-    copter_att_status_msg.reserved.data[1] = 0;
-    _detected_modules[_instance].ap_dronecan->xacti_copter_att_status.broadcast(copter_att_status_msg);
+
+    // trigger sending vehicle attitude message
+    _detected_modules[_instance].ap_dronecan->trigger_send_xacti_copter_att_status();
 }
 
 #endif // HAL_MOUNT_XACTI_ENABLED

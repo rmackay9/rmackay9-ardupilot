@@ -15,8 +15,11 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/AP_Common.h>
-#include <AP_DroneCAN/AP_DroneCAN.h>
+#include <AP_UAVCAN/AP_UAVCAN.h>
 #include "AP_Mount.h"
+
+class XactiGnssStatusReqCb;
+class XactiGimbalAttitudeStatusCb;
 
 class AP_Mount_Xacti : public AP_Mount_Backend
 {
@@ -51,22 +54,19 @@ public:
     // set start_recording = true to start record, false to stop recording
     bool record_video(bool start_recording) override;
 
-    // set focus specified as rate, percentage or auto
+    // set focus in, out or hold.  returns true on success
     // focus in = -1, focus hold = 0, focus out = 1
-    bool set_focus(FocusType focus_type, float focus_value) override;
+    bool set_manual_focus_step(int8_t focus_step) override;
 
-    // send camera information message to GCS
-    void send_camera_information(mavlink_channel_t chan) const override;
-
-    // send camera settings message to GCS
-    void send_camera_settings(mavlink_channel_t chan) const override;
+    // auto focus.  returns true on success
+    bool set_auto_focus() override;
 
     // subscribe to Xacti DroneCAN messages
-    static void subscribe_msgs(AP_DroneCAN* ap_dronecan);
+    static void subscribe_msgs(AP_UAVCAN* ap_dronecan);
 
     // xacti specific message handlers
-    static void handle_gimbal_attitude_status(AP_DroneCAN* ap_dronecan, const CanardRxTransfer& transfer, const com_xacti_GimbalAttitudeStatus &msg);
-    static void handle_gnss_status_req(AP_DroneCAN* ap_dronecan, const CanardRxTransfer& transfer, const com_xacti_GnssStatusReq &msg);
+    static void handle_gimbal_attitude_status(AP_UAVCAN* ap_dronecan, uint8_t node_id, const XactiGimbalAttitudeStatusCb &cb);
+    static void handle_gnss_status_req(AP_UAVCAN* ap_dronecan, uint8_t node_id, const XactiGnssStatusReqCb &cb);
 
 protected:
 
@@ -88,13 +88,13 @@ private:
 
     // find backend associated with the given dronecan port and node_id.  also associates backends with zero node ids
     // returns pointer to backend on success, nullptr on failure
-    static AP_Mount_Xacti* get_dronecan_backend(AP_DroneCAN* ap_dronecan, uint8_t node_id);
+    static AP_Mount_Xacti* get_dronecan_backend(AP_UAVCAN* ap_dronecan, uint8_t node_id);
 
     // DroneCAN parameter handling methods
-    FUNCTOR_DECLARE(param_int_cb, bool, AP_DroneCAN*, const uint8_t, const char*, int32_t &);
-    FUNCTOR_DECLARE(param_save_cb, void, AP_DroneCAN*, const uint8_t, bool);
-    bool handle_param_get_set_response_int(AP_DroneCAN* ap_dronecan, const uint8_t node_id, const char* name, int32_t &value);
-    void handle_param_save_response(AP_DroneCAN* ap_dronecan, const uint8_t node_id, bool success);
+    FUNCTOR_DECLARE(param_int_cb, bool, AP_UAVCAN*, const uint8_t, const char*, int32_t &);
+    FUNCTOR_DECLARE(param_save_cb, void, AP_UAVCAN*, const uint8_t, bool);
+    bool handle_param_get_set_response_int(AP_UAVCAN* ap_dronecan, const uint8_t node_id, const char* name, int32_t &value);
+    void handle_param_save_response(AP_UAVCAN* ap_dronecan, const uint8_t node_id, bool success);
 
     // send gimbal control message via DroneCAN
     // mode is 2:angle control or 3:rate control
@@ -117,7 +117,7 @@ private:
     static bool _subscribed;                        // true once subscribed to receive DroneCAN messages
     static struct DetectedModules {
         AP_Mount_Xacti *driver;                     // pointer to Xacti backends
-        AP_DroneCAN* ap_dronecan;                   // DroneCAN interface used by this backend
+        AP_UAVCAN* ap_dronecan;                     // DroneCAN interface used by this backend
         uint8_t node_id;                            // DroneCAN node id associated by this backend
     } _detected_modules[AP_MOUNT_MAX_INSTANCES];
     static HAL_Semaphore _sem_registry;             // semaphore protecting access to _detected_modules table
