@@ -23,6 +23,7 @@
 
 #if HAL_MOUNT_ENABLED
 
+#include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Common/Location.h>
@@ -42,6 +43,7 @@ class AP_Mount_SToRM32_serial;
 class AP_Mount_Gremsy;
 class AP_Mount_Siyi;
 class AP_Mount_Scripting;
+class AP_Mount_Xacti;
 
 /*
   This is a workaround to allow the MAVLink backend access to the
@@ -60,6 +62,7 @@ class AP_Mount
     friend class AP_Mount_Gremsy;
     friend class AP_Mount_Siyi;
     friend class AP_Mount_Scripting;
+    friend class AP_Mount_Xacti;
 
 public:
     AP_Mount();
@@ -84,6 +87,7 @@ public:
         Mount_Type_BrushlessPWM = 7,    /// Brushless (stabilized) gimbal using PWM protocol
         Mount_Type_Siyi = 8,            /// Siyi gimbal using custom serial protocol
         Mount_Type_Scripting = 9,       /// Scripting gimbal driver
+        Mount_Type_Xacti = 10,          /// Xacti DroneCAN gimbal driver
     };
 
     // init - detect and initialise all mounts
