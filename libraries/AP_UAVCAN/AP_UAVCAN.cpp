@@ -1648,6 +1648,7 @@ void AP_UAVCAN::check_parameter_callback_timeout()
         param_request_sent_ms = 0;
         param_int_cb = nullptr;
         param_float_cb = nullptr;
+        param_string_cb = nullptr;
     }
 }
 
@@ -1674,7 +1675,8 @@ bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, float v
 
     // fail if waiting for any previous get/set request
     if (param_int_cb != nullptr ||
-        param_float_cb != nullptr) {
+        param_float_cb != nullptr ||
+        param_string_cb != nullptr) {
         return false;
     }
     param_getset_req[_driver_index].index = 0;
@@ -1696,7 +1698,8 @@ bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, int32_t
 
     // fail if waiting for any previous get/set request
     if (param_int_cb != nullptr ||
-        param_float_cb != nullptr) {
+        param_float_cb != nullptr ||
+        param_string_cb != nullptr) {
         return false;
     }
     param_getset_req[_driver_index].index = 0;
@@ -1710,7 +1713,30 @@ bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, int32_t
 }
 
 /*
-  get named integer parameter on node
+  set named string parameter on node
+*/
+bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, const string &value, ParamGetSetStringCb *cb)
+{
+    WITH_SEMAPHORE(_param_sem);
+
+    // fail if waiting for any previous get/set request
+    if (param_int_cb != nullptr ||
+        param_float_cb != nullptr ||
+        param_string_cb != nullptr) {
+        return false;
+    }
+    param_getset_req[_driver_index].index = 0;
+    param_getset_req[_driver_index].name = name;
+    param_getset_req[_driver_index].value.to<uavcan::protocol::param::Value::Tag::string_value>() = (char*)value.data;
+    param_string_cb = cb;
+    param_request_sent = false;
+    param_request_sent_ms = AP_HAL::millis();
+    param_request_node_id = node_id;
+    return true;
+}
+
+/*
+  get named float parameter on node
 */
 bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGetSetFloatCb *cb)
 {
@@ -1718,7 +1744,8 @@ bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGe
 
     // fail if waiting for any previous get/set request
     if (param_int_cb != nullptr ||
-        param_float_cb != nullptr) {
+        param_float_cb != nullptr ||
+        param_string_cb != nullptr) {
         return false;
     }
     param_getset_req[_driver_index].index = 0;
@@ -1731,12 +1758,15 @@ bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGe
     return true;
 }
 
+/*
+  get named integer parameter on node
+*/
 bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGetSetIntCb *cb)
 {
     WITH_SEMAPHORE(_param_sem);
     if (param_int_cb != nullptr ||
-        param_float_cb != nullptr) {
-        //busy
+        param_float_cb != nullptr ||
+        param_string_cb != nullptr) {
         return false;
     }
     param_getset_req[_driver_index].index = 0;
@@ -1749,11 +1779,35 @@ bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGe
     return true;
 }
 
+/*
+  get named string parameter on node
+*/
+bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGetSetStringCb *cb)
+{
+    WITH_SEMAPHORE(_param_sem);
+
+    // fail if waiting for any previous get/set request
+    if (param_int_cb != nullptr ||
+        param_float_cb != nullptr ||
+        param_string_cb != nullptr) {
+        return false;
+    }
+    param_getset_req[_driver_index].index = 0;
+    param_getset_req[_driver_index].name = name;
+    param_getset_req[_driver_index].value.to<uavcan::protocol::param::Value::Tag::empty>();
+    param_string_cb = cb;
+    param_request_sent = false;
+    param_request_sent_ms = AP_HAL::millis();
+    param_request_node_id = node_id;
+    return true;
+}
+
 void AP_UAVCAN::handle_param_get_set_response(AP_UAVCAN* ap_uavcan, uint8_t node_id, const ParamGetSetCb &cb)
 {
     WITH_SEMAPHORE(ap_uavcan->_param_sem);
     if (!ap_uavcan->param_int_cb &&
-        !ap_uavcan->param_float_cb) {
+        !ap_uavcan->param_float_cb &&
+        !ap_uavcan->param_string_cb) {
         return;
     }
     uavcan::protocol::param::GetSet::Response rsp = cb.rsp->getResponse();
@@ -1783,10 +1837,20 @@ void AP_UAVCAN::handle_param_get_set_response(AP_UAVCAN* ap_uavcan, uint8_t node
             ap_uavcan->param_request_node_id = node_id;
             return;
         }
+    } else if ((rsp.value.is(uavcan::protocol::param::Value::Tag::string_value)) && ap_uavcan->param_string_cb) {
+        const auto* val_str = rsp.value.to<uavcan::protocol::param::Value::Tag::string_value>().c_str();
+        string string_value {};
+        string_value.len = MIN(rsp.value.to<uavcan::protocol::param::Value::Tag::string_value>().size(), sizeof(string_value.data));
+        memcpy(string_value.data, (const uint8_t*)val_str, string_value.len);
+        if ((*ap_uavcan->param_string_cb)(ap_uavcan, node_id, rsp.name.c_str(), string_value)) {
+            // re-setting parameters from callback not supported
+            INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
+        }
     }
     ap_uavcan->param_request_sent_ms = 0;
     ap_uavcan->param_int_cb = nullptr;
     ap_uavcan->param_float_cb = nullptr;
+    ap_uavcan->param_string_cb = nullptr;
 }
 
 
