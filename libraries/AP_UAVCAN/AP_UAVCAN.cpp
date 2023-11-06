@@ -1628,6 +1628,10 @@ void AP_UAVCAN::handle_debug(AP_UAVCAN* ap_uavcan, uint8_t node_id, const DebugC
 #endif
 }
 
+/*
+  send any queued request to get/set parameter
+  called from loop
+*/
 void AP_UAVCAN::send_parameter_request()
 {
     WITH_SEMAPHORE(_param_sem);
@@ -1638,12 +1642,16 @@ void AP_UAVCAN::send_parameter_request()
     param_request_sent = true;
 }
 
+/*
+  set named float parameter on node
+*/
 bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, float value, ParamGetSetFloatCb *cb)
-{
+{    
     WITH_SEMAPHORE(_param_sem);
+
+    // fail if waiting for any previous get/set request
     if (param_int_cb != nullptr ||
         param_float_cb != nullptr) {
-        //busy
         return false;
     }
     param_getset_req[_driver_index].index = 0;
@@ -1655,12 +1663,16 @@ bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, float v
     return true;
 }
 
+/*
+  set named integer parameter on node
+*/
 bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, int32_t value, ParamGetSetIntCb *cb)
 {
     WITH_SEMAPHORE(_param_sem);
+
+    // fail if waiting for any previous get/set request
     if (param_int_cb != nullptr ||
         param_float_cb != nullptr) {
-        //busy
         return false;
     }
     param_getset_req[_driver_index].index = 0;
@@ -1672,12 +1684,16 @@ bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, int32_t
     return true;
 }
 
+/*
+  get named integer parameter on node
+*/
 bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGetSetFloatCb *cb)
 {
     WITH_SEMAPHORE(_param_sem);
+
+    // fail if waiting for any previous get/set request
     if (param_int_cb != nullptr ||
         param_float_cb != nullptr) {
-        //busy
         return false;
     }
     param_getset_req[_driver_index].index = 0;
