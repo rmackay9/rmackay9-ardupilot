@@ -117,6 +117,8 @@ extern const AP_HAL::HAL& hal;
 #include <com/volz/servo/ActuatorStatus.hpp>
 #endif
 
+#define AP_DRONECAN_GETSET_TIMEOUT_MS 100 // timeout waiting for response from node after 0.1 sec
+
 #define debug_uavcan(level_debug, fmt, args...) do { AP::can().log_text(level_debug, "UAVCAN", fmt, ##args); } while (0)
 
 // Translation of all messages from UAVCAN structures into AP structures is done
@@ -662,6 +664,7 @@ void AP_UAVCAN::loop(void)
         rtcm_stream_send();
         safety_state_send();
         notify_state_send();
+        check_parameter_callback_timeout();
         send_parameter_request();
         send_parameter_save_request();
         _dna_server->verify_nodes();
@@ -1629,6 +1632,26 @@ void AP_UAVCAN::handle_debug(AP_UAVCAN* ap_uavcan, uint8_t node_id, const DebugC
 }
 
 /*
+ check for parameter get/set response timeout
+*/
+void AP_UAVCAN::check_parameter_callback_timeout()
+{
+    WITH_SEMAPHORE(_param_sem);
+
+    // return immediately if not waiting for get/set parameter response
+    if (param_request_sent_ms == 0) {
+        return;
+    }
+
+    const uint32_t now_ms = AP_HAL::millis();
+    if (now_ms - param_request_sent_ms > AP_DRONECAN_GETSET_TIMEOUT_MS) {
+        param_request_sent_ms = 0;
+        param_int_cb = nullptr;
+        param_float_cb = nullptr;
+    }
+}
+
+/*
   send any queued request to get/set parameter
   called from loop
 */
@@ -1659,6 +1682,7 @@ bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, float v
     param_getset_req[_driver_index].value.to<uavcan::protocol::param::Value::Tag::real_value>() = value;
     param_float_cb = cb;
     param_request_sent = false;
+    param_request_sent_ms = AP_HAL::millis();
     param_request_node_id = node_id;
     return true;
 }
@@ -1680,6 +1704,7 @@ bool AP_UAVCAN::set_parameter_on_node(uint8_t node_id, const char *name, int32_t
     param_getset_req[_driver_index].value.to<uavcan::protocol::param::Value::Tag::integer_value>() = value;
     param_int_cb = cb;
     param_request_sent = false;
+    param_request_sent_ms = AP_HAL::millis();
     param_request_node_id = node_id;
     return true;
 }
@@ -1701,6 +1726,7 @@ bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGe
     param_getset_req[_driver_index].value.to<uavcan::protocol::param::Value::Tag::empty>();
     param_float_cb = cb;
     param_request_sent = false;
+    param_request_sent_ms = AP_HAL::millis();
     param_request_node_id = node_id;
     return true;
 }
@@ -1718,6 +1744,7 @@ bool AP_UAVCAN::get_parameter_on_node(uint8_t node_id, const char *name, ParamGe
     param_getset_req[_driver_index].value.to<uavcan::protocol::param::Value::Tag::empty>();
     param_int_cb = cb;
     param_request_sent = false;
+    param_request_sent_ms = AP_HAL::millis();
     param_request_node_id = node_id;
     return true;
 }
@@ -1739,6 +1766,7 @@ void AP_UAVCAN::handle_param_get_set_response(AP_UAVCAN* ap_uavcan, uint8_t node
             param_getset_req[ap_uavcan->_driver_index].value.to<uavcan::protocol::param::Value::Tag::integer_value>() = val;
             ap_uavcan->param_int_cb = ap_uavcan->param_int_cb;
             ap_uavcan->param_request_sent = false;
+            ap_uavcan->param_request_sent_ms = AP_HAL::millis();
             ap_uavcan->param_request_node_id = node_id;
             return;
         }
@@ -1751,10 +1779,12 @@ void AP_UAVCAN::handle_param_get_set_response(AP_UAVCAN* ap_uavcan, uint8_t node
             param_getset_req[ap_uavcan->_driver_index].value.to<uavcan::protocol::param::Value::Tag::real_value>() = val;
             ap_uavcan->param_float_cb = ap_uavcan->param_float_cb;
             ap_uavcan->param_request_sent = false;
+            ap_uavcan->param_request_sent_ms = AP_HAL::millis();
             ap_uavcan->param_request_node_id = node_id;
             return;
         }
     }
+    ap_uavcan->param_request_sent_ms = 0;
     ap_uavcan->param_int_cb = nullptr;
     ap_uavcan->param_float_cb = nullptr;
 }
