@@ -361,6 +361,14 @@ void GCS_MAVLINK::send_battery_status(const uint8_t instance) const
                                     cell_mvolts_ext, // Cell 11..14 voltages
                                     0, // battery mode
                                     battery.get_mavlink_fault_bitmask(instance));   // fault_bitmask
+
+    // send state of health percentage if available
+    uint8_t batt_soh_pct;
+    if (battery.get_state_of_health_pct(instance, batt_soh_pct)) {
+        char name[12];
+        snprintf(name, sizeof(name), "BATT%u_SOH", instance);
+        send_named_float(name, batt_soh_pct);
+    }
 }
 
 // returns true if all battery instances were reported
