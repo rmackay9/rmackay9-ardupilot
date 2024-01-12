@@ -66,7 +66,7 @@ public:
 private:
     void handle_battery_info(const BattInfoCb &cb);
     void handle_battery_info_aux(const BattInfoAuxCb &cb);
-    void update_interim_state(const float voltage, const float current, const float temperature_K, const uint8_t soc);
+    void update_interim_state(const float voltage, const float current, const float temperature_K, const uint8_t soc, uint8_t soh_pct);
 
     static bool match_battery_id(uint8_t instance, uint8_t battery_id) {
         // when serial number is negative, all batteries are accepted. Else, it must match

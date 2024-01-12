@@ -10,6 +10,9 @@ void AP_BattMonitor_Backend::Log_Write_BAT(const uint8_t instance, const uint64_
     uint8_t percent = -1;
     IGNORE_RETURN(capacity_remaining_pct(percent));
 
+    uint8_t soh_pct = 0;
+    IGNORE_RETURN(get_state_of_health_pct(soh_pct));
+
     const struct log_BAT pkt{
         LOG_PACKET_HEADER_INIT(LOG_BAT_MSG),
         time_us             : time_us,
@@ -22,6 +25,7 @@ void AP_BattMonitor_Backend::Log_Write_BAT(const uint8_t instance, const uint64_
         temperature         : (int16_t) ( has_temperature() ? _state.temperature * 100 : 0),
         resistance          : _state.resistance,
         rem_percent         : percent,
+        state_of_health_pct : soh_pct
     };
     AP::logger().WriteBlock(&pkt, sizeof(pkt));
 }
