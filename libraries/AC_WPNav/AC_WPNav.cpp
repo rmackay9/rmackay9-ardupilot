@@ -202,6 +202,7 @@ void AC_WPNav::wp_and_spline_init(float speed_cms, Vector3f stopping_point)
     _offset_vel = _wp_desired_speed_xy_cms;
     _offset_accel = 0.0;
     _paused = false;
+    _paused_by_avoidance = false;
 
     // mark as active
     _wp_last_update = AP_HAL::millis();
@@ -490,7 +491,7 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
     float vel_scaler_dt = 1.0;
     if (is_positive(_wp_desired_speed_xy_cms)) {
         update_vel_accel(_offset_vel, _offset_accel, dt, 0.0, 0.0);
-        const float vel_input = !_paused ? _wp_desired_speed_xy_cms * offset_z_scaler : 0.0;
+        const float vel_input = (_paused || _paused_by_avoidance) ? 0.0 : _wp_desired_speed_xy_cms * offset_z_scaler;
         shape_vel_accel(vel_input, 0.0, _offset_vel, _offset_accel, -get_wp_acceleration(), get_wp_acceleration(),
                         _pos_control.get_shaping_jerk_xy_cmsss(), dt, true);
         vel_scaler_dt = _offset_vel / _wp_desired_speed_xy_cms;
@@ -533,8 +534,20 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
     target_vel.z += _pos_control.get_vel_offset_z_cms();
     target_accel.z += _pos_control.get_accel_offset_z_cmss();
 
+    // adjust position, velocity and acceleration to prevent fence violations
+    AC_Avoid *avoid = AP::ac_avoid();
+    bool avoidance_active = false;
+    if (avoid != nullptr && avoid->enabled()) {
+        avoidance_active = avoid->adjust_pos_vel_accel(target_pos, target_vel, target_accel, _pos_control.get_pos_xy_p().kP(), get_wp_acceleration());
+    }
+
     // pass new target to the position controller
-    _pos_control.set_pos_vel_accel(target_pos.topostype(), target_vel, target_accel);
+    if (avoidance_active) {
+        // do something
+        _pos_control.set_avoidance_pos_xy(target_pos.xy().topostype());
+    } else {
+        _pos_control.set_pos_vel_accel(target_pos.topostype(), target_vel, target_accel);
+    }
 
     // check if we've reached the waypoint
     if (!_flags.reached_destination) {
