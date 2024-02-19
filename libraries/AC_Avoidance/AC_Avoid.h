@@ -99,9 +99,6 @@ public:
      // kP should be non-zero for Copter which has a non-linear response
     float get_max_speed(float kP, float accel_cmss, float distance_cm, float dt) const;
 
-    // return margin (in meters) that the vehicle should stay from objects
-    float get_margin() const { return _margin; }
-
     // return minimum alt (in meters) above which avoidance will be active
     float get_min_alt() const { return _alt_min; }
 
