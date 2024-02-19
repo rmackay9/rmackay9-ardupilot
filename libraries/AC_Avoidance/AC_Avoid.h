@@ -40,8 +40,8 @@ public:
     // return true if any avoidance feature is enabled
     bool enabled() const { return _enabled != AC_AVOID_DISABLED; }
 
-    // Adjusts the desired velocity so that the vehicle can stop
-    // before the fence/object.
+    // Adjusts the desired velocity so that the vehicle can stop before the fence/object.
+    // Includes handling of slide, stop and backup behaviour
     // kP, accel_cmss are for the horizontal axis
     // kP_z, accel_cmss_z are for vertical axis
     void adjust_velocity(Vector3f &desired_vel_cms, bool &backing_up, float kP, float accel_cmss, float kP_z, float accel_cmss_z, float dt);
@@ -71,7 +71,6 @@ public:
             climb_rate_cms = MIN(climb_rate_cms, backup_speed);
         }
     }
-    
 
     // adjust roll-pitch to push vehicle away from objects
     // roll and pitch value are in centi-degrees
@@ -90,11 +89,11 @@ public:
     // uses velocity adjustment idea from Randy's second email on this thread:
     //   https://groups.google.com/forum/#!searchin/drones-discuss/obstacle/drones-discuss/QwUXz__WuqY/qo3G8iTLSJAJ
     void limit_velocity_2D(float kP, float accel_cmss, Vector2f &desired_vel_cms, const Vector2f& limit_direction, float limit_distance_cm, float dt);
-    
+
     // Note: This method is used to limit velocity horizontally and vertically given a 3D desired velocity vector 
     // Limits the component of desired_vel_cms in the direction of the obstacle_vector based on the passed value of "margin"
     void limit_velocity_3D(float kP, float accel_cmss, Vector3f &desired_vel_cms, const Vector3f& limit_direction, float limit_distance_cm, float kP_z, float accel_cmss_z ,float dt);
-    
+
      // compute the speed such that the stopping distance of the vehicle will
      // be exactly the input distance.
      // kP should be non-zero for Copter which has a non-linear response
