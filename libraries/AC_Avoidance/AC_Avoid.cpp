@@ -213,7 +213,7 @@ void AC_Avoid::adjust_velocity(Vector3f &desired_vel_cms, bool &backing_up, floa
     // Avoidance in response to various fences 
     Vector3f backup_vel_fence;
     adjust_velocity_fence(kP, accel_cmss, desired_vel_cms, backup_vel_fence, kP_z, accel_cmss_z, dt);
-    find_max_quadrant_velocity_3D(backup_vel_fence , quad_1_back_vel, quad_2_back_vel, quad_3_back_vel, quad_4_back_vel, back_vel_up, back_vel_down);
+    find_max_quadrant_velocity_3D(backup_vel_fence, quad_1_back_vel, quad_2_back_vel, quad_3_back_vel, quad_4_back_vel, back_vel_up, back_vel_down);
     
     // Desired backup velocity is sum of maximum velocity component in each quadrant
     const Vector2f desired_backup_vel_xy = quad_1_back_vel + quad_2_back_vel + quad_3_back_vel + quad_4_back_vel;
@@ -510,7 +510,7 @@ void AC_Avoid::limit_velocity_3D(float kP, float accel_cmss, Vector3f &desired_v
     // this will create larger margin towards the direction vehicle is travelling in
     const Vector3f margin_vector = desired_vel_cms.normalized() * margin_cm;
     const Vector2f limit_direction_xy{obstacle_vector.x, obstacle_vector.y};
-    
+
     if (!limit_direction_xy.is_zero()) {
         const float distance_from_fence_xy = MAX((limit_direction_xy.length() - Vector2f{margin_vector.x, margin_vector.y}.length()), 0.0f);
         Vector2f velocity_xy{desired_vel_cms.x, desired_vel_cms.y};
@@ -518,7 +518,7 @@ void AC_Avoid::limit_velocity_3D(float kP, float accel_cmss, Vector3f &desired_v
         desired_vel_cms.x = velocity_xy.x;
         desired_vel_cms.y = velocity_xy.y;
     }
-    
+
     if (is_zero(desired_vel_cms.z) || is_zero(obstacle_vector.z)) {
         // nothing to limit vertically if desired_vel_cms.z is zero
         // if obstacle_vector.z is zero then the obstacle is probably horizontally located, and we can move vertically
@@ -529,7 +529,7 @@ void AC_Avoid::limit_velocity_3D(float kP, float accel_cmss, Vector3f &desired_v
         // why limit velocity vertically when we are going the opposite direction
         return;
     }
-    
+
     // to check if Z velocity changes
     const float velocity_z_original = desired_vel_cms.z;
     const float z_speed = fabsf(desired_vel_cms.z);
@@ -1216,7 +1216,7 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector3f &d
                 // i.e. do not adjust velocity.
                 continue;
             }
-            // Adjust velocity to not violate margin.
+            // limit velocity to not violate margin.
             limit_velocity_3D(kP, accel_cmss, safe_vel, limit_direction, margin_cm, kP_z, accel_cmss_z, dt);
         
             break;
@@ -1241,7 +1241,7 @@ void AC_Avoid::adjust_velocity_proximity(float kP, float accel_cmss, Vector3f &d
                     // we are within the margin so stop vehicle
                     safe_vel.zero();
                 } else {
-                    // vehicle inside the given edge, adjust velocity to not violate this edge
+                    // vehicle inside the given edge, limit velocity to not violate this edge
                     limit_velocity_3D(kP, accel_cmss, safe_vel, limit_direction, margin_cm, kP_z, accel_cmss_z, dt);
                 }
 
