@@ -159,7 +159,11 @@ function update()
     extnav_over_threshold = (extnav_xyz_innov == 0.0) or (extnav_xyz_innov > ESRC_EXTN_THRESH:get())
     gcs:send_named_float("ExtNInnov", extnav_xyz_innov)
   end
-  local extnav_usable = (not extnav_over_threshold) and visual_odom and visual_odom:healthy() and (visual_odom:quality() >= ESRC_EXTN_QUAL:get())
+  local extnav_quality_ok = false
+  if visual_odom then
+    extnav_quality_ok = visual_odom:healthy() and (visual_odom:quality() < 255) and (visual_odom:quality() >= ESRC_EXTN_QUAL:get())
+  end
+  local extnav_usable = (not extnav_over_threshold) and extnav_quality_ok
   if visual_odom then
     gcs:send_named_float("ExtNQuality", visual_odom:quality())
   end
