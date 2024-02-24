@@ -3700,6 +3700,17 @@ void GCS_MAVLINK::handle_odometry(const mavlink_message_t &msg)
     Vector3f vel{m.vx, m.vy, m.vz};
     vel = q * vel;
     visual_odom->handle_vision_speed_estimate(m.time_usec, timestamp_ms, vel, m.reset_counter, m.quality);
+
+    // debug
+    static uint32_t last_print_ms = 0;
+    static uint16_t received_count = 0;
+    uint32_t now_ms = AP_HAL::millis();
+    received_count++;
+    if (now_ms - last_print_ms > 1000) {
+        last_print_ms = now_ms;
+        gcs().send_text(MAV_SEVERITY_INFO, "Odom Qual:%d hz:%d", (int)m.quality,(int)received_count);
+        received_count = 0;
+    }
 }
 
 // there are several messages which all have identical fields in them.
