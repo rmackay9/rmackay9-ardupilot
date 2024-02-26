@@ -5600,6 +5600,32 @@ void GCS_MAVLINK::send_global_position_int()
         vel.y * 100,                     // Y speed cm/s (+ve East)
         vel.z * 100,                     // Z speed cm/s (+ve Down)
         ahrs.yaw_sensor);                // compass heading in 1/100 degree
+
+    // send altitude
+    float alt_above_ekf_origin = 0;
+    float posD;
+    if (AP::ahrs().get_relative_position_D_origin(posD)) {
+        alt_above_ekf_origin = -posD;
+    }
+    float baro_alt = 0;
+    AP_Baro *baro = AP_Baro::get_singleton();
+    if (baro != nullptr) {
+        baro_alt = baro->get_altitude();
+    }
+    float terrain_alt = 0;
+    AP_Terrain *terrain = AP::terrain();
+    if (terrain != nullptr &&
+        terrain->height_above_terrain(terrain_alt, true)) {
+    }
+    mavlink_msg_altitude_send(
+        chan,
+        AP_HAL::micros64(),                 // time_usec
+        baro_alt,                           // altitude_monotonic in meters (alt above ekf origin)
+        global_position_int_alt() * 0.001,  // altitude_amsl in meters (convert mm to meters)
+        alt_above_ekf_origin,               // altitude_local in meters
+        global_position_int_relative_alt() * 0.001, // altitude_relative in meters (convert mm to meters)
+        terrain_alt,                        // altitude_terrain
+        -1);                                // bottom_clearance
 #endif  // AP_AHRS_ENABLED
 }
 
