@@ -19,7 +19,6 @@ extern const AP_HAL::HAL& hal;
 #define TRACK_RANGE                         60                  // the size of the image at point tracking
 #define AP_MOUNT_TOPOTEK_UPDATE_INTERVAL_MS 100                 // resend angle or rate targets to gimbal at this interval
 #define AP_MOUNT_TOPOTEK_HEALTH_TIMEOUT_MS  1000                // timeout for health and rangefinder readings
-#define UNUSED(x) (void)x;                                      // function argument not used
 
 #define AP_MOUNT_TOPOTEK_DEBUG 0
 #define debug(fmt, args ...) do { if (AP_MOUNT_TOPOTEK_DEBUG) { GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Topotek: " fmt, ## args); } } while (0)
@@ -72,25 +71,26 @@ void AP_Mount_Topotek::update()
 
     // request gimbal attitude information within the specified time
     if ((now_ms - _last_req_current_info_ms) >= 100) {
-
         _last_req_current_info_ms = now_ms;
-        static uint8_t count;
-        // request memory card information within the specified time
-        if (count%3 == 0) {
+
+        if (_last_req_count % 3 == 0) {
+            // request memory card information within the specified time
             request_gimbal_sdcard_info();
+
             // if trace mode is enabled, trace status information is requested within a specified period of time
             if (_is_tracking) {
                 request_track_status();
             }
         }
+
         // the gimbal attitude is obtained every second, and the gimbal will continue to send attitude information during the next period
-        if (count%11 == 0) {
+        if (_last_req_count % 11 == 0) {
             request_gimbal_attitude();
-            if (!count) {
-                count = 0;
+            if (!_last_req_count) {
+                _last_req_count = 0;
             }
         }
-        count++;
+        _last_req_count++;
     }
 
     // zoom control
@@ -104,12 +104,9 @@ void AP_Mount_Topotek::update()
         request_gimbal_basic_info();
     }
 
-
-
 #if AP_RTC_ENABLED
     // send UTC time to the camera
-     if (_sent_time_count < 7)
-     {
+     if (_sent_time_count < 7) {
         uint64_t utc_usec ;
         if (AP::rtc().get_utc_usec(utc_usec) && send_time_to_gimbal(utc_usec)) {
             _sent_time_count++;
@@ -226,7 +223,6 @@ bool AP_Mount_Topotek::take_picture()
         return false;
     }
 
-
     return send_packet(_take_pic, 12);
 }
 
@@ -255,7 +251,7 @@ bool AP_Mount_Topotek::record_video(bool start_recording)
         _start_record_video[11] = '0';
     }
 
-    return send_packet(_start_record_video, 12);;
+    return send_packet(_start_record_video, 12);
 }
 
 // set zoom specified as a rate
@@ -334,7 +330,6 @@ SetFocusResult AP_Mount_Topotek::set_focus(FocusType focus_type, float focus_val
     return SetFocusResult::INVALID_PARAMETERS;
 }
 
-
 // set tracking to none, point or rectangle (see TrackingType enum)
 // if POINT only p1 is used, if RECTANGLE then p1 is top-left, p2 is bottom-right
 // p1,p2 are in range 0 to 1.  0 is left or top, 1 is right or bottom
@@ -345,12 +340,10 @@ bool AP_Mount_Topotek::set_tracking(TrackingType tracking_type, const Vector2f& 
         return false;
     }
 
-
     switch (tracking_type) {
     case TrackingType::TRK_NONE:
         _is_tracking = false;
         return send_packet(_stop_track_cmd, 12);
-        break;
     case TrackingType::TRK_POINT: {
         // the converted tracking center
         int16_t track_center_x = (int16_t)((p1.x*TRACK_TOTAL_WIDTH - 960) /  0.96);
@@ -376,7 +369,6 @@ bool AP_Mount_Topotek::set_tracking(TrackingType tracking_type, const Vector2f& 
 
         _is_tracking = true;
         return send_packet(_begin_track_cmd, 20);
-        break;
     }
     case TrackingType::TRK_RECTANGLE:
         // upper left point
@@ -442,7 +434,6 @@ bool AP_Mount_Topotek::set_tracking(TrackingType tracking_type, const Vector2f& 
 
         _is_tracking = true;
         return send_packet(_begin_track_cmd, 20);
-        break;
 
     }
 
@@ -457,8 +448,6 @@ bool AP_Mount_Topotek::set_lens(uint8_t lens)
     if (!_initialised) {
         return false;
     }
-
-    UNUSED(lens);
 
     return (send_packet(_next_pip_mode, 12));
 }
@@ -548,15 +537,11 @@ void AP_Mount_Topotek::read_incoming_packets()
         }
 
         if (_msg_buff_len != 0 || b == '#') {
-
             if (b == '#' && _msg_buff_len != 0) {
                 analyse_packet_data();
-
             }
-
             _msg_buff[_msg_buff_len++] = b;
         }
-
     }
     analyse_packet_data();
 }
@@ -592,11 +577,8 @@ void AP_Mount_Topotek::send_angle_target(float roll_rad, float pitch_rad, float 
         return;
     }
     uint8_t speed = 99;
-
     int16_t roll_angle_hund = (int16_t)(RAD_TO_DEG*roll_rad*100);
-
     int16_t pitch_angle_hund = (int16_t)(RAD_TO_DEG*pitch_rad*100);
-
     int16_t yaw_angle_hund = (int16_t)(RAD_TO_DEG*yaw_rad*100);
 
     _set_yaw_pitch_angle_cmd[10] = hex2char((yaw_angle_hund >> 12) & 0x0F);
@@ -637,36 +619,32 @@ void AP_Mount_Topotek::send_rate_target(float roll_rads, float pitch_rads, float
         return;
     }
 
-    static uint8_t roll_angle_speed;
-
-    static uint8_t pitch_angle_speed;
-
-    static uint8_t yaw_angle_speed;
-
-    static uint8_t gimbal_stop_order_count;
+    // send stop rotation command three times if target roll, pitch and yaw are near zero
     if (roll_rads >= -0.0001 && roll_rads <= 0.0001 && pitch_rads >= -0.0001 && pitch_rads <= 0.0001 && yaw_rads >= -0.0001 && yaw_rads <= 0.0001) {
 
-        if (gimbal_stop_order_count < 3) {
+        if (_stop_order_count < 3) {
             send_packet(_gimbal_control_stop, 12);
-            gimbal_stop_order_count++;
+            _stop_order_count++;
         }
-
         return;
     }
-    gimbal_stop_order_count = 0;
+    _stop_order_count = 0;
 
+    uint8_t roll_angle_speed;
     if (roll_rads >= 0) {
         roll_angle_speed = RAD_TO_DEG*roll_rads*ANGULAR_VELOCITY_CONVERSION> 99 ? 99 : (uint8_t)(RAD_TO_DEG*roll_rads*ANGULAR_VELOCITY_CONVERSION);
     } else {
         roll_angle_speed = RAD_TO_DEG*roll_rads*ANGULAR_VELOCITY_CONVERSION < -99 ? -99 : (uint8_t)(RAD_TO_DEG*roll_rads*ANGULAR_VELOCITY_CONVERSION);
     }
 
+    uint8_t pitch_angle_speed;
     if (pitch_rads >= 0) {
         pitch_angle_speed = RAD_TO_DEG*pitch_rads*ANGULAR_VELOCITY_CONVERSION > 99 ? 99 : (uint8_t)(RAD_TO_DEG*pitch_rads*ANGULAR_VELOCITY_CONVERSION);
     } else {
         pitch_angle_speed = RAD_TO_DEG*pitch_rads*ANGULAR_VELOCITY_CONVERSION < -99 ? -99 : (uint8_t)(RAD_TO_DEG*pitch_rads*ANGULAR_VELOCITY_CONVERSION);
     }
 
+    uint8_t yaw_angle_speed;
     if (yaw_rads >= 0) {
         yaw_angle_speed = RAD_TO_DEG*yaw_rads*ANGULAR_VELOCITY_CONVERSION > 99 ? 99 : (uint8_t)(RAD_TO_DEG*yaw_rads*ANGULAR_VELOCITY_CONVERSION);
     } else {
@@ -687,7 +665,7 @@ void AP_Mount_Topotek::send_rate_target(float roll_rads, float pitch_rads, float
     return;
 }
 
-//send time to gimbal
+// send time to gimbal
 bool AP_Mount_Topotek::send_time_to_gimbal(uint64_t &utc_time)
 {
     time_t now_second = utc_time / 1000000;
@@ -734,22 +712,18 @@ void AP_Mount_Topotek::gimbal_angle_analyse(void)
     // Angle[0] represents the gimbal yaw angle multiplied by 100
     // Angle[1] represents the gimbal pitch angle multiplied by 100
     // Angle[2] represents the gimbal roll angle multiplied by 100
-    int16_t Angle[3] = {0};
+    int16_t angle[3];
 
-    Angle[0] = char_to_number(_msg_buff[10])<<12 | char_to_number(_msg_buff[11])<<8 | char_to_number(_msg_buff[12])<<4 | char_to_number(_msg_buff[13]);
-    Angle[1] = char_to_number(_msg_buff[14])<<12 | char_to_number(_msg_buff[15])<<8 | char_to_number(_msg_buff[16])<<4 | char_to_number(_msg_buff[17]);
-    Angle[2] = char_to_number(_msg_buff[18])<<12 | char_to_number(_msg_buff[19])<<8 | char_to_number(_msg_buff[20])<<4 | char_to_number(_msg_buff[21]);
+    angle[0] = char_to_number(_msg_buff[10])<<12 | char_to_number(_msg_buff[11])<<8 | char_to_number(_msg_buff[12])<<4 | char_to_number(_msg_buff[13]);
+    angle[1] = char_to_number(_msg_buff[14])<<12 | char_to_number(_msg_buff[15])<<8 | char_to_number(_msg_buff[16])<<4 | char_to_number(_msg_buff[17]);
+    angle[2] = char_to_number(_msg_buff[18])<<12 | char_to_number(_msg_buff[19])<<8 | char_to_number(_msg_buff[20])<<4 | char_to_number(_msg_buff[21]);
 
     // handle when the yaw angle is too large
-    if (18000 < Angle[0]) {
-        Angle[0] = Angle[0] - 36000;
-    } else if (-18000 > Angle[0]) {
-        Angle[0] = Angle[0] + 36000;
-    }
+    angle[0] = wrap_180_cd(angle[0]);
 
-    _current_angle_rad.x = (float)Angle[2] / 100 * DEG_TO_RAD;
-    _current_angle_rad.y = (float)Angle[1] / 100 * DEG_TO_RAD;
-    _current_angle_rad.z = (float)Angle[0] / 100 * DEG_TO_RAD;
+    _current_angle_rad.x = (float)angle[2] / 100 * DEG_TO_RAD;
+    _current_angle_rad.y = (float)angle[1] / 100 * DEG_TO_RAD;
+    _current_angle_rad.z = (float)angle[0] / 100 * DEG_TO_RAD;
 
     return;
 }
@@ -759,9 +733,7 @@ void AP_Mount_Topotek::gimbal_record_analyse(void)
 {
     if (_msg_buff[10] == '1' || _msg_buff[11] == '1') {
         _recording = true;
-
         GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s recording ON", send_message_prefix);
-
         return;
     }
     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s recording OFF", send_message_prefix);
@@ -795,7 +767,6 @@ void AP_Mount_Topotek::gimbal_track_analyse(void)
     case '2':
         GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s be tracking", send_message_prefix);
         break;
-
     }
 }
 
@@ -808,7 +779,7 @@ void AP_Mount_Topotek::gimbal_basic_info_analyse(void)
     uint8_t patch_ver = 0;
 
     // analyze gimbal model and firmware version
-    for ( count = 0; count < char_to_number(_msg_buff[5]); count++ ) {
+    for (count = 0; count < char_to_number(_msg_buff[5]); count++) {
         if (count == 0) {
             major_ver = char_to_number(_msg_buff[10 + count]);
         } else if (count == 1) {
@@ -819,14 +790,12 @@ void AP_Mount_Topotek::gimbal_basic_info_analyse(void)
             strncpy(( char*)_model_name, (const char*)(_msg_buff+13), 10);
             break;
         }
-
     }
     _firmware_ver = (patch_ver << 16) | (minor_ver << 8) | (major_ver);
 
     if (strlen((const char*)_model_name) == 0) {
         strcpy((char*)_model_name, "Unknown");
     }
-
 
     _got_gimbal_basic_info = true;
 }
@@ -836,43 +805,35 @@ void AP_Mount_Topotek::update_zoom_control(void)
     if (_zoom_type == ZoomType::RATE) {
         // only send zoom rate target if it's non-zero because if zero it has already been sent
         // and sending zero rate also triggers autofocus
-        //zoom stop
+        // zoom stop
         _zoom_cmd[11] = '0';
         if (_zoom_value < 0) {
-            //zoom out
+            // zoom out
             _zoom_cmd[11] = '1';
         } else if (_zoom_value > 0) {
-            //zoom in
+            // zoom in
             _zoom_cmd[11] = '2';
         }
         send_packet(_zoom_cmd, 12);
     }
 }
 
-//add check
+// add check
 void AP_Mount_Topotek::add_check(int8_t *cmd, uint8_t len)
 {
     int8_t crc = 0;
     crc = calculate_crc(cmd, len);
-
     cmd[len] = hex2char((crc >> 4) & 0x0f);
-
     cmd[len+1] = hex2char(crc & 0x0f);
-
 }
 
 // calculate checksum
 int8_t AP_Mount_Topotek::calculate_crc(int8_t *cmd, uint8_t len)
 {
-    char crc;
-    int i;
-
-    crc = 0;
-    //calculate
-    for (i = 0; i<len; i++) {
+    uint8_t crc = 0;
+    for (uint16_t i = 0; i<len; i++) {
         crc += cmd[i];
     }
-
     return(crc);
 }
 

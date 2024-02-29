@@ -178,7 +178,9 @@ private:
     Vector3f _current_angle_rad;                                // current angles in radians received from gimbal (x=roll, y=pitch, z=yaw)
     uint32_t _last_current_angle_ms = 0;                        // system time (in milliseconds) that angle information received from the gimbal
     uint32_t _last_req_current_info_ms = 0;                     // system time that this driver last requested current gimbal infomation
+    uint8_t _last_req_count;                                    // last request count used to slow request to gimbal
     uint32_t _last_zoom_control_ms = 0;                         // system time (in milliseconds) that control gimbal zoom
+    uint8_t _stop_order_count = 0;                              // number of stop commands sent since target rates became zero
 
     // buffer holding bytes from latest packet.  This is only used to calculate the crc
     int8_t _msg_buff[AP_MOUNT_TOPOTEK_PACKETLEN_MAX]{};
@@ -204,8 +206,8 @@ private:
     static int8_t _gimbal_lock[15];                    // set whether the gimbal is locked or followed command
     // stores strings and member function pointers
     typedef struct {
-        int8_t uart_cmd_key[4];					                // gimbal command key;
-        void (AP_Mount_Topotek::*func)(void);		            // the gimbal command corresponding operation
+        int8_t uart_cmd_key[4];					       // gimbal command key;
+        void (AP_Mount_Topotek::*func)(void);		   // the gimbal command corresponding operation
     } UartCmdFunctionHandler;
 
     // stores command ID and corresponding member functions that are compared with the command received by the gimbal
