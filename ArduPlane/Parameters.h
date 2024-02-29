@@ -33,7 +33,7 @@ public:
     //////////////////////////////////////////////////////////////////
     // STOP!!! DO NOT CHANGE THIS VALUE UNTIL YOU FULLY UNDERSTAND THE
     // COMMENTS ABOVE. IF UNSURE, ASK ANOTHER DEVELOPER!!!
-    static const uint16_t k_format_version = 13;
+    static const uint16_t k_format_version = 14;
     //////////////////////////////////////////////////////////////////
 
 
