@@ -429,6 +429,75 @@ void AC_Avoid::adjust_velocity_z(float kP, float accel_cmss, float& climb_rate_c
 # endif
 }
 
+// adjust position, velocity and acceleration to avoid fences and objects
+// kP should be zero for linear response, non-zero for non-linear response
+// accel_max_cmss is the maximum acceleration in cm/s/s
+// returns true if position, velocity or acceleration was adjusted, false otherwise
+bool AC_Avoid::adjust_pos_vel_accel(Vector3f &pos_xy_cm, Vector3f &vel_xy_cms, Vector3f &accel_xy_cmss, float kP, float accel_max_cmss) const
+{
+    // exit immediately if fence is disabled
+    const AC_Fence *fence = AP::fence();
+    if (fence == nullptr) {
+        return false;
+    }
+    if ((fence->get_enabled_fences() & AC_FENCE_TYPE_POLYGON) == 0) {
+        return false;
+    }
+
+    // convert position and velocity to 2D
+    const Vector2f pos_xy_cm_2d = pos_xy_cm.xy();
+    const Vector2f vel_xy_cms_2d = vel_xy_cms.xy();
+
+    // init closest intersection
+    bool found_closest_intersection = false;
+    Vector2f closest_intersection_xy_cm;
+
+    // iterate through inclusion polygons looking for closest intersection
+    Vector2f intersection_xy_cm;
+    const uint8_t num_inclusion_polygons = fence->polyfence().get_inclusion_polygon_count();
+    for (uint8_t i = 0; i < num_inclusion_polygons; i++) {
+        uint16_t num_points;
+        const Vector2f* boundary = fence->polyfence().get_inclusion_polygon(i, num_points);
+        if (calc_intersection_polygon(pos_xy_cm_2d, vel_xy_cms_2d, kP, accel_max_cmss, boundary, num_points, true, intersection_xy_cm)) {
+            if (!found_closest_intersection || ((intersection_xy_cm - pos_xy_cm_2d).length_squared() < (closest_intersection_xy_cm - pos_xy_cm_2d).length_squared())) {
+                closest_intersection_xy_cm = intersection_xy_cm;
+                found_closest_intersection = true;
+            }
+        }
+    }
+
+    // iterate through exclusion polygons
+    const uint8_t num_exclusion_polygons = fence->polyfence().get_exclusion_polygon_count();
+    for (uint8_t i = 0; i < num_exclusion_polygons; i++) {
+        uint16_t num_points;
+        const Vector2f* boundary = fence->polyfence().get_exclusion_polygon(i, num_points);
+        if (calc_intersection_polygon(pos_xy_cm_2d, vel_xy_cms_2d, kP, accel_max_cmss, boundary, num_points, false, intersection_xy_cm)) {
+            if (!found_closest_intersection || ((intersection_xy_cm - pos_xy_cm_2d).length_squared() < (closest_intersection_xy_cm - pos_xy_cm_2d).length_squared())) {
+                closest_intersection_xy_cm = intersection_xy_cm;
+                found_closest_intersection = true;
+            }
+        }
+    }
+
+    // adjust position, velocity and acceleration if closest intersection found    
+    if (found_closest_intersection) {
+        pos_xy_cm.xy() = closest_intersection_xy_cm;
+        vel_xy_cms.xy().zero();
+        accel_xy_cmss.xy().zero();
+
+        // debug -- do not merge
+        static uint32_t last_print_ms = 0;
+        uint32_t now_ms = AP_HAL::millis();
+        if (now_ms - last_print_ms > 500) {
+            last_print_ms = now_ms;
+            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Closest intersection found");
+        }
+    }
+
+    // calculate intersection position from proximity sensor objects
+    return found_closest_intersection;
+}
+
 // adjust roll-pitch to push vehicle away from objects
 // roll and pitch value are in centi-degrees
 void AC_Avoid::adjust_roll_pitch(float &roll, float &pitch, float veh_angle_max)
@@ -1411,6 +1480,63 @@ float AC_Avoid::get_stopping_distance(float kP, float accel_cmss, float speed_cm
         // accel_cmss/(2.0f*kP*kP) is the distance at which we switch from linear to sqrt response
         return accel_cmss/(2.0f*kP*kP) + (speed_cms*speed_cms)/(2.0f*accel_cmss);
     }
+}
+
+/*
+* calculate the intersection of the vehicle's path with an array of boundary points
+* pos_xy_cm is the vehicle's desired position as an offset from the EKF origin in meters
+* vel_xy_cms is the vehicle's desired velocity in meters/second in NE frame
+* kP should be zero for linear response, non-zero for non-linear response
+* accel_xy_cmss is the maximum acceleration in cm/s/s
+* boundary_xy_cm are the bounardy points expressed as offsets in cm from the EKF origin
+* num_points is the number of points in the boundary
+* stay_inside should be true for fences, false for exclusion polygons
+* returns true if the vehicle's path intersects the boundary and populates intersection_xy_cm 
+*/
+bool AC_Avoid::calc_intersection_polygon(const Vector2f &pos_xy_cm, const Vector2f &vel_xy_cms, float kP, float accel_xy_cmss,
+                                         const Vector2f* boundary_xy_cm, uint16_t num_points, bool stay_inside,
+                                         Vector2f &intersection_xy_cm) const
+{
+    // return false if there are no boundary points
+    if (boundary_xy_cm == nullptr || num_points == 0) {
+        return false;
+    }
+
+    // return false if we have already breached polygon
+    const bool inside_polygon = !Polygon_outside(pos_xy_cm, boundary_xy_cm, num_points);
+    if (inside_polygon != stay_inside) {
+        return false;
+    }
+
+    // return false if there is no desired velocity
+    const float speed_cms = vel_xy_cms.length();
+    if (is_zero(speed_cms)) {
+        return false;
+    }
+
+    // calculate stopping point
+    const Vector2f stopping_point_cm = pos_xy_cm + vel_xy_cms*(get_stopping_distance(kP, accel_xy_cmss, speed_cms)/speed_cms);
+
+    // check if segment from current position to stopping point intersects with boundary
+    bool found_closest_intersection = false;
+    for (uint16_t i=0; i<num_points; i++) {
+        uint16_t j = i+1;
+        if (j >= num_points) {
+            j = 0;
+        }
+        // end points of current edge
+        Vector2f start = boundary_xy_cm[j];
+        Vector2f end = boundary_xy_cm[i];
+        Vector2f seg_intersect_xy_cm;
+        if (Vector2f::segment_intersection(pos_xy_cm, stopping_point_cm, start, end, seg_intersect_xy_cm)) {
+            if (!found_closest_intersection || ((seg_intersect_xy_cm - pos_xy_cm).length_squared() < (intersection_xy_cm - pos_xy_cm).length_squared())) {
+                found_closest_intersection = true;
+                intersection_xy_cm = seg_intersect_xy_cm;
+            }
+        }
+    }
+
+    return found_closest_intersection;
 }
 
 // convert distance (in meters) to a lean percentage (in 0~1 range) for use in manual flight modes

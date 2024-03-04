@@ -72,6 +72,12 @@ public:
         }
     }
 
+    // adjust position, velocity and acceleration to avoid fences and objects
+    // kP should be zero for linear response, non-zero for non-linear response
+    // accel_max_cmss is the maximum acceleration in cm/s/s
+    // returns true if position, velocity or acceleration was adjusted, false otherwise
+    bool adjust_pos_vel_accel(Vector3f &pos_xy_cm, Vector3f &vel_xy_cms, Vector3f &accel_xy_cmss, float kP, float accel_max_cmss) const;
+
     // adjust roll-pitch to push vehicle away from objects
     // roll and pitch value are in centi-degrees
     // angle_max is the user defined maximum lean angle for the vehicle in centi-degrees
@@ -187,6 +193,21 @@ private:
     * Calculate maximum velocity vector that can be formed in each quadrant and separately store max & min of vertical components
     */
     void find_max_quadrant_velocity_3D(Vector3f &desired_vel, Vector2f &quad1_vel, Vector2f &quad2_vel, Vector2f &quad3_vel, Vector2f &quad4_vel, float &max_z_vel, float &min_z_vel);
+
+    /*
+    * calculate the intersection of the vehicle's path with an array of boundary points
+    * pos_xy_cm is the vehicle's desired position as an offset from the EKF origin in meters
+    * vel_xy_cms is the vehicle's desired velocity in meters/second in NE frame
+    * kP should be zero for linear response, non-zero for non-linear response
+    * accel_xy_cmss is the maximum acceleration in cm/s/s
+    * boundary_xy_cm are the bounardy points expressed as offsets in cm from the EKF origin
+    * num_points is the number of points in the boundary
+    * stay_inside should be true for fences, false for exclusion polygons
+    * returns true if the vehicle's path intersects the boundary and populates intersection_xy_cm 
+    */
+    bool calc_intersection_polygon(const Vector2f &pos_xy_cm, const Vector2f &vel_xy_cms, float kP, float accel_xy_cmss,
+                                   const Vector2f* boundary_xy_cm, uint16_t num_points, bool stay_inside,
+                                   Vector2f &intersection_xy_cm) const;
 
     /*
      * methods for avoidance in non-GPS flight modes
