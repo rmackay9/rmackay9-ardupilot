@@ -138,6 +138,9 @@ public:
     /// stop_vel_xy_stabilisation - sets the target to the current position and velocity to the current velocity to remove any position and velocity corrections from the system
     void stop_vel_xy_stabilisation();
 
+    /// stop at specified position to avoid hitting somethingn
+    void set_avoidance_pos_xy(const Vector2p& stop_pos_xy_cm);
+
     /// update_xy_controller - runs the horizontal position controller correcting position, velocity and acceleration errors.
     ///     Position and velocity errors are converted to velocity and acceleration targets using PID objects
     ///     Desired velocity and accelerations are added to these corrections as they are calculated

@@ -611,6 +611,15 @@ void AC_PosControl::stop_vel_xy_stabilisation()
     _pid_vel_xy.reset_I();
 }
 
+/// stop at specified position to avoid hitting something
+void AC_PosControl::set_avoidance_pos_xy(const Vector2p& stop_pos_xy_cm)
+{
+    Vector2f vel_input;
+    Vector2f accel_input;
+    shape_pos_vel_accel_xy(stop_pos_xy_cm, vel_input, accel_input, _pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(),
+                           _vel_max_xy_cms, _accel_max_xy_cmss, _jerk_max_xy_cmsss, _dt, false);
+}
+
 // is_active_xy - returns true if the xy position controller has bee n run in the previous 5 loop times
 bool AC_PosControl::is_active_xy() const
 {
