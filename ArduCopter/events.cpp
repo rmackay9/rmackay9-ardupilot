@@ -84,7 +84,7 @@ void Copter::failsafe_radio_off_event()
     // no need to do anything except log the error as resolved
     // user can now override roll, pitch, yaw and throttle and even use flight mode switch to restore previous flight mode
     LOGGER_WRITE_ERROR(LogErrorSubsystem::FAILSAFE_RADIO, LogErrorCode::FAILSAFE_RESOLVED);
-    gcs().send_text(MAV_SEVERITY_WARNING, "Radio Failsafe Cleared");
+    gcs().send_text(MAV_SEVERITY_WARNING, "RC Ok");
 }
 
 void Copter::announce_failsafe(const char *type, const char *action_undertaken)
@@ -291,7 +291,7 @@ void Copter::failsafe_terrain_on_event()
         mode_rtl.restart_without_terrain();
 #endif
     } else {
-        set_mode_RTL_or_land_with_pause(ModeReason::TERRAIN_FAILSAFE);
+        set_mode_RTL_or_Althold(ModeReason::TERRAIN_FAILSAFE);
     }
 }
 
@@ -307,10 +307,10 @@ void Copter::gpsglitch_check()
         ap.gps_glitching = gps_glitching;
         if (gps_glitching) {
             LOGGER_WRITE_ERROR(LogErrorSubsystem::GPS, LogErrorCode::GPS_GLITCH);
-            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Glitch or Compass error");
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Bad");
         } else {
             LOGGER_WRITE_ERROR(LogErrorSubsystem::GPS, LogErrorCode::ERROR_RESOLVED);
-            gcs().send_text(MAV_SEVERITY_CRITICAL,"Glitch cleared");
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Ok");
         }
     }
 }
@@ -377,12 +377,12 @@ void Copter::failsafe_deadreckon_check()
 
 // set_mode_RTL_or_land_with_pause - sets mode to RTL if possible or LAND with 4 second delay before descent starts
 //  this is always called from a failsafe so we trigger notification to pilot
-void Copter::set_mode_RTL_or_land_with_pause(ModeReason reason)
+void Copter::set_mode_RTL_or_Althold(ModeReason reason)
 {
-    // attempt to switch to RTL, if this fails then switch to Land
+    // attempt to switch to RTL, if this fails then switch to Althold
     if (!set_mode(Mode::Number::RTL, reason)) {
         // set mode to land will trigger mode change notification to pilot
-        set_mode_land_with_pause(reason);
+        set_mode(Mode::Number::ALT_HOLD, ModeReason::RADIO_FAILSAFE);
     } else {
         // alert pilot to mode change
         AP_Notify::events.failsafe_mode_change = 1;
@@ -410,7 +410,7 @@ void Copter::set_mode_SmartRTL_or_RTL(ModeReason reason)
     // if that fails, then land
     if (!set_mode(Mode::Number::SMART_RTL, reason)) {
         gcs().send_text(MAV_SEVERITY_WARNING, "SmartRTL Unavailable, Trying RTL Mode");
-        set_mode_RTL_or_land_with_pause(reason);
+        set_mode_RTL_or_Althold(reason);
     } else {
         AP_Notify::events.failsafe_mode_change = 1;
     }
@@ -428,7 +428,7 @@ void Copter::set_mode_auto_do_land_start_or_RTL(ModeReason reason)
 #endif
 
     gcs().send_text(MAV_SEVERITY_WARNING, "Trying RTL Mode");
-    set_mode_RTL_or_land_with_pause(reason);
+    set_mode_RTL_or_Althold(reason);
 }
 
 // Sets mode to Brake or LAND with 4 second delay before descent starts
@@ -478,7 +478,7 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             set_mode_land_with_pause(reason);
             break;
         case FailsafeAction::RTL:
-            set_mode_RTL_or_land_with_pause(reason);
+            set_mode_RTL_or_Althold(reason);
             break;
         case FailsafeAction::SMARTRTL:
             set_mode_SmartRTL_or_RTL(reason);
@@ -501,11 +501,26 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             set_mode_brake_or_land_with_pause(reason);
             break;
     }
-
-#if AP_GRIPPER_ENABLED
-    if (failsafe_option(FailsafeOption::RELEASE_GRIPPER)) {
-        copter.g2.gripper.release();
-    }
-#endif
 }
 
+void Copter::RF_amp_power() 
+{  
+    // switching RF copter RC amplifier in dependence of hight and distance to home
+    if ((home_distance() < 5000) && (baro_alt < 3500)){
+        copter.ampstate = false;
+    }
+    if (baro_alt >= 5000){
+       copter.ampstate = true;
+    }
+       
+    if (copter.ampswitch != copter.ampstate){
+        copter.ampswitch = copter.ampstate;
+        if (copter.ampswitch){
+            copter.relay.off(0); //Matek BEC control inverted on PCB
+            gcs().send_text(MAV_SEVERITY_WARNING, "RF AMP ON");
+        }else{
+            copter.relay.on(0);
+            gcs().send_text(MAV_SEVERITY_WARNING, "RF AMP OFF");
+        }
+    }
+}

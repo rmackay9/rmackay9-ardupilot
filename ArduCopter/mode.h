@@ -464,7 +464,7 @@ public:
 
 protected:
 
-    const char *name() const override { return "ALT_HOLD"; }
+    const char *name() const override { return "ALT HOLD"; }
     const char *name4() const override { return "ALTH"; }
 
 private:
@@ -1353,7 +1353,7 @@ public:
     }
     void run(bool disarm_on_land);
 
-    bool requires_GPS() const override { return true; }
+    bool requires_GPS() const override { return false; }
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(AP_Arming::Method method) const override { return false; };
     bool is_autopilot() const override { return true; }
@@ -1413,6 +1413,7 @@ protected:
 
 private:
 
+    void compass_rtl();
     void climb_start();
     void return_start();
     void climb_return_run();

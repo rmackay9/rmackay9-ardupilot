@@ -13,8 +13,9 @@
 bool ModeRTL::init(bool ignore_checks)
 {
     if (!ignore_checks) {
-        if (!AP::ahrs().home_is_set()) {
-            return false;
+        if (!copter.position_ok()) {
+           compass_rtl();
+           gcs().send_text(MAV_SEVERITY_CRITICAL,"Compass RTL, no Home");  
         }
     }
     // initialise waypoint and spline controller
@@ -63,7 +64,7 @@ ModeRTL::RTLAltType ModeRTL::get_alt_type() const
 // should be called at 100hz or more
 void ModeRTL::run(bool disarm_on_land)
 {
-    if (!motors->armed()) {
+    if (!motors->armed() || !copter.position_ok()) {
         return;
     }
 
@@ -124,6 +125,12 @@ void ModeRTL::run(bool disarm_on_land)
         land_run(disarm_on_land);
         break;
     }
+}
+// non GPS RTL 
+void ModeRTL::compass_rtl()
+{
+
+    
 }
 
 // rtl_climb_start - initialise climb to RTL altitude

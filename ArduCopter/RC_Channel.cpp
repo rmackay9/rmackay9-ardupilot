@@ -332,14 +332,13 @@ bool RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const AuxSwi
             // Parachute disable, enable, release with 3 position switch
             switch (ch_flag) {
                 case AuxSwitchPos::LOW:
-                    copter.parachute.enabled(false);
+                    
                     break;
                 case AuxSwitchPos::MIDDLE:
-                    copter.parachute.enabled(true);
+                    
                     break;
                 case AuxSwitchPos::HIGH:
-                    copter.parachute.enabled(true);
-                    copter.parachute_manual_release();
+                ap.set_compass_mean_heading();
                     break;
             }
 #endif

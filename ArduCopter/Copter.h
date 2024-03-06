@@ -383,7 +383,7 @@ private:
             uint8_t unused3                 : 1; // 25      // was compass_init_location; true when the compass's initial location has been set
             uint8_t unused2                 : 1; // 26      // aux switch rc_override is allowed
             uint8_t armed_with_airmode_switch : 1; // 27      // we armed using a arming switch
-            uint8_t prec_land_active        : 1; // 28      // true if precland is active
+            uint8_t prec_land_active        : 1; // 28      // true if precland is active            
         };
         uint32_t value;
     } ap_t;
@@ -713,6 +713,9 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
     bool get_rate_ef_targets(Vector3f& rate_ef_targets) const override;
+    void set_compass_mean_heading();
+
+  
 
     // Attitude.cpp
     void update_throttle_hover();
@@ -788,7 +791,7 @@ private:
     void failsafe_terrain_on_event();
     void gpsglitch_check();
     void failsafe_deadreckon_check();
-    void set_mode_RTL_or_land_with_pause(ModeReason reason);
+    void set_mode_RTL_or_Althold(ModeReason reason);
     void set_mode_SmartRTL_or_RTL(ModeReason reason);
     void set_mode_SmartRTL_or_land_with_pause(ModeReason reason);
     void set_mode_auto_do_land_start_or_RTL(ModeReason reason);
@@ -796,6 +799,9 @@ private:
     bool should_disarm_on_failsafe();
     void do_failsafe_action(FailsafeAction action, ModeReason reason);
     void announce_failsafe(const char *type, const char *action_undertaken=nullptr);
+    void RF_amp_power();
+    bool ampswitch = false;
+    bool ampstate = false;
 
     // failsafe.cpp
     void failsafe_enable();

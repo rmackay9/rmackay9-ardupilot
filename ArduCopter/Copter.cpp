@@ -627,6 +627,8 @@ void Copter::three_hz_loop()
 
     // check for deadreckoning failsafe
     failsafe_deadreckon_check();
+    RF_amp_power();
+    set_compass_mean_heading();
 
 #if AP_FENCE_ENABLED
     // check if we have breached a fence
@@ -816,6 +818,13 @@ bool Copter::get_rate_ef_targets(Vector3f& rate_ef_targets) const
         rate_ef_targets = attitude_control->get_rate_ef_targets();
     }
     return true;
+}
+
+// Accumumulated during flight compass heading
+void Copter::set_compass_mean_heading()
+{
+  int32 compas_mean_haeding = 0;
+
 }
 
 /*
