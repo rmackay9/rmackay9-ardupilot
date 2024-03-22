@@ -666,7 +666,6 @@ void RC_Channel::init_aux_function(const AUX_FUNC ch_option, const AuxSwitchPos 
     case AUX_FUNC::LOWEHEISER_STARTER:
     case AUX_FUNC::MAG_CAL:
     case AUX_FUNC::CAMERA_IMAGE_TRACKING:
-    case AUX_FUNC::MOUNT_LRF_ENABLE:
         break;
 
     // not really aux functions:
@@ -696,6 +695,7 @@ void RC_Channel::init_aux_function(const AUX_FUNC ch_option, const AuxSwitchPos 
 #if HAL_MOUNT_ENABLED
     case AUX_FUNC::RETRACT_MOUNT1:
     case AUX_FUNC::MOUNT_LOCK:
+    case AUX_FUNC::MOUNT_LRF_ENABLE:
 #endif
     case AUX_FUNC::LOG_PAUSE:
     case AUX_FUNC::ARM_EMERGENCY_STOP:
