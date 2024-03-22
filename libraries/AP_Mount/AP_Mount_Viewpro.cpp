@@ -70,6 +70,10 @@ void AP_Mount_Viewpro::update()
         send_comm_config_cmd(CommConfigCmd::QUERY_FIRMWARE_VER);
     }
 
+    if (!_init_rangefinder_enable) {
+        init_rangefinder_enable();
+    }
+
     // send handshake
     send_handshake();
 
@@ -944,6 +948,21 @@ bool AP_Mount_Viewpro::get_rangefinder_distance(float& distance_m) const
 bool AP_Mount_Viewpro::set_rangefinder_enable(bool enable)
 {
     return send_camera_command(ImageSensor::NO_ACTION, CameraCommand::NO_ACTION, 0, enable ? LRFCommand::CONTINUOUS_RANGING_START : LRFCommand::STOP_RANGING);
+}
+
+// initialise rangefinder enable/disable state
+void AP_Mount_Viewpro::init_rangefinder_enable()
+{
+#if AP_SCRIPTING_ENABLED
+    // get cached aux switch position and initialise rangefinder enable state
+    uint8_t sw_pos;
+    if (rc().get_aux_cached(RC_Channel::AUX_FUNC::MOUNT_LRF_ENABLE, sw_pos)) {
+        _init_rangefinder_enable = set_rangefinder_enable(sw_pos == (uint8_t)RC_Channel::AuxSwitchPos::HIGH);
+        return;
+    }
+#endif
+
+    _init_rangefinder_enable = true;
 }
 
 #endif // HAL_MOUNT_VIEWPRO_ENABLED

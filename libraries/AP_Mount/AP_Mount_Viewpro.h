@@ -373,6 +373,9 @@ private:
     // send vehicle attitude and position to gimbal
     bool send_m_ahrs();
 
+    // initialise rangefinder enable/disable state
+    void init_rangefinder_enable();
+
     // internal variables
     AP_HAL::UARTDriver *_uart;                      // uart connected to gimbal
     bool _initialised;                              // true once the driver has been initialised
@@ -403,6 +406,7 @@ private:
     bool _got_firmware_version;                     // true once we have received the firmware version
     uint8_t _model_name[11] {};                     // model name received from gimbal
     bool _got_model_name;                           // true once we have received model name
+    bool _init_rangefinder_enable;                  // true once rangefinder enable/disabled state has been initialised
     float _rangefinder_dist_m;                      // latest rangefinder distance (in meters)
 };
 
