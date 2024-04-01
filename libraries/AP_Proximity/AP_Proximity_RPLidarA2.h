@@ -58,6 +58,9 @@ public:
     // update state
     void update(void) override;
 
+    // increase receive buffer size
+    uint16_t rxspace() const override { return 1280; };
+
     // get maximum and minimum distances (in meters) of sensor
     float distance_max() const override;
     float distance_min() const override;
