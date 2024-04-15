@@ -64,7 +64,7 @@ const AP_Param::GroupInfo HarmonicNotchFilterParams::var_info[] = {
     // @Param: ATT
     // @DisplayName: Harmonic Notch Filter attenuation
     // @Description: Harmonic Notch Filter attenuation in dB. Values greater than 40dB will typically produce a hard notch rather than a modest attenuation of motor noise.
-    // @Range: 5 50
+    // @Range: 5 100
     // @Units: dB
     // @User: Advanced
     AP_GROUPINFO("ATT", 4, HarmonicNotchFilterParams, _attenuation_dB, 40),
