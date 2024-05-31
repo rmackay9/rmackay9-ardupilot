@@ -294,6 +294,11 @@ MAV_RESULT AP_Camera::handle_command(const mavlink_command_int_t &packet)
             take_picture();
         }
         return MAV_RESULT_ACCEPTED;
+    case MAV_CMD_SET_CAMERA_MODE:
+        // accept this message to avoid ground stations (e.g. QGC) from reporting errors to the user
+        // no action necessary because the backends should take care of switching the camera mode if necessary
+        // when the user requests a picture be taken or video recording started
+        return MAV_RESULT_ACCEPTED;
     case MAV_CMD_SET_CAMERA_ZOOM:
         if (is_equal(packet.param1, (float)ZOOM_TYPE_CONTINUOUS) &&
             set_zoom(ZoomType::RATE, packet.param2)) {
