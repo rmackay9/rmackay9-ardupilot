@@ -566,27 +566,25 @@ bool AP_Mount_Topotek::get_attitude_quaternion(Quaternion& att_quat)
 // reading incoming packets from gimbal and confirm they are of the correct format
 void AP_Mount_Topotek::read_incoming_packets()
 {
-    // check for bytes on the serial port
-    int16_t nbytes = MIN(_uart->available(), 1024U);
-    if (nbytes <= 0 ) {
-        return;
-    }
-
-    // process bytes received
-    for (int16_t i = 0; i < nbytes; i++) {
+    for (auto i=0; i<1024; i++) {  // process at most n bytes
         uint8_t b;
         if (!_uart->read(b)) {
+            break;
+        }
+        // check for message-start-character
+        if (b == '#') {
+            if (_msg_buff_len != 0) {
+                // validate checksum here instead of in analyse_packet_data
+                analyse_packet_data();
+                _msg_buff_len == 0;
+            }
+        } else if (_msg_buf_len >= ARRAY_SIZE(_msg_buf_len)) {
+            // buffer overflow; just drop bytes until we get a #, at
+            // which point we will fail the checksum and restart parsing
             continue;
         }
-
-        if (_msg_buff_len != 0 || b == '#') {
-            if (b == '#' && _msg_buff_len != 0) {
-                analyse_packet_data();
-            }
-            _msg_buff[_msg_buff_len++] = b;
-        }
+        _msg_buff[_msg_buff_len++] = b;
     }
-    analyse_packet_data();
 }
 
 // request gimbal attitude
