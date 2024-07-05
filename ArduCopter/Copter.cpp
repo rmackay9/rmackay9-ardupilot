@@ -671,6 +671,8 @@ void Copter::one_hz_loop()
 #endif
     }
 
+    ignition_timer();
+    
     // update assigned functions and enable auxiliary servos
     SRV_Channels::enable_aux_servos();
 

@@ -833,7 +833,7 @@ const char *RC_Channel::string_for_aux_pos(AuxSwitchPos pos) const
     case AuxSwitchPos::HIGH:
         return "ON";
     case AuxSwitchPos::MIDDLE:
-        return "";
+        return "MID";
     case AuxSwitchPos::LOW:
         return "OFF";
     }
