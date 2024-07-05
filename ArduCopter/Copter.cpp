@@ -374,19 +374,7 @@ bool Copter::set_target_velaccel_NED(const Vector3f& target_vel, const Vector3f&
     return true;
 }
 
-bool Copter::set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs)
-{
-    // exit if vehicle is not in Guided mode or Auto-Guided mode
-    if (!flightmode->in_guided_mode()) {
-        return false;
-    }
 
-    Quaternion q;
-    q.from_euler(radians(roll_deg),radians(pitch_deg),radians(yaw_deg));
-
-    mode_guided.set_angle(q, Vector3f{}, climb_rate_ms*100, false);
-    return true;
-}
 #endif
 
 #if MODE_CIRCLE_ENABLED == ENABLED
@@ -682,9 +670,7 @@ void Copter::one_hz_loop()
         motors->update_throttle_range();
 #endif
     }
-    // boom safety timer
-    ignition_timer();
-    
+
     // update assigned functions and enable auxiliary servos
     SRV_Channels::enable_aux_servos();
 
@@ -840,6 +826,20 @@ bool Copter::get_rate_ef_targets(Vector3f& rate_ef_targets) const
     } else {
         rate_ef_targets = attitude_control->get_rate_ef_targets();
     }
+    return true;
+}
+
+bool Copter::set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs)
+{
+    // exit if vehicle is not in Guided mode or Auto-Guided mode
+    if (!flightmode->in_guided_mode()) {
+        return false;
+    }
+
+    Quaternion q;
+    q.from_euler(radians(roll_deg),radians(pitch_deg),radians(yaw_deg));
+
+    mode_guided.set_angle(q, Vector3f{}, climb_rate_ms*100, false);
     return true;
 }
 

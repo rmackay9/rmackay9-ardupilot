@@ -439,6 +439,7 @@ private:
     uint8_t hw_safety_sw;
     uint8_t hw_boom_sw;
     
+
     // Motor Output
     MOTOR_CLASS *motors;
     const struct AP_Param::GroupInfo *motors_var_info;
@@ -686,7 +687,7 @@ private:
 #endif // MODE_GUIDED_ENABLED == ENABLED
 #endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 
-
+#if AP_SCRIPTING_ENABLED
 #if MODE_GUIDED_ENABLED == ENABLED
     bool start_takeoff(float alt) override;
     bool get_target_location(Location& target_loc) override;
@@ -696,9 +697,8 @@ private:
     bool set_target_posvelaccel_NED(const Vector3f& target_pos, const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative) override;
     bool set_target_velocity_NED(const Vector3f& vel_ned) override;
     bool set_target_velaccel_NED(const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool relative_yaw) override;
-    bool set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs) override;
+    
 #endif
-#if AP_SCRIPTING_ENABLED
 #if MODE_CIRCLE_ENABLED == ENABLED
     bool get_circle_radius(float &radius_m) override;
     bool set_circle_rate(float rate_dps) override;
@@ -732,6 +732,7 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
     bool get_rate_ef_targets(Vector3f& rate_ef_targets) const override;
+    bool set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs);
 
     // Attitude.cpp
     void update_throttle_hover();

@@ -46,7 +46,7 @@ bool ModeLand::init(bool ignore_checks)
     copter.fence.auto_disable_fence_for_landing();
 #endif
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
     // initialise precland state machine
     copter.precland_statemachine.init();
 #endif
@@ -102,7 +102,7 @@ void ModeLand::nogps_run()
     // process pilot inputs
     if (!copter.failsafe.radio) {
         if ((g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 && copter.rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR){
-            AP::logger().Write_Event(LogEvent::LAND_CANCELLED_BY_PILOT);
+            LOGGER_WRITE_EVENT(LogEvent::LAND_CANCELLED_BY_PILOT);
             // exit land if throttle is high
             copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::THROTTLE_LAND_ESCAPE);
         }
@@ -149,13 +149,15 @@ void ModeLand::do_not_use_GPS()
     control_position = false;
 }
 
-// set_mode_land_with_pause - sets mode to go up 300 m in GNGPS mode
+
+   // set_mode_land_with_pause - sets mode to go up 300 m in GNGPS mode
 void Copter::set_mode_land_with_pause(ModeReason reason)
 {
     set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::RADIO_FAILSAFE);
-    gcs().send_text(MAV_SEVERITY_INFO, "No RC. GoUp to 300m");
+    gcs().send_text(MAV_SEVERITY_INFO, "No RC. GoUp");
     goup();
 }
+
 
 // landing_with_GPS - returns true if vehicle is landing using GPS
 bool Copter::landing_with_GPS()

@@ -311,12 +311,13 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
             do_aux_function_change_mode(Mode::Number::FOLLOW, ch_flag);
             break;
 
+        case AUX_FUNC::PARACHUTE_ENABLE:
 //#if PARACHUTE == ENABLED
         switch (ch_flag) {
             case AuxSwitchPos::HIGH:
             copter.hw_safety_sw = true;
                if(copter.motors->armed()) {
-               gcs().send_text(MAV_SEVERITY_INFO,"SAFE ON, WEAPON DISARMED");
+               GCS_SEND_TEXT(MAV_SEVERITY_INFO,"SAFE ON, WEAPON DISARMED");
                }
             break;
 
@@ -327,9 +328,9 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
             copter.hw_safety_sw = false;
             if (copter.motors->armed()) {
                if (!copter.p_safety_sw.timeout) {
-               gcs().send_text(MAV_SEVERITY_INFO,"SAFE OFF, WAIT TIMER");
+               GCS_SEND_TEXT(MAV_SEVERITY_INFO,"SAFE OFF, WAIT TIMER");
                }else{
-               gcs().send_text(MAV_SEVERITY_INFO,"!!! WEAPON ARMED !!!"); 
+               GCS_SEND_TEXT(MAV_SEVERITY_INFO,"!!! WEAPON ARMED !!!"); 
                }
             }
             break;
@@ -344,13 +345,13 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
                 copter.hw_boom_sw = true;
                 if (copter.motors->armed()) {
                     if (copter.p_safety_sw.timeout && copter.hw_safety_sw) {
-                    gcs().send_text(MAV_SEVERITY_INFO,"SAFETY SWITCH!");
+                    GCS_SEND_TEXT(MAV_SEVERITY_INFO,"SAFETY SWITCH!");
                     }
                     if (!copter.p_safety_sw.timeout && !copter.hw_safety_sw) {
-                        gcs().send_text(MAV_SEVERITY_INFO,"MANUAL BLAST- WAIT TIMER");
+                        GCS_SEND_TEXT(MAV_SEVERITY_INFO,"MANUAL BLAST- WAIT TIMER");
                     }
                     if (!copter.p_safety_sw.timeout && copter.hw_safety_sw) {
-                        gcs().send_text(MAV_SEVERITY_INFO,"WAIT TIMER, SAFETY SWITCH ON!");
+                        GCS_SEND_TEXT(MAV_SEVERITY_INFO,"WAIT TIMER, SAFETY SWITCH ON!");
                     }
                 }
             break;

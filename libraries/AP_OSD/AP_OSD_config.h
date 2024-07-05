@@ -24,5 +24,5 @@
 #endif
 
 #ifndef AP_OSD_LINK_STATS_EXTENSIONS_ENABLED
-#define AP_OSD_LINK_STATS_EXTENSIONS_ENABLED 0      // Disabled by default to save flash, enable via custom build server
+#define AP_OSD_LINK_STATS_EXTENSIONS_ENABLED 1      // Disabled by default to save flash, enable via custom build server
 #endif

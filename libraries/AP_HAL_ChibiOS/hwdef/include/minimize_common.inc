@@ -4,7 +4,7 @@
 #  otherwise.
 
 # disable emitting nice strings when activating RC channel aux functions:
-define AP_RC_CHANNEL_AUX_FUNCTION_STRINGS_ENABLED 0
+define AP_RC_CHANNEL_AUX_FUNCTION_STRINGS_ENABLED 1
 
 # low-end boards aren't expected to be used in environments where
 # things like satellite communications are required:
@@ -117,7 +117,7 @@ define WEATHERVANE_ENABLED 0
 define MODE_AUTOROTATE_ENABLED 0
 
 # don't send RELAY_STATUS messages:
-define AP_MAVLINK_MSG_RELAY_STATUS_ENABLED 0
+define AP_MAVLINK_MSG_RELAY_STATUS_ENABLED 1
 
 #fewer airspeed sensors
 define AP_AIRSPEED_BACKEND_DEFAULT_ENABLED 0

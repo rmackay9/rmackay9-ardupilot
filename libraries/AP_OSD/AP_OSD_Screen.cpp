@@ -1532,7 +1532,7 @@ void AP_OSD_Screen::draw_rssi(uint8_t x, uint8_t y)
 {
     AP_RSSI *ap_rssi = AP_RSSI::get_singleton();
     if (ap_rssi) {
-        const uint8_t rssiv = ap_rssi->read_receiver_rssi() * 102;
+        const uint8_t rssiv = ap_rssi->read_receiver_rssi() * 100;
         backend->write(x, y, rssiv < osd->warn_rssi, "%c%2d", SYMBOL(SYM_RSSI), rssiv);
     }
 }
@@ -2464,11 +2464,6 @@ void AP_OSD_Screen::draw_pluscode(uint8_t x, uint8_t y)
 void AP_OSD_Screen::draw_callsign(uint8_t x, uint8_t y)
 {
     backend->write(x, y, false, "BLACK SKY");
-}
-
-void AP_OSD_Screen::draw_current2(uint8_t x, uint8_t y)
-{
-    draw_current(1, x, y);
 }
 
 void AP_OSD_Screen::draw_current2(uint8_t x, uint8_t y)

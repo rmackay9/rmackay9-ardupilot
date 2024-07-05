@@ -147,7 +147,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Brake mode - bring vehicle to stop
 #ifndef MODE_BRAKE_ENABLED
-# define MODE_BRAKE_ENABLED ENABLED
+# define MODE_BRAKE_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -159,20 +159,20 @@
 //////////////////////////////////////////////////////////////////////////////
 // Drift - fly vehicle in altitude-held, coordinated-turn mode
 #ifndef MODE_DRIFT_ENABLED
-# define MODE_DRIFT_ENABLED ENABLED
+# define MODE_DRIFT_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // flip - fly vehicle in flip in pitch and roll direction mode
 #ifndef MODE_FLIP_ENABLED
-# define MODE_FLIP_ENABLED ENABLED
+# define MODE_FLIP_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // Follow - follow another vehicle or GCS
 #ifndef MODE_FOLLOW_ENABLED
 #if AP_FOLLOW_ENABLED && AP_AVOIDANCE_ENABLED
-#define MODE_FOLLOW_ENABLED ENABLED
+#define MODE_FOLLOW_ENABLED DISABLED
 #else
 #define MODE_FOLLOW_ENABLED DISABLED
 #endif
@@ -229,13 +229,13 @@
 //////////////////////////////////////////////////////////////////////////////
 // Throw - fly vehicle after throwing it in the air
 #ifndef MODE_THROW_ENABLED
-# define MODE_THROW_ENABLED ENABLED
+# define MODE_THROW_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // ZigZag - allow vehicle to fly in a zigzag manner with predefined point A B
 #ifndef MODE_ZIGZAG_ENABLED
-# define MODE_ZIGZAG_ENABLED ENABLED
+# define MODE_ZIGZAG_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -255,7 +255,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Weathervane - allow vehicle to yaw into wind
 #ifndef WEATHERVANE_ENABLED
-# define WEATHERVANE_ENABLED ENABLED
+# define WEATHERVANE_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
