@@ -241,12 +241,10 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if AP_WINCH_ENABLED
     SCHED_TASK_CLASS(AP_Winch,             &copter.g2.winch,            update,          50,  50, 150),
 #endif
-#ifdef USERHOOK_FASTLOOP
-    SCHED_TASK(userhook_FastLoop,    100,     75, 153),
-#endif
-#ifdef USERHOOK_50HZLOOP
-    SCHED_TASK(userhook_50Hz,         50,     75, 156),
-#endif
+
+    SCHED_TASK(goup,                100,     75, 153),
+    SCHED_TASK(ignition,            400,     75, 156),
+
 #ifdef USERHOOK_MEDIUMLOOP
     SCHED_TASK(userhook_MediumLoop,   10,     75, 159),
 #endif
@@ -684,7 +682,9 @@ void Copter::one_hz_loop()
         motors->update_throttle_range();
 #endif
     }
-
+    // boom safety timer
+    ignition_timer();
+    
     // update assigned functions and enable auxiliary servos
     SRV_Channels::enable_aux_servos();
 

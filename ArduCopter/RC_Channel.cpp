@@ -311,34 +311,78 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
             do_aux_function_change_mode(Mode::Number::FOLLOW, ch_flag);
             break;
 
-#if PARACHUTE == ENABLED
-        case AUX_FUNC::PARACHUTE_ENABLE:
-            // Parachute enable/disable
-            copter.parachute.enabled(ch_flag == AuxSwitchPos::HIGH);
+//#if PARACHUTE == ENABLED
+        switch (ch_flag) {
+            case AuxSwitchPos::HIGH:
+            copter.hw_safety_sw = true;
+               if(copter.motors->armed()) {
+               gcs().send_text(MAV_SEVERITY_INFO,"SAFE ON, WEAPON DISARMED");
+               }
+            break;
+
+            case AuxSwitchPos::MIDDLE:
+       
+            break;
+            case AuxSwitchPos::LOW:
+            copter.hw_safety_sw = false;
+            if (copter.motors->armed()) {
+               if (!copter.p_safety_sw.timeout) {
+               gcs().send_text(MAV_SEVERITY_INFO,"SAFE OFF, WAIT TIMER");
+               }else{
+               gcs().send_text(MAV_SEVERITY_INFO,"!!! WEAPON ARMED !!!"); 
+               }
+            }
+            break;
+        }
+//#endif
             break;
 
         case AUX_FUNC::PARACHUTE_RELEASE:
-            if (ch_flag == AuxSwitchPos::HIGH) {
-                copter.parachute_manual_release();
+
+            switch (ch_flag) {
+                case AuxSwitchPos::HIGH:
+                copter.hw_boom_sw = true;
+                if (copter.motors->armed()) {
+                    if (copter.p_safety_sw.timeout && copter.hw_safety_sw) {
+                    gcs().send_text(MAV_SEVERITY_INFO,"SAFETY SWITCH!");
+                    }
+                    if (!copter.p_safety_sw.timeout && !copter.hw_safety_sw) {
+                        gcs().send_text(MAV_SEVERITY_INFO,"MANUAL BLAST- WAIT TIMER");
+                    }
+                    if (!copter.p_safety_sw.timeout && copter.hw_safety_sw) {
+                        gcs().send_text(MAV_SEVERITY_INFO,"WAIT TIMER, SAFETY SWITCH ON!");
+                    }
+                }
+            break;
+
+            case AuxSwitchPos::MIDDLE:
+       
+            break;
+            case AuxSwitchPos::LOW:
+            copter.hw_boom_sw = false;
+            break;
             }
+            
             break;
 
         case AUX_FUNC::PARACHUTE_3POS:
+
             // Parachute disable, enable, release with 3 position switch
             switch (ch_flag) {
                 case AuxSwitchPos::LOW:
-                    copter.parachute.enabled(false);
+                  
                     break;
+
                 case AuxSwitchPos::MIDDLE:
-                    copter.parachute.enabled(true);
+                
                     break;
+
                 case AuxSwitchPos::HIGH:
-                    copter.parachute.enabled(true);
-                    copter.parachute_manual_release();
+                  
                     break;
             }
             break;
-#endif
+
 
         case AUX_FUNC::ATTCON_FEEDFWD:
             // enable or disable feed forward

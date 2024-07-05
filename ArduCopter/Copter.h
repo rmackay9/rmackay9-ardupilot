@@ -423,6 +423,22 @@ private:
         uint32_t start_ms;  // system time that EKF began deadreckoning
     } dead_reckoning;
 
+    // program safety timer
+    struct {
+        bool active; // true if safety timer active and count
+        bool timeout;       // true if safety timer timedout 
+        uint32_t start_ms;  // system time that safety timer started
+    } p_safety_sw;
+    
+    struct {
+        bool active; // true if selfdestroyer active and count
+        bool timeout;   
+        uint32_t start_ms;  // system time that selfdestroyer started
+    } selfboom;
+
+    uint8_t hw_safety_sw;
+    uint8_t hw_boom_sw;
+    
     // Motor Output
     MOTOR_CLASS *motors;
     const struct AP_Param::GroupInfo *motors_var_info;
@@ -670,7 +686,7 @@ private:
 #endif // MODE_GUIDED_ENABLED == ENABLED
 #endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 
-#if AP_SCRIPTING_ENABLED
+
 #if MODE_GUIDED_ENABLED == ENABLED
     bool start_takeoff(float alt) override;
     bool get_target_location(Location& target_loc) override;
@@ -682,6 +698,7 @@ private:
     bool set_target_velaccel_NED(const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool relative_yaw) override;
     bool set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs) override;
 #endif
+#if AP_SCRIPTING_ENABLED
 #if MODE_CIRCLE_ENABLED == ENABLED
     bool get_circle_radius(float &radius_m) override;
     bool set_circle_rate(float rate_dps) override;
@@ -797,7 +814,10 @@ private:
     bool should_disarm_on_failsafe();
     void do_failsafe_action(FailsafeAction action, ModeReason reason);
     void announce_failsafe(const char *type, const char *action_undertaken=nullptr);
-
+    void ignition_timer();
+    void ignition();
+   // Guided non GPS mode in Land with pause to up to RTL ALT
+    void goup();
     // failsafe.cpp
     void failsafe_enable();
     void failsafe_disable();
