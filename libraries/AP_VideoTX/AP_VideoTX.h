@@ -59,12 +59,15 @@ public:
         BAND_A,
         BAND_B,
         BAND_E,
-        FATSHARK,
-        RACEBAND,
-        LOW_RACEBAND,
-        BAND_1G3_A,
-        BAND_1G3_B,
+        BAND_F,
+        BAND_R,
+        BAND_H,
+        BAND_L,
+        BAND_U,
+        BAND_O,
         BAND_X,
+        BAND_1G3_A,
+        BAND_1G3_B,        
         MAX_BANDS
     };
 
