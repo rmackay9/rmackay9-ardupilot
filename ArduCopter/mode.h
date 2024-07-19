@@ -479,7 +479,7 @@ public:
 protected:
 
     const char *name() const override { return "ALT_HOLD"; }
-    const char *name4() const override { return "ALTH"; }
+    const char *name4() const override { return "ATTI"; }
 
 private:
 

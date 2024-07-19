@@ -497,6 +497,7 @@ bool AP_VideoTX::set_defaults()
 void AP_VideoTX::announce_vtx_settings() const
 {
     // Output a friendly message so the user knows the VTX has been detected
+    if(!hal.util->get_soft_armed())
     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "VTX: %s%d %dMHz, PWR: %dmW",
         band_names[_band.get()], _channel.get() + 1, _frequency_mhz.get(),
         has_option(VideoOptions::VTX_PITMODE) ? 0 : _power_mw.get());
@@ -506,9 +507,29 @@ void AP_VideoTX::announce_vtx_settings() const
 // 6-pos range is in the middle of the available range
 void AP_VideoTX::change_power(int8_t position)
 {
-    if (!_enabled || position < 0 || position > 5) {
+    uint16_t power = 0;
+    if (!_enabled || position < 0 || position > 5){
         return;
     }
+    
+    if (is_provider_enabled(AP_VideoTX::VTXType::Tramp)) {
+        if (position == 0){
+            power = 25; 
+        }else if (position == 1){
+            power = 100; 
+        }else if (position == 2){
+            power = 200; 
+        }else if (position == 3){
+            power = 400; 
+        }else if (position > 3){
+            power = 600; 
+        }
+
+        set_configured_power_mw(power);
+    
+        return;
+    }
+
     // first find out how many possible levels there are
     uint8_t num_active_levels = 0;
     for (uint8_t i = 0; i < VTX_MAX_POWER_LEVELS; i++) {
@@ -519,7 +540,7 @@ void AP_VideoTX::change_power(int8_t position)
     // iterate through to find the level
     uint16_t level = constrain_int16(roundf((num_active_levels * (position + 1)/ 6.0f) - 1), 0, num_active_levels - 1);
     debug("looking for pos %d power level %d from %d", position, level, num_active_levels);
-    uint16_t power = 0;
+    
     for (uint8_t i = 0, j = 0; i < num_active_levels; i++, j++) {
         while (j < VTX_MAX_POWER_LEVELS-1 && _power_levels[j].active == PowerActive::Inactive) {
             j++;

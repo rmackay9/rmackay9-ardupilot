@@ -565,15 +565,16 @@ void Copter::ignition()
 
     if (motors->armed() && p_safety_sw.timeout && !copter.hw_safety_sw) {
 
-        if ((accel_ig.x <= -4.5) || (accel_ig.z <= -8)) {
+        if ((accel_ig.x <= -45) || (accel_ig.z <= -90)) {
             hal.gpio->write(56, 1);
             hal.gpio->write(57, 1); 
             gcs().send_text(MAV_SEVERITY_INFO, "G-Blast");
         }
         if (copter.hw_boom_sw) {            
+            gcs().send_text(MAV_SEVERITY_INFO, "Manual Blast");
             hal.gpio->write(56, 1);
             hal.gpio->write(57, 1);
-            gcs().send_text(MAV_SEVERITY_INFO, "Manual Blast");
+            
         }
        
     }
