@@ -5,6 +5,7 @@
 #include <AP_Motors/AP_Motors.h>    // motors library
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 #include <AP_Scheduler/AP_Scheduler.h>
+#include <AC_Avoidance/AC_Avoid.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -622,7 +623,8 @@ bool AC_PosControl::is_active_xy() const
 ///     Position and velocity errors are converted to velocity and acceleration targets using PID objects
 ///     Desired velocity and accelerations are added to these corrections as they are calculated
 ///     Kinematically consistent target position and desired velocity and accelerations should be provided before calling this function
-void AC_PosControl::update_xy_controller()
+///     avoid_obstacles should be true if low level object avoidance using proximity sensors and fence should be enabled
+void AC_PosControl::update_xy_controller(bool avoid_obstacles)
 {
     // check for ekf xy position reset
     handle_ekf_xy_reset();
@@ -652,6 +654,19 @@ void AC_PosControl::update_xy_controller()
     vel_target *= ahrsControlScaleXY;
     _vel_target.xy() = vel_target;
     _vel_target.xy() += _vel_desired.xy();
+
+#if AP_AVOIDANCE_ENABLED && !APM_BUILD_TYPE(APM_BUILD_ArduPlane)
+    if (avoid_obstacles) {
+        // limit horizontal velocity targets using avoidance
+        AC_Avoid *_avoid = AP::ac_avoid();
+        if (_avoid != nullptr) {
+            bool backing_up = false;
+            Vector3f target_vel_adjusted = _vel_target;
+            _avoid->adjust_velocity(target_vel_adjusted, backing_up, get_pos_xy_p().kP(), get_max_accel_xy_cmss(), get_pos_z_p().kP(), get_max_accel_z_cmss(), _dt, true);
+            _vel_target.xy() = target_vel_adjusted.xy();
+        }
+    }
+#endif
 
     // Velocity Controller
 
@@ -953,7 +968,7 @@ bool AC_PosControl::is_active_z() const
 ///     Position and velocity errors are converted to velocity and acceleration targets using PID objects
 ///     Desired velocity and accelerations are added to these corrections as they are calculated
 ///     Kinematically consistent target position and desired velocity and accelerations should be provided before calling this function
-void AC_PosControl::update_z_controller()
+void AC_PosControl::update_z_controller(bool avoid_obstacles)
 {
     // check for ekf z-axis position reset
     handle_ekf_z_reset();
@@ -979,6 +994,16 @@ void AC_PosControl::update_z_controller()
     // add feed forward component
     _vel_target.z += _vel_desired.z;
 
+    // limit velocity using avoidance
+#if AP_AVOIDANCE_ENABLED && !APM_BUILD_TYPE(APM_BUILD_ArduPlane)
+    if (avoid_obstacles) {
+        // limit horizontal velocity targets using avoidance
+        AC_Avoid *_avoid = AP::ac_avoid();
+        if (_avoid != nullptr) {
+            _avoid->adjust_velocity_z(get_pos_z_p().kP(), get_max_accel_z_cmss(), _vel_target.z, _dt);
+        }
+    }
+#endif
     // Velocity Controller
 
     const float curr_vel_z = _inav.get_velocity_z_up_cms();
