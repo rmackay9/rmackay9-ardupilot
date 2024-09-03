@@ -676,6 +676,7 @@ private:
     void get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
                              uint8_t &task_count,
                              uint32_t &log_bit) override;
+<<<<<<< HEAD
 #if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 #if MODE_GUIDED_ENABLED
     bool set_target_location(const Location& target_loc) override;
@@ -685,6 +686,17 @@ private:
 
 #if AP_SCRIPTING_ENABLED
 #if MODE_GUIDED_ENABLED
+=======
+//#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+#if MODE_GUIDED_ENABLED == ENABLED
+    bool set_target_location(const Location& target_loc) override;
+#endif // MODE_GUIDED_ENABLED == ENABLED
+//#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+
+//#if AP_SCRIPTING_ENABLED
+#if MODE_GUIDED_ENABLED == ENABLED
+    bool start_takeoff(float alt) override;
+>>>>>>> 77042fed8a (LittleBro)
     bool get_target_location(Location& target_loc) override;
     bool update_target_location(const Location &old_loc, const Location &new_loc) override;
     bool set_target_pos_NED(const Vector3f& target_pos, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative, bool terrain_alt) override;
@@ -711,7 +723,7 @@ private:
     // lua scripts use this to retrieve EKF failsafe state
     // returns true if the EKF failsafe has triggered
     bool has_ekf_failsafed() const override;
-#endif // AP_SCRIPTING_ENABLED
+//#endif // AP_SCRIPTING_ENABLED
     bool is_landing() const override;
     bool is_taking_off() const override;
     void rc_loop();
@@ -731,6 +743,7 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
     bool get_rate_ef_targets(Vector3f& rate_ef_targets) const override;
+    void set_compass_rtl_heading();
 
     // Attitude.cpp
     void update_throttle_hover();
@@ -831,6 +844,18 @@ private:
     bool should_disarm_on_failsafe();
     void do_failsafe_action(FailsafeAction action, ModeReason reason);
     void announce_failsafe(const char *type, const char *action_undertaken=nullptr);
+    void rf_amp_power();
+    void compass_rtl_run();
+    bool ampswitch = false;
+    bool ampstate = false;
+    bool flte = false;
+    uint32_t fltnorc;
+    uint32_t flth;
+    uint32_t flt;
+    uint32_t fltfs;
+    uint32_t fltrc;
+    int16_t rtl_heading;
+    int8_t source_sw; // EKF3 source set 0-2
 
     // failsafe.cpp
     void failsafe_enable();

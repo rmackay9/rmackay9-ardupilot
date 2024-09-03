@@ -12,9 +12,14 @@
 // rtl_init - initialise rtl controller
 bool ModeRTL::init(bool ignore_checks)
 {
+//    AP::ahrs().set_posvelyaw_source_set(0)
+
     if (!ignore_checks) {
-        if (!AP::ahrs().home_is_set()) {
-            return false;
+        if (!copter.position_ok()) {
+            set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
+            gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
+            copter.compass_rtl_run();
+        return false;
         }
     }
     // initialise waypoint and spline controller
@@ -63,7 +68,7 @@ ModeRTL::RTLAltType ModeRTL::get_alt_type() const
 // should be called at 100hz or more
 void ModeRTL::run(bool disarm_on_land)
 {
-    if (!motors->armed()) {
+    if (!motors->armed() || !copter.position_ok()) {
         return;
     }
 
@@ -135,9 +140,10 @@ void ModeRTL::climb_start()
     // set the destination
     if (!wp_nav->set_wp_destination_loc(rtl_path.climb_target) || !wp_nav->set_wp_destination_next_loc(rtl_path.return_target)) {
         // this should not happen because rtl_build_path will have checked terrain data was available
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"RTL: unexpected error setting climb target");
-        LOGGER_WRITE_ERROR(LogErrorSubsystem::NAVIGATION, LogErrorCode::FAILED_TO_SET_DESTINATION);
-        copter.set_mode(Mode::Number::LAND, ModeReason::TERRAIN_FAILSAFE);
+        AP::logger().Write_Error(LogErrorSubsystem::NAVIGATION, LogErrorCode::FAILED_TO_SET_DESTINATION);
+        gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
+        copter.set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::TERRAIN_FAILSAFE);        
+        copter.compass_rtl_run();
         return;
     }
 
