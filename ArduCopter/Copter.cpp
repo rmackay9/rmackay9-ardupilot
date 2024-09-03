@@ -241,9 +241,9 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if AP_WINCH_ENABLED
     SCHED_TASK_CLASS(AP_Winch,             &copter.g2.winch,            update,          50,  50, 150),
 #endif
-#ifdef USERHOOK_FASTLOOP
-    SCHED_TASK(userhook_FastLoop,    100,     75, 153),
-#endif
+
+    SCHED_TASK(compass_rtl_run,      100,     75, 153),
+
 #ifdef USERHOOK_50HZLOOP
     SCHED_TASK(userhook_50Hz,         50,     75, 156),
 #endif
@@ -273,7 +273,7 @@ void Copter::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
 constexpr int8_t Copter::_failsafe_priorities[7];
 
 
-#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+//#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 #if MODE_GUIDED_ENABLED == ENABLED
 // set target location (for use by external control and scripting)
 bool Copter::set_target_location(const Location& target_loc)
@@ -286,9 +286,9 @@ bool Copter::set_target_location(const Location& target_loc)
     return mode_guided.set_destination(target_loc);
 }
 #endif //MODE_GUIDED_ENABLED == ENABLED
-#endif //AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+//#endif //AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 
-#if AP_SCRIPTING_ENABLED
+//#if AP_SCRIPTING_ENABLED
 #if MODE_GUIDED_ENABLED == ENABLED
 // start takeoff to given altitude (for use by scripting)
 bool Copter::start_takeoff(float alt)
@@ -472,7 +472,7 @@ bool Copter::update_target_location(const Location &old_loc, const Location &new
     return set_target_location(new_loc);
 }
 
-#endif // AP_SCRIPTING_ENABLED
+//#endif // AP_SCRIPTING_ENABLED
 
 // returns true if vehicle is landing.
 bool Copter::is_landing() const
@@ -664,6 +664,7 @@ void Copter::three_hz_loop()
 
     // check if avoidance should be enabled based on alt
     low_alt_avoidance();
+    rf_amp_power();
 }
 
 // one_hz_loop - runs at 1Hz
@@ -844,6 +845,22 @@ bool Copter::get_rate_ef_targets(Vector3f& rate_ef_targets) const
     }
     return true;
 }
+
+// Set during flight compass heading for non-GPS RTL
+void Copter::set_compass_rtl_heading()
+{
+    // if we are in Compass RTL we can't change home course.
+    if(flightmode->in_guided_mode()) {
+        return;
+    }
+
+    rtl_heading = (ahrs.yaw_sensor / 100) + 180;
+    if (rtl_heading >= 360) {
+      rtl_heading -= 360;
+    }
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "%i Deg Home RTL set", rtl_heading);
+}
+
 
 /*
   constructor for main Copter class

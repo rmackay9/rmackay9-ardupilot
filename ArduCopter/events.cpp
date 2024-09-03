@@ -46,7 +46,7 @@ void Copter::failsafe_radio_on_event()
     // Conditions to deviate from FS_THR_ENABLE selection and send specific GCS warning
     if (should_disarm_on_failsafe()) {
         // should immediately disarm when we're on the ground
-        announce_failsafe("Radio", "Disarming");
+        announce_failsafe("No RC", "Disarming");
         arming.disarm(AP_Arming::Method::RADIOFAILSAFE);
         desired_action = FailsafeAction::NONE;
 
@@ -71,7 +71,7 @@ void Copter::failsafe_radio_on_event()
         desired_action = FailsafeAction::NONE;
 
     } else {
-        announce_failsafe("Radio");
+        announce_failsafe("RC");
     }
 
     // Call the failsafe action handler
@@ -84,7 +84,7 @@ void Copter::failsafe_radio_off_event()
     // no need to do anything except log the error as resolved
     // user can now override roll, pitch, yaw and throttle and even use flight mode switch to restore previous flight mode
     LOGGER_WRITE_ERROR(LogErrorSubsystem::FAILSAFE_RADIO, LogErrorCode::FAILSAFE_RESOLVED);
-    gcs().send_text(MAV_SEVERITY_WARNING, "Radio Failsafe Cleared");
+    gcs().send_text(MAV_SEVERITY_WARNING, "RC Ok");
 }
 
 void Copter::announce_failsafe(const char *type, const char *action_undertaken)
@@ -307,10 +307,10 @@ void Copter::gpsglitch_check()
         ap.gps_glitching = gps_glitching;
         if (gps_glitching) {
             LOGGER_WRITE_ERROR(LogErrorSubsystem::GPS, LogErrorCode::GPS_GLITCH);
-            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Glitch or Compass error");
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Bad");
         } else {
             LOGGER_WRITE_ERROR(LogErrorSubsystem::GPS, LogErrorCode::ERROR_RESOLVED);
-            gcs().send_text(MAV_SEVERITY_CRITICAL,"Glitch cleared");
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Ok");
         }
     }
 }
@@ -318,6 +318,12 @@ void Copter::gpsglitch_check()
 // dead reckoning alert and failsafe
 void Copter::failsafe_deadreckon_check()
 {
+    // exit immediately if deadreckon failsafe is disabled
+    if (g2.failsafe_dr_enable <= 0) {
+        failsafe.deadreckon = false;
+        return;
+    }
+
     // update dead reckoning state
     const char* dr_prefix_str = "Dead Reckoning";
 
@@ -345,12 +351,6 @@ void Copter::failsafe_deadreckon_check()
             dead_reckoning.timeout = true;
             gcs().send_text(MAV_SEVERITY_CRITICAL,"%s timeout", dr_prefix_str);
         }
-    }
-
-    // exit immediately if deadreckon failsafe is disabled
-    if (g2.failsafe_dr_enable <= 0) {
-        failsafe.deadreckon = false;
-        return;
     }
 
     // check for failsafe action
@@ -401,8 +401,6 @@ void Copter::set_mode_SmartRTL_or_land_with_pause(ModeReason reason)
         return;
     }
 #endif
-    gcs().send_text(MAV_SEVERITY_WARNING, "SmartRTL Unavailable, Using Land Mode");
-    set_mode_land_with_pause(reason);
 }
 
 // set_mode_SmartRTL_or_RTL - sets mode to SMART_RTL if possible or RTL if possible or LAND with 4 second delay before descent starts
@@ -446,9 +444,6 @@ void Copter::set_mode_brake_or_land_with_pause(ModeReason reason)
         return;
     }
 #endif
-
-    gcs().send_text(MAV_SEVERITY_WARNING, "Trying Land Mode");
-    set_mode_land_with_pause(reason);
 }
 
 bool Copter::should_disarm_on_failsafe() {
@@ -514,3 +509,86 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
 #endif
 }
 
+
+void Copter::rf_amp_power() 
+{  
+    AP_Stats *statts = AP::stats();
+    flt = statts->get_flight_time_s();
+
+    // switching RF copter RC amplifier in dependence of hight and distance to home
+//    if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
+//        copter.ampstate = false;
+//    }
+//    if (baro_alt >= 2000){
+//       copter.ampstate = true;
+//    }
+//
+//    if (copter.ampswitch != copter.ampstate){
+//        copter.ampswitch = copter.ampstate;
+//        if (copter.ampswitch){
+//            copter.relay.off(0); //Matek BEC control inverted on PCB
+//            gcs().send_text(MAV_SEVERITY_INFO, "RF amp ON");
+//        }else{
+//            copter.relay.on(0);
+//            gcs().send_text(MAV_SEVERITY_INFO, "RF amp OFF");
+//        }
+//    }
+    //Switch sourse set at "low speed alt" to use optical flow if OpFlow Enabled
+
+       
+//    if (motors->armed() && !position_ok() && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
+//       source_sw = 1;
+//    }
+    
+//    if (AP::ahrs().get_posvelyaw_source_set() != source_sw){
+//        AP::ahrs().set_posvelyaw_source_set(source_sw);
+//
+//        if (source_sw == 0) {
+//            gcs().send_text(MAV_SEVERITY_CRITICAL, "GPS Stab Enabled");
+//        }else{
+//            gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
+//       }
+//    }
+
+
+    if(!copter.failsafe.radio) {
+        flth = flt - fltrc; //last flight time in RC
+        fltnorc = flt; // time when RC fail
+        flte = false;
+    }else{
+        fltfs = flt - fltnorc; //time we flying in Compass RTL
+        fltrc = flt;// time when RC ok
+        if (fltfs > (flth * 0.1 * (uint32_t(constrain_float(g2.failsafe_dr_timeout * 1.0f, 0.0f, UINT32_MAX))))) {
+        flte = true;
+        }
+    }
+}
+
+// No GPS compass RTL func
+void Copter::compass_rtl_run() {
+if (!flightmode->in_guided_mode()) {
+    return;
+}   
+    if (!copter.failsafe.radio) {
+        set_target_angle_and_climbrate(0,-20,rtl_heading,0,true,45);
+    }
+// Compass RTL when Radiofailsafe   
+    if (copter.failsafe.radio && !flte) {
+    if (baro_alt <= g.rtl_altitude){
+        set_target_angle_and_climbrate(0,-20,rtl_heading,4,true,45);
+    }else{
+        set_target_angle_and_climbrate(0,-20,rtl_heading,0,true,45);         
+    }
+    }
+     if (copter.failsafe.radio && flte) {
+    if (baro_alt <= g.rtl_altitude){
+        set_target_angle_and_climbrate(0,0,rtl_heading,4,true,45);
+    }else{
+        set_target_angle_and_climbrate(0,0,rtl_heading,0,true,45);         
+    }
+    }
+    
+    if (ahrs.home_is_set() && position_ok()) {
+        set_mode(Mode::Number::RTL, ModeReason::RADIO_FAILSAFE);
+    }
+}
