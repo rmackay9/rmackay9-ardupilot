@@ -128,6 +128,10 @@ uint16_t Copter::get_pilot_speed_dn() const
     if (g2.pilot_speed_dn == 0) {
         return abs(g.pilot_speed_up);
     } else {
-        return abs(g2.pilot_speed_dn);
+        if (copter.baro_alt >= g2.land_alt_low) {
+        return abs(g2.pilot_speed_dn); 
+    } else {
+        return abs(g.land_speed);
+    }
     }
 }
