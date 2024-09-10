@@ -46,7 +46,7 @@ void Copter::failsafe_radio_on_event()
     // Conditions to deviate from FS_THR_ENABLE selection and send specific GCS warning
     if (should_disarm_on_failsafe()) {
         // should immediately disarm when we're on the ground
-        announce_failsafe("No RC", "Disarming");
+        announce_failsafe("No RC", "Disarm");
         arming.disarm(AP_Arming::Method::RADIOFAILSAFE);
         desired_action = FailsafeAction::NONE;
 
@@ -68,6 +68,11 @@ void Copter::failsafe_radio_on_event()
     } else if ((flightmode->in_guided_mode()) && failsafe_option(FailsafeOption::RC_CONTINUE_IF_GUIDED)) {
         // Allow guided mode to continue when FS_OPTIONS is set to continue in guided mode
         announce_failsafe("Radio", "Continuing Guided Mode");
+        desired_action = FailsafeAction::NONE;
+    
+    } else if (flightmode->mode_number() == Mode::Number::LAND) {
+        // If RC Fail during landing- continue landung
+        announce_failsafe("Radio", "Continuing Land");
         desired_action = FailsafeAction::NONE;
 
     } else {
@@ -224,6 +229,12 @@ void Copter::failsafe_gcs_on_event(void)
         // should continue when in a pilot controlled mode because FS_OPTIONS is set to continue in pilot controlled modes
         announce_failsafe("GCS", "Continuing Pilot Control");
         desired_action = FailsafeAction::NONE;
+
+    } else if (flightmode->mode_number() == Mode::Number::LAND) {
+        // If RC Fail during landing- continue landung
+        announce_failsafe("Radio", "Continuing Land");
+        desired_action = FailsafeAction::NONE;
+    
     } else {
         announce_failsafe("GCS");
     }
