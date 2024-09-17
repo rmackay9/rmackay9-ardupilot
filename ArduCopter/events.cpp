@@ -527,23 +527,23 @@ void Copter::rf_amp_power()
     flt = statts->get_flight_time_s();
 
     // switching RF copter RC amplifier in dependence of hight and distance to home
-//    if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
-//        copter.ampstate = false;
-//    }
-//    if (baro_alt >= 2000){
-//       copter.ampstate = true;
-//    }
-//
-//    if (copter.ampswitch != copter.ampstate){
-//        copter.ampswitch = copter.ampstate;
-//        if (copter.ampswitch){
-//            copter.relay.off(0); //Matek BEC control inverted on PCB
-//            gcs().send_text(MAV_SEVERITY_INFO, "RF amp ON");
-//        }else{
-//            copter.relay.on(0);
-//            gcs().send_text(MAV_SEVERITY_INFO, "RF amp OFF");
-//        }
-//    }
+   if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
+        copter.ampstate = false;
+    }
+    if (baro_alt >= 2000){
+       copter.ampstate = true;
+    }
+
+    if (copter.ampswitch != copter.ampstate){
+        copter.ampswitch = copter.ampstate;
+        if (copter.ampswitch){
+            copter.relay.off(0); //Matek BEC control inverted on PCB
+            gcs().send_text(MAV_SEVERITY_INFO, "RF amp ON");
+        }else{
+            copter.relay.on(0);
+            gcs().send_text(MAV_SEVERITY_INFO, "RF amp OFF");
+        }
+    }
     //Switch sourse set at "low speed alt" to use optical flow if OpFlow Enabled
 
        
