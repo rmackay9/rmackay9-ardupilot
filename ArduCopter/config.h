@@ -42,7 +42,7 @@
 #endif
 
 #ifndef ARMING_DELAY_SEC
-    # define ARMING_DELAY_SEC 0.2f
+    # define ARMING_DELAY_SEC 0.1f
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
