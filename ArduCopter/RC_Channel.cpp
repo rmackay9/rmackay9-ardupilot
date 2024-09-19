@@ -198,6 +198,7 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
                 case AuxSwitchPos::MIDDLE:
                     break;
                 case AuxSwitchPos::HIGH:
+                    AP::ahrs().set_posvelyaw_source_set(0);
                     copter.set_mode(Mode::Number::RTL, ModeReason::RC_COMMAND);
                 }
             break;

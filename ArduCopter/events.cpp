@@ -526,8 +526,9 @@ void Copter::rf_amp_power()
     AP_Stats *statts = AP::stats();
     flt = statts->get_flight_time_s();
 
+    //if(g.rf_amp){
     // switching RF copter RC amplifier in dependence of hight and distance to home
-   if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
+    if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
         copter.ampstate = false;
     }
     if (baro_alt >= 2000){
@@ -538,29 +539,21 @@ void Copter::rf_amp_power()
         copter.ampswitch = copter.ampstate;
         if (copter.ampswitch){
             copter.relay.off(0); //Matek BEC control inverted on PCB
-            gcs().send_text(MAV_SEVERITY_INFO, "RF amp ON");
+            gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
         }else{
             copter.relay.on(0);
-            gcs().send_text(MAV_SEVERITY_INFO, "RF amp OFF");
+            gcs().send_text(MAV_SEVERITY_INFO, "RF  OFF");
         }
     }
+    //}
+
     //Switch sourse set at "low speed alt" to use optical flow if OpFlow Enabled
-
        
-//    if (motors->armed() && !position_ok() && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
-//       source_sw = 1;
-//    }
-    
-//    if (AP::ahrs().get_posvelyaw_source_set() != source_sw){
-//        AP::ahrs().set_posvelyaw_source_set(source_sw);
-//
-//        if (source_sw == 0) {
-//            gcs().send_text(MAV_SEVERITY_CRITICAL, "GPS Stab Enabled");
-//        }else{
-//            gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
-//       }
-//    }
+    if (motors->armed() && !position_ok() && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
 
+        AP::ahrs().set_posvelyaw_source_set(1);
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
+       }
 
     if(!copter.failsafe.radio) {
         flth = flt - fltrc; //last flight time in RC
