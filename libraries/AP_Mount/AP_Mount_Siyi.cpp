@@ -565,6 +565,12 @@ void AP_Mount_Siyi::process_packet()
         _thermal.max_pos.y = UINT16_VALUE(_msg_buff[_msg_buff_data_start+7], _msg_buff[_msg_buff_data_start+6]);
         _thermal.min_pos.x = UINT16_VALUE(_msg_buff[_msg_buff_data_start+9], _msg_buff[_msg_buff_data_start+8]);
         _thermal.min_pos.y = UINT16_VALUE(_msg_buff[_msg_buff_data_start+11], _msg_buff[_msg_buff_data_start+10]);
+
+        // send min and max temp to GCS using NAMED_VALUE_FLOAT
+        gcs().send_named_float("ThermMax", (float)_thermal.max_C);
+        gcs().send_named_float("ThermMaxX", (float)_thermal.max_pos.x);
+        gcs().send_named_float("ThermMaxY", (float)_thermal.max_pos.y);
+        gcs().send_named_float("ThermMin", (float)_thermal.min_C);
         break;
     }
 #endif
