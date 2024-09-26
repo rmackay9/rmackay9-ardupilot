@@ -1091,7 +1091,7 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
         case AUX_FUNC::FOLLOW:
             do_aux_function_change_mode(Mode::Number::FOLLOW, ch_flag);
             break;
-//  #if PARACHUTE == ENABLED
+  #if PARACHUTE == ENABLED
         case AUX_FUNC::PARACHUTE_ENABLE:
             // Parachute enable/disable
             copter.parachute.enabled(ch_flag == AuxSwitchPos::HIGH);
@@ -1120,9 +1120,10 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
                  //   AP::ahrs().set_posvelyaw_source_set(1);
                  //   copter.source_sw = 1;
                  //   copter.set_mode(Mode::Number::FLOWHOLD, ModeReason::RC_COMMAND);
+                    break;
                 }
             break;
-//#endif
+#endif
 
         case AUX_FUNC::ATTCON_FEEDFWD:
             // enable or disable feed forward
