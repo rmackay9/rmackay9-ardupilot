@@ -856,9 +856,9 @@ void Copter::set_compass_rtl_heading()
 
     rtl_heading = (ahrs.yaw_sensor / 100) + 180;
     if (rtl_heading >= 360) {
-      rtl_heading -= 360;
+         rtl_heading -= 360;
     }
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "%i Deg Home RTL set", rtl_heading);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "%i Deg Home Asimut set", rtl_heading);
 }
 
 

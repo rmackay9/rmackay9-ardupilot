@@ -800,8 +800,8 @@ private:
     void announce_failsafe(const char *type, const char *action_undertaken=nullptr);
     void rf_amp_power();
     void compass_rtl_run();
-    bool ampswitch = false;
-    bool ampstate = false;
+    //bool ampswitch = false;
+    //bool ampstate = false;
     bool flte = false;
     uint32_t fltnorc;
     uint32_t flth;
@@ -809,7 +809,7 @@ private:
     uint32_t fltfs;
     uint32_t fltrc;
     int16_t rtl_heading;
-    int8_t source_sw; // EKF3 source set 0-2
+   // int8_t source_sw; // EKF3 source set 0-2
 
     // failsafe.cpp
     void failsafe_enable();

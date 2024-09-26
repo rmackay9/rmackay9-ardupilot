@@ -321,7 +321,7 @@ void Copter::gpsglitch_check()
             gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Bad");
         } else {
             LOGGER_WRITE_ERROR(LogErrorSubsystem::GPS, LogErrorCode::ERROR_RESOLVED);
-            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Ok");
+            gcs().send_text(MAV_SEVERITY_CRITICAL,"GPS Good");
         }
     }
 }
@@ -528,32 +528,32 @@ void Copter::rf_amp_power()
 
     //if(g.rf_amp){
     // switching RF copter RC amplifier in dependence of hight and distance to home
-    if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
-        copter.ampstate = false;
-    }
-    if (baro_alt >= 2000){
-       copter.ampstate = true;
-    }
+   // if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
+   //     copter.ampstate = false;
+   // }
+   // if (baro_alt >= 2000){
+   //    copter.ampstate = true;
+    //}
 
-    if (copter.ampswitch != copter.ampstate){
-        copter.ampswitch = copter.ampstate;
-        if (copter.ampswitch){
-            copter.relay.off(0); //Matek BEC control inverted on PCB
-            gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
-        }else{
-            copter.relay.on(0);
-            gcs().send_text(MAV_SEVERITY_INFO, "RF  OFF");
-        }
-    }
+   // if (copter.ampswitch != copter.ampstate){
+   //     copter.ampswitch = copter.ampstate;
+   //     if (copter.ampswitch){
+   //         copter.relay.off(0); //Matek BEC control inverted on PCB
+    //        gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
+    //    }else{
+    //        copter.relay.on(0);
+    //        gcs().send_text(MAV_SEVERITY_INFO, "RF  OFF");
+    //    }
+    //}
     //}
 
     //Switch sourse set at "low speed alt" to use optical flow if OpFlow Enabled
        
-    if (motors->armed() && !position_ok() && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
+   // if (motors->armed() && !position_ok() && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
 
-        AP::ahrs().set_posvelyaw_source_set(1);
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
-       }
+     //   AP::ahrs().set_posvelyaw_source_set(1);
+    //    gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
+    //   }
 
     if(!copter.failsafe.radio) {
         flth = flt - fltrc; //last flight time in RC
@@ -574,14 +574,14 @@ if (!flightmode->in_guided_mode()) {
     return;
 }   
     if (!copter.failsafe.radio) {
-        set_target_angle_and_climbrate(0,-20,rtl_heading,0,true,45);
+        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,45);
     }
 // Compass RTL when Radiofailsafe   
     if (copter.failsafe.radio && !flte) {
     if (baro_alt <= g.rtl_altitude){
-        set_target_angle_and_climbrate(0,-20,rtl_heading,4,true,45);
+        set_target_angle_and_climbrate(0,-14,rtl_heading,4,true,45);
     }else{
-        set_target_angle_and_climbrate(0,-20,rtl_heading,0,true,45);         
+        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,45);         
     }
     }
      if (copter.failsafe.radio && flte) {
