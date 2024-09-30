@@ -974,7 +974,7 @@ void Copter::set_compass_rtl_heading()
     if (rtl_heading >= 360) {
          rtl_heading -= 360;
     }
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "%i Deg Home Asimut set", rtl_heading);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "%i Deg Home set", rtl_heading);
 }
 
 
