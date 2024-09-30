@@ -381,6 +381,8 @@ public:
         k_param_vehicle = 257, // vehicle common block of parameters
         k_param_throw_altitude_min,
         k_param_throw_altitude_max,
+        k_param_rf_amp_switch,
+
 
         // the k_param_* space is 9-bits in size
         // 511: reserved
@@ -458,7 +460,7 @@ public:
     AP_Int8         fs_crash_check;
     AP_Float        fs_ekf_thresh;
     AP_Int16        gcs_pid_mask;
-   // AP_Int8         rf_amp;
+    AP_Int8         rf_amp_switch;
 
 #if MODE_THROW_ENABLED == ENABLED
     AP_Enum<ModeThrow::PreThrowMotorState>         throw_motor_start;

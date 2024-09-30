@@ -30,6 +30,14 @@
 #endif
 
 const AP_Param::Info Copter::var_info[] = {
+
+    // @Param: RF_AMP_ENABLED
+    // @DisplayName: RF Amp power 
+    // @Description: RF_Amp power supply - 0 off (always ON), 1- supply of at home, on at 50 m distance and 15 m height
+    // @Values: 0: Always on, 1:off/on
+    // @User: Standard
+    GSCALAR(rf_amp_switch, "RTL_ALT_TYPE", RF_AMP_SWITCH_DEFAULT),
+
     // @Param: FORMAT_VERSION
     // @DisplayName: Eeprom format version number
     // @Description: This value is incremented when changes are made to the eeprom format

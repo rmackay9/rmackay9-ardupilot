@@ -351,7 +351,7 @@ void ModeFlowHold::run()
  */
 void ModeFlowHold::update_height_estimate(void)
 {
-    float ins_height = copter.inertial_nav.get_position_z_up_cm() * 0.01;
+    float ins_height = copter.baro_alt * 0.01;
 
 #if 1
     // assume on ground when disarmed, or if we have only just started spooling the motors up
@@ -432,7 +432,7 @@ void ModeFlowHold::update_height_estimate(void)
      */
     const float min_velocity_change = 0.04;
     const float min_flow_change = 0.04;
-    const float height_delta_max = 0.25;
+    const float height_delta_max = 0.5;
 
     /*
       for each axis update the height estimate

@@ -800,8 +800,8 @@ private:
     void announce_failsafe(const char *type, const char *action_undertaken=nullptr);
     void rf_amp_power();
     void compass_rtl_run();
-    //bool ampswitch = false;
-    //bool ampstate = false;
+    bool ampswitch = false;
+    bool ampstate = false;
     bool flte = false;
     uint32_t fltnorc;
     uint32_t flth;
