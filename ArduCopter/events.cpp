@@ -548,10 +548,10 @@ void Copter::rf_amp_power()
     }
 
     //Switch sourse set at "low speed alt" to use optical flow when gps glitching and OpFlow Enabled
-    if (motors->armed() && ap.gps_glitching && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
-        AP::ahrs().set_posvelyaw_source_set(1);
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
-    }
+   // if (motors->armed() && ap.gps_glitching && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
+   //     AP::ahrs().set_posvelyaw_source_set(1);
+   //     gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
+   // }
 
     if(!copter.failsafe.radio) {
         flth = flt - fltrc; //last flight time in RC
