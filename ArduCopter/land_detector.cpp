@@ -22,7 +22,7 @@ void Copter::update_land_and_crash_detectors()
 
     update_land_detector();
 
-#if PARACHUTE == ENABLED
+#if HAL_PARACHUTE_ENABLED
     // check parachute
     parachute_check();
 #endif
@@ -83,7 +83,7 @@ void Copter::update_land_detector()
         const bool landing = flightmode->is_landing();
         SET_LOG_FLAG(landing, LandDetectorLoggingFlag::LANDING);
         bool motor_at_lower_limit = (flightmode->has_manual_throttle() && (motors->get_below_land_min_coll() || heli_flags.coll_stk_low) && fabsf(ahrs.get_roll()) < M_PI/2.0f)
-#if MODE_AUTOROTATE_ENABLED == ENABLED
+#if MODE_AUTOROTATE_ENABLED
                                     || (flightmode->mode_number() == Mode::Number::AUTOROTATE && motors->get_below_land_min_coll())
 #endif
                                     || ((!get_force_flying() || landing) && motors->limit.throttle_lower && pos_control->get_vel_desired_cms().z < 0.0f);

@@ -248,12 +248,16 @@ bool GCS_MAVLINK_Sub::try_send_message(enum ap_message id)
         send_info();
         break;
 
-    case MSG_TERRAIN:
 #if AP_TERRAIN_AVAILABLE
+    case MSG_TERRAIN_REQUEST:
         CHECK_PAYLOAD_SIZE(TERRAIN_REQUEST);
         sub.terrain.send_request(chan);
-#endif
         break;
+    case MSG_TERRAIN_REPORT:
+        CHECK_PAYLOAD_SIZE(TERRAIN_REPORT);
+        sub.terrain.send_report(chan);
+        break;
+#endif
 
     default:
         return GCS_MAVLINK::try_send_message(id);
@@ -266,7 +270,7 @@ bool GCS_MAVLINK_Sub::try_send_message(enum ap_message id)
 const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @Param: RAW_SENS
     // @DisplayName: Raw sensor stream rate
-    // @Description: Stream rate of RAW_IMU, SCALED_IMU2, SCALED_PRESSURE, and SENSOR_OFFSETS to ground station
+    // @Description: Stream rate of RAW_IMU, SCALED_IMU2, SCALED_PRESSURE, AIRSPEED, and SENSOR_OFFSETS to ground station
     // @Units: Hz
     // @Range: 0 50
     // @Increment: 1
@@ -353,6 +357,9 @@ static const ap_message STREAM_RAW_SENSORS_msgs[] = {
     MSG_SCALED_PRESSURE,
     MSG_SCALED_PRESSURE2,
     MSG_SCALED_PRESSURE3,
+#if AP_AIRSPEED_ENABLED
+    MSG_AIRSPEED,
+#endif
 };
 static const ap_message STREAM_EXTENDED_STATUS_msgs[] = {
     MSG_SYS_STATUS,
@@ -404,7 +411,8 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
 #endif
     MSG_DISTANCE_SENSOR,
 #if AP_TERRAIN_AVAILABLE
-    MSG_TERRAIN,
+    MSG_TERRAIN_REQUEST,
+    MSG_TERRAIN_REPORT,
 #endif
 #if AP_BATTERY_ENABLED
     MSG_BATTERY_STATUS,
@@ -542,6 +550,10 @@ MAV_RESULT GCS_MAVLINK_Sub::handle_command_int_packet(const mavlink_command_int_
         return handle_command_int_do_reposition(packet);
 
     case MAV_CMD_MISSION_START:
+        if (!is_zero(packet.param1) || !is_zero(packet.param2)) {
+            // first-item/last item not supported
+            return MAV_RESULT_DENIED;
+        }
         return handle_MAV_CMD_MISSION_START(packet);
 
     case MAV_CMD_NAV_LOITER_UNLIM:
@@ -810,7 +822,7 @@ void GCS_MAVLINK_Sub::handle_message(const mavlink_message_t &msg)
          */
 
         if (!z_ignore && sub.control_mode == Mode::Number::ALT_HOLD) { // Control only target depth when in ALT_HOLD
-            sub.pos_control.set_pos_target_z_cm(packet.alt*100);
+            sub.pos_control.set_pos_desired_z_cm(packet.alt*100);
             break;
         }
 

@@ -464,6 +464,7 @@ bool AP_Mount_Topotek::set_lens(uint8_t lens)
     return send_fixedlen_packet(AddressByte::SYSTEM_AND_IMAGE, AP_MOUNT_TOPOTEK_ID3CHAR_PIP, true, lens);
 }
 
+#if HAL_MOUNT_SET_CAMERA_SOURCE_ENABLED
 // set_camera_source is functionally the same as set_lens except primary and secondary lenses are specified by type
 // primary and secondary sources use the AP_Camera::CameraSource enum cast to uint8_t
 bool AP_Mount_Topotek::set_camera_source(uint8_t primary_source, uint8_t secondary_source)
@@ -511,6 +512,7 @@ bool AP_Mount_Topotek::set_camera_source(uint8_t primary_source, uint8_t seconda
     // send pip command
     return send_fixedlen_packet(AddressByte::SYSTEM_AND_IMAGE, AP_MOUNT_TOPOTEK_ID3CHAR_PIP, true, pip_setting);
 }
+#endif  // HAL_MOUNT_SET_CAMERA_SOURCE_ENABLED
 
 // send camera information message to GCS
 void AP_Mount_Topotek::send_camera_information(mavlink_channel_t chan) const
@@ -545,8 +547,8 @@ void AP_Mount_Topotek::send_camera_information(mavlink_channel_t chan) const
         model_name,             // model_name uint8_t[32]
         _firmware_ver,          // firmware version uint32_t
         0,                      // focal_length float (mm)
-        0,                      // sensor_size_h float (mm)
-        0,                      // sensor_size_v float (mm)
+        NaNf,                   // sensor_size_h float (mm)
+        NaNf,                   // sensor_size_v float (mm)
         0,                      // resolution_h uint16_t (pix)
         0,                      // resolution_v uint16_t (pix)
         0,                      // lens_id uint8_t
@@ -564,15 +566,13 @@ void AP_Mount_Topotek::send_camera_settings(mavlink_channel_t chan) const
         return;
     }
 
-    const float NaN = nanf("0x4152");
-
     // send CAMERA_SETTINGS message
     mavlink_msg_camera_settings_send(
         chan,
         AP_HAL::millis(),   // time_boot_ms
         _recording ? CAMERA_MODE_VIDEO : CAMERA_MODE_IMAGE, // camera mode (0:image, 1:video, 2:image survey)
-        NaN,                // zoomLevel float, percentage from 0 to 100, NaN if unknown
-        NaN);               // focusLevel float, percentage from 0 to 100, NaN if unknown
+        NaNf,               // zoomLevel float, percentage from 0 to 100, NaN if unknown
+        NaNf);              // focusLevel float, percentage from 0 to 100, NaN if unknown
 }
 
 // get rangefinder distance.  Returns true on success

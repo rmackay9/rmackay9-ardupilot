@@ -35,6 +35,7 @@
 #include "esp_heap_caps.h"
 #include <AP_Common/ExpandingString.h>
 
+#include "esp_mac.h"
 
 extern const AP_HAL::HAL& hal;
 
@@ -200,7 +201,7 @@ uint64_t Util::get_hw_rtc() const
 #define Debug(fmt, args ...)  do { hal.console->printf(fmt, ## args); } while (0)
 #else
 #include <GCS_MAVLink/GCS.h>
-#define Debug(fmt, args ...)  do { gcs().send_text(MAV_SEVERITY_INFO, fmt, ## args); } while (0)
+#define Debug(fmt, args ...)  do { GCS_SEND_TEXT(MAV_SEVERITY_INFO, fmt, ## args); } while (0)
 #endif
 
 Util::FlashBootloader Util::flash_bootloader()

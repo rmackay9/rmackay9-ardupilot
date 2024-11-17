@@ -364,6 +364,17 @@ void thread_sleep_ms(uint32_t ms)
     }
 }
 
+void thread_sleep_us(uint32_t us)
+{
+    while (us > 0) {
+        // don't sleep more than 65 at a time, to cope with 16 bit
+        // timer
+        const uint32_t dt = us > 6500? 6500: us;
+        chThdSleepMicroseconds(dt);
+        us -= dt;
+    }
+}
+
 // generate a pulse sequence forever, for debugging
 void led_pulses(uint8_t npulses)
 {
@@ -553,11 +564,11 @@ void check_ecc_errors(void)
     }
     uint32_t ofs = 0;
     while (ofs < BOARD_FLASH_SIZE*1024) {
-        if (FLASH->SR1 != 0) {
+        if (FLASH->SR1 & (FLASH_SR_SNECCERR | FLASH_SR_DBECCERR)) {
             break;
         }
 #if BOARD_FLASH_SIZE > 1024
-        if (FLASH->SR2 != 0) {
+        if (FLASH->SR2 & (FLASH_SR_SNECCERR | FLASH_SR_DBECCERR)) {
             break;
         }
 #endif

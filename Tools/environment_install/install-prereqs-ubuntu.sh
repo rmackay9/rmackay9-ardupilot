@@ -62,6 +62,9 @@ RELEASE_CODENAME=$(lsb_release -c -s)
 
 # translate Mint-codenames to Ubuntu-codenames based on https://www.linuxmint.com/download_all.php
 case ${RELEASE_CODENAME} in
+    wilma)
+        RELEASE_CODENAME='noble'
+        ;;
     vanessa)
         RELEASE_CODENAME='jammy'
         ;;
@@ -80,10 +83,8 @@ PYTHON_V="python3"  # starting from ubuntu 20.04, python isn't symlink to defaul
 PIP=pip3
 
 if [ ${RELEASE_CODENAME} == 'bionic' ] ; then
-    SITLFML_VERSION="2.4"
-    SITLCFML_VERSION="2.4"
-    PYTHON_V="python3"
-    PIP=pip3
+    echo "ArduPilot no longer supports developing on this operating system that has reached end of standard support."
+    exit 1
 elif [ ${RELEASE_CODENAME} == 'bookworm' ]; then
     SITLFML_VERSION="2.5"
     SITLCFML_VERSION="2.5"
@@ -161,8 +162,8 @@ else
 fi
 
 # Lists of packages to install
-BASE_PKGS="build-essential ccache g++ gawk git make wget valgrind screen"
-PYTHON_PKGS="future lxml pymavlink pyserial MAVProxy pexpect geocoder empy==3.3.4 ptyprocess dronecan"
+BASE_PKGS="build-essential ccache g++ gawk git make wget valgrind screen python3-pexpect"
+PYTHON_PKGS="future lxml pymavlink pyserial MAVProxy geocoder empy==3.3.4 ptyprocess dronecan"
 PYTHON_PKGS="$PYTHON_PKGS flake8 junitparser"
 
 # add some Python packages required for commonly-used MAVProxy modules and hex file generation:
@@ -383,7 +384,7 @@ fi
 
 if [ -n "$PYTHON_VENV_PACKAGE" ]; then
     $APT_GET install $PYTHON_VENV_PACKAGE
-    python3 -m venv $HOME/venv-ardupilot
+    python3 -m venv --system-site-packages $HOME/venv-ardupilot
 
     # activate it:
     SOURCE_LINE="source $HOME/venv-ardupilot/bin/activate"
@@ -396,6 +397,8 @@ if [ -n "$PYTHON_VENV_PACKAGE" ]; then
 
     if [[ $DO_PYTHON_VENV_ENV -eq 1 ]]; then
         echo $SOURCE_LINE >> ~/$SHELL_LOGIN
+    else
+        echo "Please use \`$SOURCE_LINE\` to activate the ArduPilot venv"
     fi
 fi
 

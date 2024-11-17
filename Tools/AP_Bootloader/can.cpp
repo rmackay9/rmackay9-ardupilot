@@ -50,7 +50,7 @@ static CANConfig cancfg = {
 // pipelining is not faster when using ChibiOS CAN driver
 #define FW_UPDATE_PIPELINE_LEN 1
 #else
-static ChibiOS::CANIface can_iface[HAL_NUM_CAN_IFACES];
+ChibiOS::CANIface can_iface[HAL_NUM_CAN_IFACES];
 #endif
 
 #ifndef CAN_APP_VERSION_MAJOR
@@ -429,7 +429,7 @@ static void handle_allocation_response(CanardInstance* ins, CanardRxTransfer* tr
         // The allocator has confirmed part of unique ID, switching to the next stage and updating the timeout.
         node_id_allocation_unique_id_offset = msg.unique_id.len;
         send_next_node_id_allocation_request_at_ms -= UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS;
-    } else {
+    } else if (msg.node_id != CANARD_BROADCAST_NODE_ID) { // new ID valid? (if not we will time out and start over)
         // Allocation complete - copying the allocated node ID from the message
         canardSetLocalNodeID(ins, msg.node_id);
     }
@@ -863,16 +863,13 @@ void can_update()
 }
 
 // printf to CAN LogMessage for debugging
-void can_printf(const char *fmt, ...)
+void can_vprintf(const char *fmt, va_list ap)
 {
     // only on H7 for now, where we have plenty of flash
 #if defined(STM32H7)
     uavcan_protocol_debug_LogMessage pkt {};
     uint8_t buffer[UAVCAN_PROTOCOL_DEBUG_LOGMESSAGE_MAX_SIZE];
-    va_list ap;
-    va_start(ap, fmt);
     uint32_t n = vsnprintf((char*)pkt.text.data, sizeof(pkt.text.data), fmt, ap);
-    va_end(ap);
     pkt.text.len = MIN(n, sizeof(pkt.text.data));
 
     uint32_t len = uavcan_protocol_debug_LogMessage_encode(&pkt, buffer, true);
@@ -885,6 +882,29 @@ void can_printf(const char *fmt, ...)
                      buffer,
                      len);
 #endif // defined(STM32H7)
+}
+
+// printf to CAN LogMessage for debugging
+void can_printf(const char *fmt, ...)
+{
+    // only on H7 for now, where we have plenty of flash
+#if defined(STM32H7)
+    va_list ap;
+    va_start(ap, fmt);
+    can_vprintf(fmt, ap);
+    va_end(ap);
+#endif // defined(STM32H7)
+}
+
+void can_printf_severity(uint8_t severity, const char *fmt, ...)
+{
+    // only on H7 for now, where we have plenty of flash
+#if defined(STM32H7)
+    va_list ap;
+    va_start(ap, fmt);
+    can_vprintf(fmt, ap);
+    va_end(ap);
+#endif
 }
 
 

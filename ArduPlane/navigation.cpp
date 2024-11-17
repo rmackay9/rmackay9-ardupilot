@@ -116,8 +116,8 @@ float Plane::mode_auto_target_airspeed_cm()
 {
 #if HAL_QUADPLANE_ENABLED
     if (quadplane.landing_with_fixed_wing_spiral_approach() &&
-        ((vtol_approach_s.approach_stage == Landing_ApproachStage::APPROACH_LINE) ||
-         (vtol_approach_s.approach_stage == Landing_ApproachStage::VTOL_LANDING))) {
+        ((vtol_approach_s.approach_stage == VTOLApproach::Stage::APPROACH_LINE) ||
+         (vtol_approach_s.approach_stage == VTOLApproach::Stage::VTOL_LANDING))) {
         const float land_airspeed = TECS_controller.get_land_airspeed();
         if (is_positive(land_airspeed)) {
             return land_airspeed * 100;
@@ -321,7 +321,7 @@ void Plane::update_loiter_update_nav(uint16_t radius)
     if ((loiter.start_time_ms == 0 &&
          (control_mode == &mode_auto || control_mode == &mode_guided) &&
          auto_state.crosstrack &&
-         current_loc.get_distance(next_WP_loc) > radius*3) ||
+         current_loc.get_distance(next_WP_loc) > 3 * nav_controller->loiter_radius(radius)) ||
         quadplane_qrtl_switch) {
         /*
           if never reached loiter point and using crosstrack and somewhat far away from loiter point
