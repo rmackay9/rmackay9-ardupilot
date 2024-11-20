@@ -200,9 +200,13 @@ void AP_VisualOdom_IntelT265::align_yaw(const Vector3f &position, const Quaterni
     // trim yaw by difference between ahrs and sensor yaw
     const float yaw_trim_orig = _yaw_trim;
     _yaw_trim = wrap_2PI(yaw_rad - sens_yaw);
-    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "VisOdom: yaw shifted %d to %d deg",
-                    (int)degrees(_yaw_trim - yaw_trim_orig),
-                    (int)wrap_360(degrees(sens_yaw + _yaw_trim)));
+
+    // warn user of significant change in yaw
+    if (fabsf(wrap_PI(_yaw_trim - yaw_trim_orig)) > radians(3.0f)) {
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "VisOdom: yaw shifted %d to %d deg",
+                        (int)degrees(_yaw_trim - yaw_trim_orig),
+                        (int)wrap_360(degrees(sens_yaw + _yaw_trim)));
+    }
 
     // convert _yaw_trim to _yaw_rotation to speed up processing later
     _yaw_rotation.from_euler(0.0f, 0.0f, _yaw_trim);
