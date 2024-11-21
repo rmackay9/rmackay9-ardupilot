@@ -240,6 +240,14 @@ bool AP_VisualOdom_IntelT265::align_position_to_ahrs(const Vector3f &sensor_pos,
         return false;
     }
 
+    // add sensor position offsets to AHRS position
+    const Vector3f posOffsetBody = _frontend.get_pos_offset();
+    if (!posOffsetBody.is_zero()) {
+        // convert position offset from body to earth frame
+        const Vector3f posOffsetEarthFrame = AP::ahrs().body_to_earth(posOffsetBody);
+        ahrs_pos_ned += posOffsetEarthFrame;
+    }
+
     align_position(sensor_pos, ahrs_pos_ned, align_xy, align_z);
     return true;
 }
