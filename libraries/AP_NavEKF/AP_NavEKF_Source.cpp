@@ -293,7 +293,8 @@ void AP_NavEKF_Source::align_inactive_sources()
     if ((getYawSource() == SourceYaw::COMPASS) ||
         (getYawSource() == SourceYaw::GPS) ||
         (getYawSource() == SourceYaw::GPS_COMPASS_FALLBACK) ||
-        (getYawSource() == SourceYaw::GSF)) {
+        (getYawSource() == SourceYaw::GSF) ||
+        ((getYawSource() == SourceYaw::NONE) && option_is_set(SourceOptions::ALIGN_EXTNAV_POS_WHEN_USING_OPTFLOW))) {
         for (uint8_t i=0; i<AP_NAKEKF_SOURCE_SET_MAX; i++) {
             if (_source_set[i].yaw == SourceYaw::EXTNAV) {
                 // ExtNav could potentially be used, so align it
