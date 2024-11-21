@@ -1006,7 +1006,7 @@ private:
     void CorrectGPSForAntennaOffset(gps_elements &gps_data) const;
 
     // correct external navigation earth-frame position using sensor body-frame offset
-    void CorrectExtNavForSensorOffset(ext_nav_elements &ext_nav_data);
+    void CorrectExtNavForSensorOffset(ext_nav_elements &ext_nav_data) const;
 
     // correct external navigation earth-frame velocity using sensor body-frame offset
     void CorrectExtNavVelForSensorOffset(ext_nav_vel_elements &ext_nav_vel_data) const;

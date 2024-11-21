@@ -430,7 +430,7 @@ void NavEKF3_core::CorrectGPSForAntennaOffset(gps_elements &gps_data) const
 }
 
 // correct external navigation earth-frame position using sensor body-frame offset
-void NavEKF3_core::CorrectExtNavForSensorOffset(ext_nav_elements &ext_nav_data)
+void NavEKF3_core::CorrectExtNavForSensorOffset(ext_nav_elements &ext_nav_data) const
 {
     // return immediately if already corrected
     if (ext_nav_data.corrected) {
