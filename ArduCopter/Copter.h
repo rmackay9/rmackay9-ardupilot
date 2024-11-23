@@ -803,6 +803,7 @@ private:
     bool ampswitch = false;
     bool ampstate = false;
     bool flte = false;
+    bool cr = false; //true when compass RTL call GNGP mode
     uint32_t fltnorc;
     uint32_t flth;
     uint32_t flt;

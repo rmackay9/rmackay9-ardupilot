@@ -69,7 +69,9 @@ void ModeRTL::run(bool disarm_on_land)
     }
     
     if (!copter.position_ok()) {
+        
         set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
+        copter.cr= true;
         gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
         copter.compass_rtl_run();
     }
