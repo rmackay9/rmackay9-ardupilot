@@ -569,6 +569,10 @@ void Copter::rf_amp_power()
 // No GPS compass RTL func
 void Copter::compass_rtl_run() {
     if (!flightmode->in_guided_mode()) {
+        cr = false;
+    }
+
+    if (!cr) {
     return;
     }
 

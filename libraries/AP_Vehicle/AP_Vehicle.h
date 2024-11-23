@@ -172,13 +172,17 @@ public:
     // returns true if the vehicle has crashed
     virtual bool is_crashed() const;
 
+<<<<<<< HEAD
 #if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
     // Method to takeoff for use by external control
     virtual bool start_takeoff(const float alt) { return false; }
+=======
+//#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+>>>>>>> 2e7441402b (Master upd)
     // Method to control vehicle position for use by external control
     virtual bool set_target_location(const Location& target_loc) { return false; }
-#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
-#if AP_SCRIPTING_ENABLED
+//#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+//#if AP_SCRIPTING_ENABLED
     /*
       methods to control vehicle for use by scripting
     */
@@ -248,6 +252,7 @@ public:
     // returns true on success and control_value is set to a value in the range -1 to +1
     virtual bool get_control_output(AP_Vehicle::ControlOutput control_output, float &control_value) { return false; }
 
+<<<<<<< HEAD
     // Register a custom mode with given number and names, return a structure which the script can edit
     struct custom_mode_state {
         bool allow_entry;
@@ -255,6 +260,9 @@ public:
     virtual custom_mode_state* register_custom_mode(const uint8_t number, const char* full_name, const char* short_name) { return nullptr; }
 
 #endif // AP_SCRIPTING_ENABLED
+=======
+//#endif // AP_SCRIPTING_ENABLED
+>>>>>>> 2e7441402b (Master upd)
 
     // returns true if vehicle is in the process of landing
     virtual bool is_landing() const { return false; }
