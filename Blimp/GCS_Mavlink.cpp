@@ -218,7 +218,7 @@ bool GCS_MAVLINK_Blimp::try_send_message(enum ap_message id)
 const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @Param: RAW_SENS
     // @DisplayName: Raw sensor stream rate
-    // @Description: Stream rate of RAW_IMU, SCALED_IMU2, SCALED_IMU3, SCALED_PRESSURE, SCALED_PRESSURE2, SCALED_PRESSURE3 and SENSOR_OFFSETS to ground station
+    // @Description: Stream rate of RAW_IMU, SCALED_IMU2, SCALED_IMU3, SCALED_PRESSURE, SCALED_PRESSURE2, SCALED_PRESSURE3, AIRSPEED and SENSOR_OFFSETS to ground station
     // @Units: Hz
     // @Range: 0 10
     // @Increment: 1
@@ -288,7 +288,7 @@ const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
 
     // @Param: EXTRA3
     // @DisplayName: Extra data type 3 stream rate to ground station
-    // @Description: Stream rate of AHRS, SYSTEM_TIME, RANGEFINDER, DISTANCE_SENSOR, TERRAIN_REQUEST, GIMBAL_DEVICE_ATTITUDE_STATUS, OPTICAL_FLOW, MAG_CAL_REPORT, MAG_CAL_PROGRESS, EKF_STATUS_REPORT, VIBRATION and RPM to ground station
+    // @Description: Stream rate of AHRS, SYSTEM_TIME, RANGEFINDER, DISTANCE_SENSOR, GIMBAL_DEVICE_ATTITUDE_STATUS, OPTICAL_FLOW, MAG_CAL_REPORT, MAG_CAL_PROGRESS, EKF_STATUS_REPORT, VIBRATION and RPM to ground station
     // @Units: Hz
     // @Range: 0 10
     // @Increment: 1
@@ -315,6 +315,9 @@ static const ap_message STREAM_RAW_SENSORS_msgs[] = {
     MSG_SCALED_PRESSURE,
     MSG_SCALED_PRESSURE2,
     MSG_SCALED_PRESSURE3,
+#if AP_AIRSPEED_ENABLED
+    MSG_AIRSPEED,
+#endif
 };
 static const ap_message STREAM_EXTENDED_STATUS_msgs[] = {
     MSG_SYS_STATUS,
@@ -324,10 +327,16 @@ static const ap_message STREAM_EXTENDED_STATUS_msgs[] = {
 #endif
     MSG_MEMINFO,
     MSG_CURRENT_WAYPOINT, // MISSION_CURRENT
+#if AP_GPS_GPS_RAW_INT_SENDING_ENABLED
     MSG_GPS_RAW,
+#endif
+#if AP_GPS_GPS_RTK_SENDING_ENABLED
     MSG_GPS_RTK,
-#if GPS_MAX_RECEIVERS > 1
+#endif
+#if AP_GPS_GPS2_RAW_SENDING_ENABLED
     MSG_GPS2_RAW,
+#endif
+#if AP_GPS_GPS2_RTK_SENDING_ENABLED
     MSG_GPS2_RTK,
 #endif
     MSG_NAV_CONTROLLER_OUTPUT,
@@ -392,7 +401,8 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
 #endif
 };
 static const ap_message STREAM_PARAMS_msgs[] = {
-    MSG_NEXT_PARAM
+    MSG_NEXT_PARAM,
+    MSG_AVAILABLE_MODES
 };
 static const ap_message STREAM_ADSB_msgs[] = {
     MSG_ADSB_VEHICLE,
@@ -605,3 +615,41 @@ uint8_t GCS_MAVLINK_Blimp::high_latency_wind_direction() const
     return wrap_360(degrees(atan2f(-wind.y, -wind.x))) / 2;
 }
 #endif // HAL_HIGH_LATENCY2_ENABLED
+
+// Send the mode with the given index (not mode number!) return the total number of modes
+// Index starts at 1
+uint8_t GCS_MAVLINK_Blimp::send_available_mode(uint8_t index) const
+{
+    const Mode* modes[] {
+        &blimp.mode_land,
+        &blimp.mode_manual,
+        &blimp.mode_velocity,
+        &blimp.mode_loiter,
+        &blimp.mode_rtl,
+    };
+
+    const uint8_t mode_count = ARRAY_SIZE(modes);
+
+    // Convert to zero indexed
+    const uint8_t index_zero = index - 1;
+    if (index_zero >= mode_count) {
+        // Mode does not exist!?
+        return mode_count;
+    }
+
+    // Ask the mode for its name and number
+    const char* name = modes[index_zero]->name();
+    const uint8_t mode_number = (uint8_t)modes[index_zero]->number();
+
+    mavlink_msg_available_modes_send(
+        chan,
+        mode_count,
+        index,
+        MAV_STANDARD_MODE::MAV_STANDARD_MODE_NON_STANDARD,
+        mode_number,
+        0, // MAV_MODE_PROPERTY bitmask
+        name
+    );
+
+    return mode_count;
+}

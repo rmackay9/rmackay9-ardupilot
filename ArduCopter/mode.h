@@ -4,6 +4,10 @@
 #include <AP_Math/chirp.h>
 #include <AP_ExternalControl/AP_ExternalControl_config.h> // TODO why is this needed if Copter.h includes this
 
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
+#include "afs_copter.h"
+#endif
+
 class Parameters;
 class ParametersG2;
 
@@ -15,7 +19,7 @@ class _AutoTakeoff {
 public:
     void run();
     void start(float complete_alt_cm, bool terrain_alt);
-    bool get_position(Vector3p& completion_pos);
+    bool get_completion_pos(Vector3p& pos_neu_cm);
 
     bool complete;          // true when takeoff is complete
 
@@ -130,6 +134,14 @@ public:
     virtual bool allows_flip() const { return false; }
     virtual bool crash_check_enabled() const { return true; }
 
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
+    // Return the type of this mode for use by advanced failsafe
+    virtual AP_AdvancedFailsafe_Copter::control_mode afs_mode() const { return AP_AdvancedFailsafe_Copter::control_mode::AFS_STABILIZED; }
+#endif
+
+    // Return true if the throttle high arming check can be skipped when arming from GCS or Scripting
+    virtual bool allows_GCS_or_SCR_arming_with_throttle_high() const { return false; }
+
 #if FRAME_CONFIG == HELI_FRAME
     virtual bool allows_inverted() const { return false; };
 #endif
@@ -163,18 +175,12 @@ public:
     // pilot input processing
     void get_pilot_desired_lean_angles(float &roll_out_cd, float &pitch_out_cd, float angle_max_cd, float angle_limit_cd) const;
     Vector2f get_pilot_desired_velocity(float vel_max) const;
-    float get_pilot_desired_yaw_rate(float yaw_in);
+    float get_pilot_desired_yaw_rate() const;
     float get_pilot_desired_throttle() const;
 
     // returns climb target_rate reduced to avoid obstacles and
     // altitude fence
     float get_avoidance_adjusted_climbrate(float target_rate);
-
-    const Vector3f& get_vel_desired_cms() {
-        // note that position control isn't used in every mode, so
-        // this may return bogus data:
-        return pos_control->get_vel_desired_cms();
-    }
 
     // send output to the motors, can be overridden by subclasses
     virtual void output_to_motors();
@@ -190,7 +196,7 @@ public:
     void make_safe_ground_handling(bool force_throttle_unlimited = false);
 
     // true if weathervaning is allowed in the current mode
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     virtual bool allows_weathervaning() const { return false; }
 #endif
 
@@ -329,9 +335,11 @@ public:
 
         void set_yaw_angle_rate(float yaw_angle_d, float yaw_rate_ds);
 
+        void set_yaw_angle_offset(const float yaw_angle_offset_d);
+
         bool reached_fixed_yaw_target();
 
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
         void update_weathervane(const int16_t pilot_yaw_cds);
 #endif
 
@@ -390,7 +398,7 @@ public:
 };
 
 
-#if MODE_ACRO_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED
 class ModeAcro : public Mode {
 
 public:
@@ -509,6 +517,14 @@ public:
     bool allows_inverted() const override { return true; };
 #endif
 
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
+    // Return the type of this mode for use by advanced failsafe
+    AP_AdvancedFailsafe_Copter::control_mode afs_mode() const override { return AP_AdvancedFailsafe_Copter::control_mode::AFS_AUTO; }
+#endif
+
+    // Return true if the throttle high arming check can be skipped when arming from GCS or Scripting
+    bool allows_GCS_or_SCR_arming_with_throttle_high() const override { return true; }
+
     // Auto modes
     enum class SubMode : uint8_t {
         TAKEOFF,
@@ -582,7 +598,7 @@ public:
     AP_Mission_ChangeDetector mis_change_detector;
 
     // true if weathervaning is allowed in auto
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     bool allows_weathervaning(void) const override;
 #endif
 
@@ -625,11 +641,16 @@ private:
     void loiter_to_alt_run();
     void nav_attitude_time_run();
 
+    // return the Location portion of a command.  If the command's lat and lon and/or alt are zero the default_loc's lat,lon and/or alt are returned instead
     Location loc_from_cmd(const AP_Mission::Mission_Command& cmd, const Location& default_loc) const;
 
     SubMode _mode = SubMode::TAKEOFF;   // controls which auto controller is run
 
     bool shift_alt_to_current_alt(Location& target_loc) const;
+
+    // subtract position controller offsets from target location
+    // should be used when the location will be used as a target for the position controller
+    void subtract_pos_offsets(Location& target_loc) const;
 
     void do_takeoff(const AP_Mission::Mission_Command& cmd);
     void do_nav_wp(const AP_Mission::Mission_Command& cmd);
@@ -641,7 +662,7 @@ private:
     void do_loiter_to_alt(const AP_Mission::Mission_Command& cmd);
     void do_spline_wp(const AP_Mission::Mission_Command& cmd);
     void get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, const Location& default_loc, Location& dest_loc, Location& next_dest_loc, bool& next_dest_loc_is_spline);
-#if AC_NAV_GUIDED == ENABLED
+#if AC_NAV_GUIDED
     void do_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
     void do_guided_limits(const AP_Mission::Mission_Command& cmd);
 #endif
@@ -653,7 +674,7 @@ private:
     void do_set_home(const AP_Mission::Mission_Command& cmd);
     void do_roi(const AP_Mission::Mission_Command& cmd);
     void do_mount_control(const AP_Mission::Mission_Command& cmd);
-#if PARACHUTE == ENABLED
+#if HAL_PARACHUTE_ENABLED
     void do_parachute(const AP_Mission::Mission_Command& cmd);
 #endif
 #if AP_WINCH_ENABLED
@@ -679,7 +700,7 @@ private:
     bool verify_nav_wp(const AP_Mission::Mission_Command& cmd);
     bool verify_circle(const AP_Mission::Mission_Command& cmd);
     bool verify_spline_wp(const AP_Mission::Mission_Command& cmd);
-#if AC_NAV_GUIDED == ENABLED
+#if AC_NAV_GUIDED
     bool verify_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
 #endif
     bool verify_nav_delay(const AP_Mission::Mission_Command& cmd);
@@ -752,7 +773,7 @@ private:
     } desired_speed_override;
 };
 
-#if AUTOTUNE_ENABLED == ENABLED
+#if AUTOTUNE_ENABLED
 /*
   wrapper class for AC_AutoTune
  */
@@ -796,18 +817,12 @@ public:
     bool allows_arming(AP_Arming::Method method) const override { return false; }
     bool is_autopilot() const override { return false; }
 
-    void save_tuning_gains();
-    void reset();
+    AutoTune autotune;
 
 protected:
 
     const char *name() const override { return "AUTOTUNE"; }
     const char *name4() const override { return "ATUN"; }
-
-private:
-
-    AutoTune autotune;
-
 };
 #endif
 
@@ -941,7 +956,7 @@ private:
 };
 
 
-#if MODE_FLOWHOLD_ENABLED == ENABLED
+#if MODE_FLOWHOLD_ENABLED
 /*
   class to support FLOWHOLD mode, which is a position hold mode using
   optical flow directly, avoiding the need for a rangefinder
@@ -984,7 +999,7 @@ private:
     // calculate attitude from flow data
     void flow_to_angle(Vector2f &bf_angle);
 
-    LowPassFilterVector2f flow_filter;
+    LowPassFilterConstDtVector2f flow_filter;
 
     bool flowhold_init(bool ignore_checks);
     void flowhold_run();
@@ -1052,6 +1067,14 @@ public:
     bool in_guided_mode() const override { return true; }
 
     bool requires_terrain_failsafe() const override { return true; }
+
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
+    // Return the type of this mode for use by advanced failsafe
+    AP_AdvancedFailsafe_Copter::control_mode afs_mode() const override { return AP_AdvancedFailsafe_Copter::control_mode::AFS_AUTO; }
+#endif
+
+    // Return true if the throttle high arming check can be skipped when arming from GCS or Scripting
+    bool allows_GCS_or_SCR_arming_with_throttle_high() const override { return true; }
 
     // Sets guided's angular target submode: Using a rotation quaternion, angular velocity, and climbrate or thrust (depends on user option)
     // attitude_quat: IF zero: ang_vel (angular velocity) must be provided even if all zeroes
@@ -1122,7 +1145,7 @@ public:
     bool resume() override;
 
     // true if weathervaning is allowed in guided
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     bool allows_weathervaning(void) const override;
 #endif
 
@@ -1170,14 +1193,37 @@ private:
     void set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_angle);
 
     // controls which controller is run (pos or vel):
-    SubMode guided_mode = SubMode::TakeOff;
-    bool send_notification;     // used to send one time notification to ground station
-    bool takeoff_complete;      // true once takeoff has completed (used to trigger retracting of landing gear)
+    static SubMode guided_mode;
+    static bool send_notification;     // used to send one time notification to ground station
+    static bool takeoff_complete;      // true once takeoff has completed (used to trigger retracting of landing gear)
 
     // guided mode is paused or not
-    bool _paused;
+    static bool _paused;
 };
 
+#if AP_SCRIPTING_ENABLED
+// Mode which behaves as guided with custom mode number and name
+class ModeGuidedCustom : public ModeGuided {
+public:
+    // constructor registers custom number and names
+    ModeGuidedCustom(const Number _number, const char* _full_name, const char* _short_name);
+
+    bool init(bool ignore_checks) override;
+
+    Number mode_number() const override { return number; }
+
+    const char *name() const override { return full_name; }
+    const char *name4() const override { return short_name; }
+
+    // State object which can be edited by scripting
+    AP_Vehicle::custom_mode_state state;
+
+private:
+    const Number number;
+    const char* full_name;
+    const char* short_name;
+};
+#endif
 
 class ModeGuidedNoGPS : public ModeGuided {
 
@@ -1219,6 +1265,11 @@ public:
     bool is_autopilot() const override { return true; }
 
     bool is_landing() const override { return true; };
+
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
+    // Return the type of this mode for use by advanced failsafe
+    AP_AdvancedFailsafe_Copter::control_mode afs_mode() const override { return AP_AdvancedFailsafe_Copter::control_mode::AFS_AUTO; }
+#endif
 
     void do_not_use_GPS();
 
@@ -1397,6 +1448,11 @@ public:
 
     bool requires_terrain_failsafe() const override { return true; }
 
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
+    // Return the type of this mode for use by advanced failsafe
+    AP_AdvancedFailsafe_Copter::control_mode afs_mode() const override { return AP_AdvancedFailsafe_Copter::control_mode::AFS_AUTO; }
+#endif
+
     // for reporting to GCS
     bool get_wp(Location &loc) const override;
 
@@ -1426,8 +1482,8 @@ public:
 
     // enum for RTL_ALT_TYPE parameter
     enum class RTLAltType : int8_t {
-        RTL_ALTTYPE_RELATIVE = 0,
-        RTL_ALTTYPE_TERRAIN = 1
+        RELATIVE = 0,
+        TERRAIN = 1
     };
     ModeRTL::RTLAltType get_alt_type() const;
 
@@ -1759,7 +1815,7 @@ private:
     float free_fall_start_velz;     // vertical velocity when free fall was detected
 };
 
-#if MODE_TURTLE_ENABLED == ENABLED
+#if MODE_TURTLE_ENABLED
 class ModeTurtle : public Mode {
 
 public:
@@ -1820,7 +1876,7 @@ private:
 
 };
 
-#if MODE_FOLLOW_ENABLED == ENABLED
+#if MODE_FOLLOW_ENABLED
 class ModeFollow : public ModeGuided {
 
 public:
@@ -1949,7 +2005,7 @@ private:
     bool is_suspended;              // true if zigzag auto is suspended
 };
 
-#if MODE_AUTOROTATE_ENABLED == ENABLED
+#if MODE_AUTOROTATE_ENABLED
 class ModeAutorotate : public Mode {
 
 public:
@@ -1982,18 +2038,14 @@ private:
     int32_t _pitch_target;          // Target pitch attitude to pass to attitude controller
     uint32_t _entry_time_start_ms;  // Time remaining until entry phase moves on to glide phase
     float _hs_decay;                // The head accerleration during the entry phase
-    float _bail_time;               // Timer for exiting the bail out phase (s)
-    uint32_t _bail_time_start_ms;   // Time at start of bail out
-    float _target_climb_rate_adjust;// Target vertical acceleration used during bail out phase
-    float _target_pitch_adjust;     // Target pitch rate used during bail out phase
 
     enum class Autorotation_Phase {
         ENTRY,
         SS_GLIDE,
         FLARE,
         TOUCH_DOWN,
-        BAIL_OUT } phase_switch;
-        
+        LANDED } phase_switch;
+
     enum class Navigation_Decision {
         USER_CONTROL_STABILISED,
         STRAIGHT_AHEAD,
@@ -2006,10 +2058,10 @@ private:
             bool ss_glide_initial          : 1;
             bool flare_initial             : 1;
             bool touch_down_initial        : 1;
+            bool landed_initial            : 1;
             bool straight_ahead_initial    : 1;
             bool level_initial             : 1;
             bool break_initial             : 1;
-            bool bail_out_initial          : 1;
             bool bad_rpm                   : 1;
     } _flags;
 

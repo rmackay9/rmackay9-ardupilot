@@ -489,7 +489,7 @@ bool AP_Logger::validate_structure(const struct LogStructure *logstructure, cons
     if (false && passed) {
         for (uint8_t j=0; j<strlen(logstructure->multipliers); j++) {
             const char fmt = logstructure->format[j];
-            if (fmt != 'f') {
+            if (fmt != 'f' && fmt != 'd' && fmt != 'g') {
                 continue;
             }
             const char logmultiplier = logstructure->multipliers[j];
@@ -833,7 +833,7 @@ uint16_t AP_Logger::get_max_num_logs() {
 }
 
 /* we're started if any of the backends are started */
-bool AP_Logger::logging_started(void) {
+bool AP_Logger::logging_started(void) const {
     for (uint8_t i=0; i< _next_backend; i++) {
         if (backends[i]->logging_started()) {
             return true;
@@ -896,9 +896,10 @@ void AP_Logger::Write_Parameter(const char *name, float value)
 }
 
 void AP_Logger::Write_Mission_Cmd(const AP_Mission &mission,
-                                            const AP_Mission::Mission_Command &cmd)
+                                  const AP_Mission::Mission_Command &cmd,
+                                  LogMessages id)
 {
-    FOR_EACH_BACKEND(Write_Mission_Cmd(mission, cmd));
+    FOR_EACH_BACKEND(Write_Mission_Cmd(mission, cmd, id));
 }
 
 #if HAL_RALLY_ENABLED
@@ -1354,6 +1355,7 @@ int16_t AP_Logger::Write_calc_msg_len(const char *fmt) const
         case 'd' : len += sizeof(double); break;
         case 'e' : len += sizeof(int32_t); break;
         case 'f' : len += sizeof(float); break;
+        case 'g' : len += sizeof(float16_s); break;
         case 'h' : len += sizeof(int16_t); break;
         case 'i' : len += sizeof(int32_t); break;
         case 'n' : len += sizeof(char[4]); break;

@@ -121,6 +121,7 @@
 #include "avoidance_adsb.h"
 #endif
 #include "AP_Arming.h"
+#include "pullup.h"
 
 /*
   main APM:Plane class
@@ -175,6 +176,9 @@ public:
 #if AP_EXTERNAL_CONTROL_ENABLED
     friend class AP_ExternalControl_Plane;
 #endif
+#if AP_PLANE_GLIDER_PULLUP_ENABLED
+    friend class GliderPullup;
+#endif
 
     Plane(void);
 
@@ -208,6 +212,13 @@ private:
 
 #if AP_RANGEFINDER_ENABLED
     AP_FixedWing::Rangefinder_State rangefinder_state;
+
+    /*
+      orientation of rangefinder to use for landing
+     */
+    Rotation rangefinder_orientation(void) const {
+        return Rotation(g2.rangefinder_land_orient.get());
+    }
 #endif
 
 #if AP_MAVLINK_MAV_CMD_SET_HAGL_ENABLED
@@ -366,19 +377,20 @@ private:
         uint32_t AFS_last_valid_rc_ms;
     } failsafe;
 
-    enum Landing_ApproachStage {
-        RTL,
-        LOITER_TO_ALT,
-        ENSURE_RADIUS,
-        WAIT_FOR_BREAKOUT,
-        APPROACH_LINE,
-        VTOL_LANDING,
-    };
-
 #if HAL_QUADPLANE_ENABLED
     // Landing
-    struct {
-        enum Landing_ApproachStage approach_stage;
+    class VTOLApproach {
+    public:
+        enum class Stage {
+            RTL,
+            LOITER_TO_ALT,
+            ENSURE_RADIUS,
+            WAIT_FOR_BREAKOUT,
+            APPROACH_LINE,
+            VTOL_LANDING,
+        };
+
+        Stage approach_stage;
         float approach_direction_deg;
     } vtol_approach_s;
 #endif
@@ -434,6 +446,10 @@ private:
         uint32_t accel_event_ms;
         uint32_t start_time_ms;
         bool waiting_for_rudder_neutral;
+        float throttle_lim_max;
+        float throttle_lim_min;
+        uint32_t throttle_max_timer_ms;
+        // Good candidate for keeping the initial time for TKOFF_THR_MAX_T.
     } takeoff_state;
 
     // ground steering controller state
@@ -514,6 +530,11 @@ private:
         // have we checked for an auto-land?
         bool checked_for_autoland;
 
+        // Altitude threshold to complete a takeoff command in autonomous modes.  Centimeters
+        // are we in idle mode? used for balloon launch to stop servo
+        // movement until altitude is reached
+        bool idle_mode;
+        
         // are we in VTOL mode in AUTO?
         bool vtol_mode;
 
@@ -560,11 +581,10 @@ private:
         uint32_t target_airspeed_time_ms;
 
         // altitude adjustments
-        float target_alt = -1;   // don't default to zero here, as zero is a valid alt.
-        uint32_t last_target_alt = 0;
-        float target_alt_accel;
+        Location target_location;
+        float target_alt_rate;
         uint32_t target_alt_time_ms = 0;
-        uint8_t target_alt_frame = 0;
+        uint8_t target_mav_frame = -1;
 
         // heading track
         float target_heading = -4; // don't default to zero or -1 here, as both are valid headings in radians
@@ -923,7 +943,6 @@ private:
     void Log_Write_RC(void);
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Write_AETR();
-    void log_init();
 #endif
 
     // Parameters.cpp
@@ -958,6 +977,7 @@ private:
     void do_loiter_turns(const AP_Mission::Mission_Command& cmd);
     void do_loiter_time(const AP_Mission::Mission_Command& cmd);
     void do_continue_and_change_alt(const AP_Mission::Mission_Command& cmd);
+    void do_altitude_wait(const AP_Mission::Mission_Command& cmd);
     void do_loiter_to_alt(const AP_Mission::Mission_Command& cmd);
     void do_vtol_takeoff(const AP_Mission::Mission_Command& cmd);
     void do_vtol_land(const AP_Mission::Mission_Command& cmd);
@@ -1114,7 +1134,7 @@ private:
     bool auto_takeoff_check(void);
     void takeoff_calc_roll(void);
     void takeoff_calc_pitch(void);
-    void takeoff_calc_throttle(const bool use_max_throttle=false);
+    void takeoff_calc_throttle();
     int8_t takeoff_tail_hold(void);
     int16_t get_takeoff_pitch_min_cd(void);
     void landing_gear_update(void);
@@ -1139,7 +1159,7 @@ private:
     void servos_twin_engine_mix();
     void force_flare();
     void throttle_watt_limiter(int8_t &min_throttle, int8_t &max_throttle);
-    void throttle_slew_limit(SRV_Channel::Aux_servo_function_t func);
+    void throttle_slew_limit();
     bool suppress_throttle(void);
     void update_throttle_hover();
     void channel_function_mixer(SRV_Channel::Aux_servo_function_t func1_in, SRV_Channel::Aux_servo_function_t func2_in,
@@ -1285,6 +1305,11 @@ public:
 
     // allow for landing descent rate to be overridden by a script, may be -ve to climb
     bool set_land_descent_rate(float descent_rate) override;
+
+    // allow scripts to override mission/guided crosstrack behaviour
+    // It's up to the Lua script to ensure the provided location makes sense
+    bool set_crosstrack_start(const Location &new_start_location) override;
+
 #endif // AP_SCRIPTING_ENABLED
 
 };

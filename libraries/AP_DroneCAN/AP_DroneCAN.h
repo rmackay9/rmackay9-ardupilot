@@ -64,6 +64,10 @@
 #define AP_DRONECAN_SERIAL_ENABLED AP_SERIALMANAGER_REGISTER_ENABLED && (BOARD_FLASH_SIZE>1024)
 #endif
 
+#ifndef AP_DRONECAN_VOLZ_FEEDBACK_ENABLED
+#define AP_DRONECAN_VOLZ_FEEDBACK_ENABLED 0
+#endif
+
 #if AP_DRONECAN_SERIAL_ENABLED
 #include "AP_DroneCAN_serial.h"
 #endif
@@ -91,7 +95,7 @@ public:
     bool add_11bit_driver(CANSensor *sensor) override;
 
     // handler for outgoing frames for auxillary drivers
-    bool write_aux_frame(AP_HAL::CANFrame &out_frame, const uint64_t timeout_us) override;
+    bool write_aux_frame(AP_HAL::CANFrame &out_frame, const uint32_t timeout_us) override;
     
     uint8_t get_driver_index() const { return _driver_index; }
 
@@ -144,6 +148,7 @@ public:
         USE_HIMARK_SERVO          = (1U<<6),
         USE_HOBBYWING_ESC         = (1U<<7),
         ENABLE_STATS              = (1U<<8),
+        ENABLE_FLEX_DEBUG         = (1U<<9),
     };
 
     // check if a option is set
@@ -170,6 +175,10 @@ public:
     // Hardpoint for relay
     // Needs to be public so relay can edge trigger as well as streaming
     Canard::Publisher<uavcan_equipment_hardpoint_Command> relay_hardpoint{canard_iface};
+#endif
+
+#if AP_SCRIPTING_ENABLED
+    bool get_FlexDebug(uint8_t node_id, uint16_t msg_id, uint32_t &timestamp_us, dronecan_protocol_FlexDebug &msg) const;
 #endif
 
 private:
@@ -231,9 +240,11 @@ private:
 
     uint32_t *mem_pool;
 
-    AP_DroneCAN_DNA_Server _dna_server;
-
     uint8_t _driver_index;
+
+    CanardInterface canard_iface;
+
+    AP_DroneCAN_DNA_Server _dna_server;
 
     char _thread_name[13];
     bool _initialized;
@@ -288,8 +299,6 @@ private:
     } _relay;
 #endif
 
-    CanardInterface canard_iface;
-
 #if AP_DRONECAN_SERIAL_ENABLED
     AP_DroneCAN_Serial serial;
 #endif
@@ -334,6 +343,11 @@ private:
     Canard::ObjCallback<AP_DroneCAN, uavcan_protocol_debug_LogMessage> debug_cb{this, &AP_DroneCAN::handle_debug};
     Canard::Subscriber<uavcan_protocol_debug_LogMessage> debug_listener{debug_cb, _driver_index};
 
+#if AP_DRONECAN_VOLZ_FEEDBACK_ENABLED
+    Canard::ObjCallback<AP_DroneCAN, com_volz_servo_ActuatorStatus> volz_servo_ActuatorStatus_cb{this, &AP_DroneCAN::handle_actuator_status_Volz};
+    Canard::Subscriber<com_volz_servo_ActuatorStatus> volz_servo_ActuatorStatus_listener{volz_servo_ActuatorStatus_cb, _driver_index};
+#endif
+
     // param client
     Canard::ObjCallback<AP_DroneCAN, uavcan_protocol_param_GetSetResponse> param_get_set_res_cb{this, &AP_DroneCAN::handle_param_get_set_response};
     Canard::Client<uavcan_protocol_param_GetSetResponse> param_get_set_client{canard_iface, param_get_set_res_cb};
@@ -354,6 +368,11 @@ private:
     Canard::Server<uavcan_protocol_GetNodeInfoRequest> node_info_server{canard_iface, node_info_req_cb};
     uavcan_protocol_GetNodeInfoResponse node_info_rsp;
 
+#if AP_SCRIPTING_ENABLED
+    Canard::ObjCallback<AP_DroneCAN, dronecan_protocol_FlexDebug> FlexDebug_cb{this, &AP_DroneCAN::handle_FlexDebug};
+    Canard::Subscriber<dronecan_protocol_FlexDebug> FlexDebug_listener{FlexDebug_cb, _driver_index};
+#endif
+    
 #if AP_DRONECAN_HOBBYWING_ESC_SUPPORT
     /*
       Hobbywing ESC support. Note that we need additional meta-data as
@@ -400,6 +419,16 @@ private:
     void handle_param_get_set_response(const CanardRxTransfer& transfer, const uavcan_protocol_param_GetSetResponse& rsp);
     void handle_param_save_response(const CanardRxTransfer& transfer, const uavcan_protocol_param_ExecuteOpcodeResponse& rsp);
     void handle_node_info_request(const CanardRxTransfer& transfer, const uavcan_protocol_GetNodeInfoRequest& req);
+
+#if AP_SCRIPTING_ENABLED
+    void handle_FlexDebug(const CanardRxTransfer& transfer, const dronecan_protocol_FlexDebug& msg);
+    struct FlexDebug {
+        struct FlexDebug *next;
+        uint32_t timestamp_us;
+        uint8_t node_id;
+        dronecan_protocol_FlexDebug msg;
+    } *flexDebug_list;
+#endif
 };
 
 #endif // #if HAL_ENABLE_DRONECAN_DRIVERS

@@ -3596,8 +3596,75 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             raise e
         self.reboot_sitl()
 
+    def ClearMission(self, target_system=1, target_component=1):
+        '''check mission clearing'''
+
+        self.start_subtest("Clear via mission_clear_all message")
+        self.upload_simple_relhome_mission([
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 20),
+        ])
+        self.set_current_waypoint(3)
+
+        self.mav.mav.mission_clear_all_send(
+            target_system,
+            target_component,
+            mavutil.mavlink.MAV_MISSION_TYPE_MISSION
+        )
+
+        self.assert_current_waypoint(0)
+
+        self.drain_mav()
+
+        self.start_subtest("No clear mission while it is being uploaded by a different node")
+        mav2 = mavutil.mavlink_connection("tcp:localhost:5763",
+                                          robust_parsing=True,
+                                          source_system=7,
+                                          source_component=7)
+        self.context_push()
+        self.context_collect("MISSION_REQUEST")
+        mav2.mav.mission_count_send(target_system,
+                                    target_component,
+                                    17,
+                                    mavutil.mavlink.MAV_MISSION_TYPE_MISSION)
+        ack = self.assert_receive_message('MISSION_REQUEST', check_context=True, mav=mav2)
+        self.context_pop()
+
+        self.context_push()
+        self.context_collect("MISSION_ACK")
+        self.mav.mav.mission_clear_all_send(
+            target_system,
+            target_component,
+            mavutil.mavlink.MAV_MISSION_TYPE_MISSION
+        )
+        ack = self.assert_receive_message('MISSION_ACK', check_context=True)
+        self.assert_message_field_values(ack, {
+            "type": mavutil.mavlink.MAV_MISSION_DENIED,
+        })
+        self.context_pop()
+
+        self.progress("Test cancel upload from second connection")
+        self.context_push()
+        self.context_collect("MISSION_ACK")
+        mav2.mav.mission_clear_all_send(
+            target_system,
+            target_component,
+            mavutil.mavlink.MAV_MISSION_TYPE_MISSION
+        )
+        ack = self.assert_receive_message('MISSION_ACK', mav=mav2, check_context=True)
+        self.assert_message_field_values(ack, {
+            "type": mavutil.mavlink.MAV_MISSION_ACCEPTED,
+        })
+        self.context_pop()
+        mav2.close()
+        del mav2
+
     def GCSMission(self):
         '''check MAVProxy's waypoint handling of missions'''
+
         target_system = 1
         target_component = 1
         mavproxy = self.start_mavproxy()
@@ -3605,7 +3672,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.delay_sim_time(1)
         if self.get_parameter("MIS_TOTAL") != 0:
             raise NotAchievedException("Failed to clear mission")
-        m = self.assert_receive_message('MISSION_CURRENT', timeout=5)
+        m = self.assert_receive_message('MISSION_CURRENT', timeout=5, verbose=True)
         if m.seq != 0:
             raise NotAchievedException("Bad mission current")
         self.load_mission_using_mavproxy(mavproxy, "rover-gripper-mission.txt")
@@ -6536,7 +6603,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.progress('rebuilding rover with ppp enabled')
         import shutil
         shutil.copy('build/sitl/bin/ardurover', 'build/sitl/bin/ardurover.noppp')
-        util.build_SITL('bin/ardurover', clean=False, configure=True, extra_configure_args=['--enable-ppp', '--debug'])
+        util.build_SITL('bin/ardurover', clean=False, configure=True, extra_configure_args=['--enable-PPP', '--debug'])
 
         self.reboot_sitl()
 
@@ -6736,6 +6803,148 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         })
         self.assert_arm_failure("Duplicate Aux Switch Options")
 
+    def JammingSimulation(self):
+        '''Test jamming simulation works'''
+        self.wait_ready_to_arm()
+        start_loc = self.assert_receive_message('GPS_RAW_INT')
+        self.set_parameter("SIM_GPS1_JAM", 1)
+
+        class Requirement():
+            def __init__(self, field, min_value):
+                self.field = field
+                self.min_value = min_value
+
+            def met(self, m):
+                return getattr(m, self.field) > self.min_value
+
+        requirements = set([
+            Requirement('v_acc', 50000),
+            Requirement('h_acc', 50000),
+            Requirement('vel_acc', 1000),
+            Requirement('vel', 10000),
+        ])
+        low_sats_seen = False
+        seen_bad_loc = False
+        tstart = self.get_sim_time()
+
+        while True:
+            if self.get_sim_time() - tstart > 120:
+                raise NotAchievedException("Did not see all jamming")
+            m = self.assert_receive_message('GPS_RAW_INT')
+            new_requirements = copy.copy(requirements)
+            for requirement in requirements:
+                if requirement.met(m):
+                    new_requirements.remove(requirement)
+            requirements = new_requirements
+            if m.satellites_visible < 6:
+                low_sats_seen = True
+            here = self.assert_receive_message('GPS_RAW_INT')
+            if self.get_distance_int(start_loc, here) > 100:
+                seen_bad_loc = True
+
+            if len(requirements) == 0 and low_sats_seen and seen_bad_loc:
+                break
+
+    def BatteryInvalid(self):
+        '''check Battery prearms report useful data to user'''
+        self.start_subtest("Changing battery types makes no difference")
+        self.set_parameter("BATT_MONITOR", 0)
+        self.assert_prearm_failure("Battery 1 unhealthy", other_prearm_failures_fatal=False)
+        self.set_parameter("BATT_MONITOR", 4)
+        self.wait_ready_to_arm()
+
+        self.start_subtest("No battery monitor should be armable")
+        self.set_parameter("BATT_MONITOR", 0)
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+
+        self.set_parameter("BATT_MONITOR", 4)
+        self.assert_prearm_failure("Battery 1 unhealthy", other_prearm_failures_fatal=False)
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+
+        self.start_subtest("Invalid backend should have a clear error")
+        self.set_parameter("BATT_MONITOR", 98)
+        self.reboot_sitl()
+        self.assert_prearm_failure("Battery 1 unhealthy", other_prearm_failures_fatal=False)
+
+        self.start_subtest("Switching from an invalid backend to a valid backend should require a reboot")
+        self.set_parameter("BATT_MONITOR", 4)
+        self.assert_prearm_failure("Battery 1 unhealthy", other_prearm_failures_fatal=False)
+
+        self.start_subtest("Switching to None should NOT require a reboot")
+        self.set_parameter("BATT_MONITOR", 0)
+        self.wait_ready_to_arm()
+
+    # this method modified from cmd_addpoly in the MAVProxy code:
+    def generate_polyfence(self, centre_loc, command, radius, count, rotation=0):
+        '''adds a number of waypoints equally spaced around a circle
+
+        '''
+        if count < 3:
+            raise ValueError("Invalid count (%s)" % str(count))
+        if radius <= 0:
+            raise ValueError("Invalid radius (%s)" % str(radius))
+
+        latlon = (centre_loc.lat, centre_loc.lng)
+
+        items = []
+        for i in range(0, count):
+            (lat, lon) = mavextra.gps_newpos(latlon[0],
+                                             latlon[1],
+                                             360/float(count)*i + rotation,
+                                             radius)
+
+            m = mavutil.mavlink.MAVLink_mission_item_int_message(
+                1,  # target system
+                1,  # target component
+                0,    # seq
+                mavutil.mavlink.MAV_FRAME_GLOBAL,    # frame
+                command,    # command
+                0,    # current
+                0,    # autocontinue
+                count, # param1,
+                0.0,  # param2,
+                0.0,  # param3
+                0.0,  # param4
+                int(lat*1e7),  # x (latitude)
+                int(lon*1e7),  # y (longitude)
+                0,                     # z (altitude)
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+            )
+            items.append(m)
+
+        return items
+
+    def SDPolyFence(self):
+        '''test storage of fence on SD card'''
+        self.set_parameters({
+            'BRD_SD_FENCE': 32767,
+        })
+        self.reboot_sitl()
+
+        home = self.home_position_as_mav_location()
+        fence = self.generate_polyfence(
+            home,
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+            radius=100,
+            count=100,
+        )
+
+        for bearing in range(0, 359, 60):
+            x = self.offset_location_heading_distance(home, bearing, 100)
+            fence.extend(self.generate_polyfence(
+                x,
+                mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION,
+                radius=100,
+                count=100,
+            ))
+
+        self.correct_wp_seq_numbers(fence)
+        self.check_fence_upload_download(fence)
+
+        self.delay_sim_time(1000)
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestRover, self).tests()
@@ -6787,6 +6996,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.DataFlash,
             self.SkidSteer,
             self.PolyFence,
+            self.SDPolyFence,
             self.PolyFenceAvoidance,
             self.PolyFenceObjectAvoidanceAuto,
             self.PolyFenceObjectAvoidanceGuided,
@@ -6830,6 +7040,9 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.MissionPolyEnabledPreArm,
             self.OpticalFlow,
             self.RCDuplicateOptionsExist,
+            self.ClearMission,
+            self.JammingSimulation,
+            self.BatteryInvalid,
         ])
         return ret
 

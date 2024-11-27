@@ -29,7 +29,7 @@ To see all current options, use the `-s` argument:
 ros2 launch ardupilot_sitl sitl.launch.py -s
 ```
 
-#### `ardupilot_dds_test`
+#### `ardupilot_dds_tests`
 
 A `colcon` package for testing communication between `micro_ros_agent` and the
 ArduPilot `AP_DDS` client library.
@@ -90,6 +90,11 @@ colcon build --cmake-args -DBUILD_TESTING=ON
 source ./install/setup.bash
 colcon test --packages-select ardupilot_dds_tests
 colcon test-result --all --verbose
+```
+
+To debug a specific test, you can do the following:
+```
+colcon --log-level DEBUG test --packages-select ardupilot_dds_tests --event-handlers=console_direct+ --pytest-args -k test_dds_udp_geopose_msg_recv -s
 ```
 
 ## Install macOS

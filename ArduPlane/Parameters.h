@@ -359,6 +359,9 @@ public:
         k_param_autotune_options,
         k_param_takeoff_throttle_min,
         k_param_takeoff_options,
+        k_param_takeoff_throttle_idle,
+
+        k_param_pullup = 270,
     };
 
     AP_Int16 format_version;
@@ -481,6 +484,9 @@ public:
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo var_info[];
 
+    // just to make compilation easier when all things are compiled out...
+    uint8_t unused_integer;
+
     // button reporting library
 #if HAL_BUTTON_ENABLED
     AP_Button *button_ptr;
@@ -577,8 +583,10 @@ public:
     
     AP_Int8         axis_bitmask; // axes to be autotuned
 
-    // just to make compilation easier when all things are compiled out...
-    uint8_t unused_integer;
+#if AP_RANGEFINDER_ENABLED
+    // orientation of rangefinder to use for landing
+    AP_Int8 rangefinder_land_orient;
+#endif
 };
 
 extern const AP_Param::Info var_info[];

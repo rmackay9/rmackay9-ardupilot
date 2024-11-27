@@ -778,6 +778,10 @@ public:
     }
 #endif
 
+#if HAL_LOGGING_ENABLED
+    void set_log_start_mission_item_bit(uint32_t bit) { log_start_mission_item_bit = bit; }
+#endif
+
 private:
     static AP_Mission *_singleton;
 
@@ -865,7 +869,7 @@ private:
 
     // Approximate the distance traveled to return to the mission path. DO_JUMP commands are observed in look forward.
     // Stop searching once reaching a landing or do-land-start
-    bool distance_to_mission_leg(uint16_t index, float &rejoin_distance, uint16_t &rejoin_index, const Location& current_loc);
+    bool distance_to_mission_leg(uint16_t index, uint16_t &search_remaining, float &rejoin_distance, uint16_t &rejoin_index, const Location& current_loc);
 
     // calculate the location of a resume cmd wp
     bool calc_rewind_pos(Mission_Command& rewind_cmd);
@@ -949,6 +953,11 @@ private:
       format to take advantage of new packing
      */
     void format_conversion(uint8_t tag_byte, const Mission_Command &cmd, PackedContent &packed_content) const;
+
+#if HAL_LOGGING_ENABLED
+    // if not -1, this bit in LOG_BITMASK specifies whether to log a message each time we start a command:
+    uint32_t log_start_mission_item_bit = -1;
+#endif
 };
 
 namespace AP

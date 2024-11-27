@@ -18,10 +18,11 @@
 
 #pragma once
 
-#include "AP_Mount_Backend_Serial.h"
+#include "AP_Mount_config.h"
 
 #if HAL_MOUNT_TOPOTEK_ENABLED
 
+#include "AP_Mount_Backend_Serial.h"
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/AP_Common.h>
@@ -78,9 +79,11 @@ public:
     // set camera picture-in-picture mode
     bool set_lens(uint8_t lens) override;
 
+#if HAL_MOUNT_SET_CAMERA_SOURCE_ENABLED
     // set_camera_source is functionally the same as set_lens except primary and secondary lenses are specified by type
     // primary and secondary sources use the AP_Camera::CameraSource enum cast to uint8_t
     bool set_camera_source(uint8_t primary_source, uint8_t secondary_source) override;
+#endif
 
     // send camera information message to GCS
     void send_camera_information(mavlink_channel_t chan) const override;
@@ -269,7 +272,7 @@ private:
 
     // stores command ID and corresponding member functions that are compared with the command received by the gimbal
     UartCmdFunctionHandler uart_recv_cmd_compare_list[AP_MOUNT_RECV_GIMBAL_CMD_CATEGORIES_NUM] = {
-        {{"GAC"}, &AP_Mount_Topotek::gimbal_angle_analyse},
+        {{"GIA"}, &AP_Mount_Topotek::gimbal_angle_analyse},
         {{"REC"}, &AP_Mount_Topotek::gimbal_record_analyse},
         {{"SDC"}, &AP_Mount_Topotek::gimbal_sdcard_analyse},
         {{"LRF"}, &AP_Mount_Topotek::gimbal_dist_info_analyse},

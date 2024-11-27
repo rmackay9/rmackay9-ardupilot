@@ -552,13 +552,13 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.start_subtest("Radio failsafe RTL fails into land mode due to bad position.")
         self.set_parameter('FS_THR_ENABLE', 1)
         self.takeoffAndMoveAway()
-        self.set_parameter('SIM_GPS_DISABLE', 1)
+        self.set_parameter('SIM_GPS1_ENABLE', 0)
         self.delay_sim_time(5)
         self.set_parameter("SIM_RC_FAIL", 1)
         self.wait_mode("LAND")
         self.wait_landed_and_disarmed()
         self.set_parameter("SIM_RC_FAIL", 0)
-        self.set_parameter('SIM_GPS_DISABLE', 0)
+        self.set_parameter('SIM_GPS1_ENABLE', 1)
         self.wait_ekf_happy()
         self.end_subtest("Completed Radio failsafe RTL fails into land mode due to bad position.")
 
@@ -567,13 +567,13 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.start_subtest("Radio failsafe SmartRTL->RTL fails into land mode due to bad position.")
         self.set_parameter('FS_THR_ENABLE', 4)
         self.takeoffAndMoveAway()
-        self.set_parameter('SIM_GPS_DISABLE', 1)
+        self.set_parameter('SIM_GPS1_ENABLE', 0)
         self.delay_sim_time(5)
         self.set_parameter("SIM_RC_FAIL", 1)
         self.wait_mode("LAND")
         self.wait_landed_and_disarmed()
         self.set_parameter("SIM_RC_FAIL", 0)
-        self.set_parameter('SIM_GPS_DISABLE', 0)
+        self.set_parameter('SIM_GPS1_ENABLE', 1)
         self.wait_ekf_happy()
         self.end_subtest("Completed Radio failsafe SmartRTL->RTL fails into land mode due to bad position.")
 
@@ -582,13 +582,13 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.start_subtest("Radio failsafe SmartRTL->LAND fails into land mode due to bad position.")
         self.set_parameter('FS_THR_ENABLE', 5)
         self.takeoffAndMoveAway()
-        self.set_parameter('SIM_GPS_DISABLE', 1)
+        self.set_parameter('SIM_GPS1_ENABLE', 0)
         self.delay_sim_time(5)
         self.set_parameter("SIM_RC_FAIL", 1)
         self.wait_mode("LAND")
         self.wait_landed_and_disarmed()
         self.set_parameter("SIM_RC_FAIL", 0)
-        self.set_parameter('SIM_GPS_DISABLE', 0)
+        self.set_parameter('SIM_GPS1_ENABLE', 1)
         self.wait_ekf_happy()
         self.end_subtest("Completed Radio failsafe SmartRTL->LAND fails into land mode due to bad position.")
 
@@ -597,9 +597,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.start_subtest("Radio failsafe SmartRTL->RTL fails into RTL mode due to no path.")
         self.set_parameter('FS_THR_ENABLE', 4)
         self.takeoffAndMoveAway()
-        self.set_parameter('SIM_GPS_DISABLE', 1)
+        self.set_parameter('SIM_GPS1_ENABLE', 0)
         self.wait_statustext("SmartRTL deactivated: bad position", timeout=60)
-        self.set_parameter('SIM_GPS_DISABLE', 0)
+        self.set_parameter('SIM_GPS1_ENABLE', 1)
         self.wait_ekf_happy()
         self.delay_sim_time(5)
         self.set_parameter("SIM_RC_FAIL", 1)
@@ -613,9 +613,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.start_subtest("Radio failsafe SmartRTL->LAND fails into land mode due to no path.")
         self.set_parameter('FS_THR_ENABLE', 5)
         self.takeoffAndMoveAway()
-        self.set_parameter('SIM_GPS_DISABLE', 1)
+        self.set_parameter('SIM_GPS1_ENABLE', 0)
         self.wait_statustext("SmartRTL deactivated: bad position", timeout=60)
-        self.set_parameter('SIM_GPS_DISABLE', 0)
+        self.set_parameter('SIM_GPS1_ENABLE', 1)
         self.wait_ekf_happy()
         self.delay_sim_time(5)
         self.set_parameter("SIM_RC_FAIL", 1)
@@ -1789,7 +1789,6 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.user_takeoff(alt_min=25)
 
         # Check fence is enabled
-        self.do_fence_enable()
         self.assert_fence_enabled()
 
         # Change to RC controlled mode
@@ -1810,11 +1809,14 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         # lower throttle and try and land
         self.set_rc(3, 1300)
         self.wait_altitude(0, 2, relative=True)
-        self.wait_disarmed()
+        self.zero_throttle()
+        self.wait_landed_and_disarmed()
         self.assert_fence_enabled()
+        # must not be in RTL
+        self.assert_mode("LOITER")
 
-        # Assert fence is not healthy since it was enabled manually
-        self.assert_sensor_state(fence_bit, healthy=False)
+        # Assert fence is healthy since it was enabled automatically
+        self.assert_sensor_state(fence_bit, healthy=True)
 
         # Disable the fence using mavlink command to ensure cleaned up SITL state
         self.do_fence_disable()
@@ -1956,8 +1958,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         glitch_current = 0
         self.progress("Apply first glitch")
         self.set_parameters({
-            "SIM_GPS_GLITCH_X": glitch_lat[glitch_current],
-            "SIM_GPS_GLITCH_Y": glitch_lon[glitch_current],
+            "SIM_GPS1_GLTCH_X": glitch_lat[glitch_current],
+            "SIM_GPS1_GLTCH_Y": glitch_lon[glitch_current],
         })
 
         # record position for 30 seconds
@@ -1971,15 +1973,15 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
                     glitch_current = -1
                     self.progress("Completed Glitches")
                     self.set_parameters({
-                        "SIM_GPS_GLITCH_X": 0,
-                        "SIM_GPS_GLITCH_Y": 0,
+                        "SIM_GPS1_GLTCH_X": 0,
+                        "SIM_GPS1_GLTCH_Y": 0,
                     })
                 else:
                     self.progress("Applying glitch %u" % glitch_current)
                     # move onto the next glitch
                     self.set_parameters({
-                        "SIM_GPS_GLITCH_X": glitch_lat[glitch_current],
-                        "SIM_GPS_GLITCH_Y": glitch_lon[glitch_current],
+                        "SIM_GPS1_GLTCH_X": glitch_lat[glitch_current],
+                        "SIM_GPS1_GLTCH_Y": glitch_lon[glitch_current],
                     })
 
             # start displaying distance moved after all glitches applied
@@ -2000,8 +2002,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         # disable gps glitch
         if glitch_current != -1:
             self.set_parameters({
-                "SIM_GPS_GLITCH_X": 0,
-                "SIM_GPS_GLITCH_Y": 0,
+                "SIM_GPS1_GLTCH_X": 0,
+                "SIM_GPS1_GLTCH_Y": 0,
             })
         if self.use_map:
             self.show_gps_and_sim_positions(False)
@@ -2022,7 +2024,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.wait_attitude(desroll=0, despitch=0, timeout=10, tolerance=1)
 
         # apply glitch
-        self.set_parameter("SIM_GPS_GLITCH_X", 0.001)
+        self.set_parameter("SIM_GPS1_GLTCH_X", 0.001)
 
         # check lean angles remain stable for 20 seconds
         tstart = self.get_sim_time()
@@ -2096,11 +2098,11 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         # stop and test loss of GPS for a short time - it should resume GPS use without falling back into a non aiding mode
         self.change_mode("LOITER")
         self.set_parameters({
-            "SIM_GPS_DISABLE": 1,
+            "SIM_GPS1_ENABLE": 0,
         })
         self.delay_sim_time(2)
         self.set_parameters({
-            "SIM_GPS_DISABLE": 0,
+            "SIM_GPS1_ENABLE": 1,
         })
         # regaining GPS should not result in it falling back to a non-navigation mode
         self.wait_ekf_flags(mavutil.mavlink.ESTIMATOR_POS_HORIZ_ABS, 0, timeout=1)
@@ -2116,8 +2118,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         glitch_current = 0
         self.progress("Apply first glitch")
         self.set_parameters({
-            "SIM_GPS_GLITCH_X": glitch_lat[glitch_current],
-            "SIM_GPS_GLITCH_Y": glitch_lon[glitch_current],
+            "SIM_GPS1_GLTCH_X": glitch_lat[glitch_current],
+            "SIM_GPS1_GLTCH_Y": glitch_lon[glitch_current],
         })
 
         # record position for 30 seconds
@@ -2130,15 +2132,15 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
                 if glitch_current < glitch_num:
                     self.progress("Applying glitch %u" % glitch_current)
                     self.set_parameters({
-                        "SIM_GPS_GLITCH_X": glitch_lat[glitch_current],
-                        "SIM_GPS_GLITCH_Y": glitch_lon[glitch_current],
+                        "SIM_GPS1_GLTCH_X": glitch_lat[glitch_current],
+                        "SIM_GPS1_GLTCH_Y": glitch_lon[glitch_current],
                     })
 
         # turn off glitching
         self.progress("Completed Glitches")
         self.set_parameters({
-            "SIM_GPS_GLITCH_X": 0,
-            "SIM_GPS_GLITCH_Y": 0,
+            "SIM_GPS1_GLTCH_X": 0,
+            "SIM_GPS1_GLTCH_Y": 0,
         })
 
         # continue with the mission
@@ -2524,7 +2526,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.set_parameters({
             "SIM_FLOW_ENABLE": 1,
             "FLOW_TYPE": 10,
-            "SIM_GPS_DISABLE": 1,
+            "SIM_GPS1_ENABLE": 0,
             "SIM_TERRAIN": 0,
         })
 
@@ -2978,13 +2980,13 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         '''fly a mission far from the vehicle origin'''
         # Fly mission #1
         self.set_parameters({
-            "SIM_GPS_DISABLE": 1,
+            "SIM_GPS1_ENABLE": 0,
         })
         self.reboot_sitl()
         nz = mavutil.location(-43.730171, 169.983118, 1466.3, 270)
         self.set_origin(nz)
         self.set_parameters({
-            "SIM_GPS_DISABLE": 0,
+            "SIM_GPS1_ENABLE": 1,
         })
         self.progress("# Load copter_mission")
         # load the waypoint count
@@ -3026,8 +3028,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             "GPS1_TYPE": 9,
             "GPS2_TYPE": 9,
             # disable simulated GPS, so only via DroneCAN
-            "SIM_GPS_DISABLE": 1,
-            "SIM_GPS2_DISABLE": 1,
+            "SIM_GPS1_ENABLE": 0,
+            "SIM_GPS2_ENABLE": 0,
             # this ensures we use DroneCAN baro and compass
             "SIM_BARO_COUNT" : 0,
             "SIM_MAG1_DEVID" : 0,
@@ -3204,7 +3206,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             "EK3_SRC1_POSZ": 3,
             "EK3_AFFINITY" : 1,
             "GPS2_TYPE" : 1,
-            "SIM_GPS2_DISABLE" : 0,
+            "SIM_GPS2_ENABLE" : 1,
             "SIM_GPS2_GLTCH_Z" : -30
             })
         self.reboot_sitl()
@@ -5823,6 +5825,49 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.context_pop()
         self.reboot_sitl()
 
+    def AutoYawDO_MOUNT_CONTROL(self):
+        '''test AutoYaw behaviour when MAV_CMD_DO_MOUNT_CONTROL sent to Mount without Yaw control'''
+
+        # setup mount parameters
+        self.context_push()
+
+        yaw_servo = 7
+        self.setup_servo_mount(roll_servo=5, pitch_servo=6, yaw_servo=yaw_servo)
+        # Disable Mount Yaw servo
+        self.set_parameters({
+            "SERVO%u_FUNCTION" % yaw_servo: 0,
+        })
+        self.reboot_sitl() # to handle MNT_TYPE changing
+
+        self.takeoff(20, mode='GUIDED')
+
+        for mount_yaw in [-45, 0, 45]:
+            heading = 330
+            self.guided_achieve_heading(heading)
+            self.assert_heading(heading)
+
+            self.neutralise_gimbal()
+
+            r = 15
+            p = 20
+            self.run_cmd_int(
+                mavutil.mavlink.MAV_CMD_DO_MOUNT_CONTROL,
+                p1=p,
+                p2=r,
+                p3=mount_yaw,
+                p7=mavutil.mavlink.MAV_MOUNT_MODE_MAVLINK_TARGETING,
+            )
+            self.delay_sim_time(5)
+            # We have disabled yaw servo, so expect mount yaw to be zero
+            self.assert_mount_rpy(r, p, 0)
+            # But we expect the copter to yaw instead
+            self.assert_heading(heading + mount_yaw)
+
+        self.do_RTL()
+
+        self.context_pop()
+        self.reboot_sitl()
+
     def MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE(self):
         '''test MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE mavlink command'''
         # setup mount parameters
@@ -6009,6 +6054,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
     def hover_and_check_matched_frequency_with_fft_and_psd(self, dblevel=-15, minhz=200, maxhz=300, peakhz=None,
                                                            reverse=None, takeoff=True, instance=0):
+        '''Takeoff and hover, checking the noise against the provided db level and returning psd'''
         # find a motor peak
         if takeoff:
             self.takeoff(10, mode="ALT_HOLD")
@@ -6039,6 +6085,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
     def hover_and_check_matched_frequency_with_fft(self, dblevel=-15, minhz=200, maxhz=300, peakhz=None,
                                                    reverse=None, takeoff=True, instance=0):
+        '''Takeoff and hover, checking the noise against the provided db level and returning peak db'''
         freq, hover_throttle, peakdb, psd = \
             self.hover_and_check_matched_frequency_with_fft_and_psd(dblevel, minhz,
                                                                     maxhz, peakhz, reverse, takeoff, instance)
@@ -6332,6 +6379,33 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.reboot_sitl()
 
         self.hover_and_check_matched_frequency_with_fft(dblevel=5, minhz=20, maxhz=350, reverse=True)
+
+    def StaticNotches(self):
+        """Use static harmonic notch to control motor noise."""
+        self.progress("Flying with Static notches")
+        self.set_parameters({
+            "AHRS_EKF_TYPE": 10,
+            "INS_LOG_BAT_MASK": 3,
+            "INS_LOG_BAT_OPT": 4,
+            "INS_GYRO_FILTER": 100, # set the gyro filter high so we can observe behaviour
+            "LOG_BITMASK": 65535,
+            "LOG_DISARMED": 0,
+            "SIM_VIB_FREQ_X": 120,  # roll
+            "SIM_VIB_FREQ_Y": 120,  # pitch
+            "SIM_VIB_FREQ_Z": 120,  # yaw
+            "SIM_VIB_MOT_MULT": 0,
+            "SIM_GYR1_RND": 5,
+            "INS_HNTCH_ENABLE": 1,
+            "INS_HNTCH_FREQ": 120,
+            "INS_HNTCH_REF": 1.0,
+            "INS_HNTCH_HMNCS": 3, # first and second harmonic
+            "INS_HNTCH_ATT": 50,
+            "INS_HNTCH_BW": 40,
+            "INS_HNTCH_MODE": 0, # static notch
+        })
+        self.reboot_sitl()
+
+        self.hover_and_check_matched_frequency_with_fft(dblevel=-15, minhz=20, maxhz=350, reverse=True, instance=2)
 
     def ThrottleGainBoost(self):
         """Use PD and Angle P boost for anti-gravity."""
@@ -7171,7 +7245,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.context_push()
         self.set_parameters({
             "GPS1_TYPE": 2,
-            "SIM_GPS_DISABLE": 1,
+            "SIM_GPS1_ENABLE": 0,
         })
         # if there is no GPS at all then we must direct EK3 to not use
         # it at all.  Otherwise it will never initialise, as it wants
@@ -8614,6 +8688,14 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         if ex is not None:
             raise ex
 
+    def fly_rangefinder_sitl(self):
+        self.set_parameters({
+            "RNGFND1_TYPE": 100,
+        })
+        self.reboot_sitl()
+        self.fly_rangefinder_drivers_fly([("unused", "sitl")])
+        self.wait_disarmed()
+
     def RangeFinderDrivers(self):
         '''Test rangefinder drivers'''
         self.set_parameters({
@@ -8667,6 +8749,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.context_pop()
 
         self.fly_rangefinder_mavlink()
+        self.fly_rangefinder_sitl()  # i.e. type 100
 
         i2c_drivers = [
             ("maxbotixi2cxl", 2),
@@ -8903,7 +8986,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             "RNGFND1_POS_Y": -0.07,
             "RNGFND1_POS_Z": -0.005,
             "SIM_SONAR_SCALE": 30,
-            "SIM_GPS2_DISABLE": 0,
+            "SIM_GPS2_ENABLE": 1,
         })
         self.reboot_sitl()
 
@@ -8962,7 +9045,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.set_parameters({
                 "GPS2_TYPE": 1,
                 "SIM_GPS2_TYPE": 1,
-                "SIM_GPS2_DISABLE": 0,
+                "SIM_GPS2_ENABLE": 1,
                 "GPS_AUTO_SWITCH": 2,
             })
             self.reboot_sitl()
@@ -9028,16 +9111,14 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         '''Test GPS Blending'''
         '''ensure we get dataflash log messages for blended instance'''
 
-        self.context_push()
-
         # configure:
         self.set_parameters({
             "WP_YAW_BEHAVIOR": 0,  # do not yaw
             "GPS2_TYPE": 1,
             "SIM_GPS2_TYPE": 1,
-            "SIM_GPS2_DISABLE": 0,
-            "SIM_GPS_POS_X": 1.0,
-            "SIM_GPS_POS_Y": -1.0,
+            "SIM_GPS2_ENABLE": 1,
+            "SIM_GPS1_POS_X": 1.0,
+            "SIM_GPS1_POS_Y": -1.0,
             "SIM_GPS2_POS_X": -1.0,
             "SIM_GPS2_POS_Y": 1.0,
             "GPS_AUTO_SWITCH": 2,
@@ -9082,8 +9163,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
                         raise NotAchievedException("Blended diverged")
                 current_ts = None
 
-        self.context_pop()
-        self.reboot_sitl()
+        if len(measurements) != 3:
+            raise NotAchievedException("Did not see three GPS measurements!")
 
     def GPSWeightedBlending(self):
         '''Test GPS Weighted Blending'''
@@ -9095,9 +9176,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             "WP_YAW_BEHAVIOR": 0,  # do not yaw
             "GPS2_TYPE": 1,
             "SIM_GPS2_TYPE": 1,
-            "SIM_GPS2_DISABLE": 0,
-            "SIM_GPS_POS_X": 1.0,
-            "SIM_GPS_POS_Y": -1.0,
+            "SIM_GPS2_ENABLE": 1,
+            "SIM_GPS1_POS_X": 1.0,
+            "SIM_GPS1_POS_Y": -1.0,
             "SIM_GPS2_POS_X": -1.0,
             "SIM_GPS2_POS_Y": 1.0,
             "GPS_AUTO_SWITCH": 2,
@@ -9105,8 +9186,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         # configure velocity errors such that the 1st GPS should be
         # 4/5, second GPS 1/5 of result (0.5**2)/((0.5**2)+(1.0**2))
         self.set_parameters({
-            "SIM_GPS_VERR_X": 0.3,  # m/s
-            "SIM_GPS_VERR_Y": 0.4,
+            "SIM_GPS1_VERR_X": 0.3,  # m/s
+            "SIM_GPS1_VERR_Y": 0.4,
             "SIM_GPS2_VERR_X": 0.6,  # m/s
             "SIM_GPS2_VERR_Y": 0.8,
             "GPS_BLEND_MASK": 4,  # use only speed for blend calculations
@@ -9140,19 +9221,89 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             if m.TimeUS != current_ts:
                 current_ts = None
                 continue
-            measurements[m.I] = (m.Lat, m.Lng)
+            measurements[m.I] = (m.Lat, m.Lng, m.Alt)
             if len(measurements) == 3:
                 # check lat:
-                for n in 0, 1:
+                for n in 0, 1, 2:
                     expected_blended = 0.8*measurements[0][n] + 0.2*measurements[1][n]
-                    epsilon = 0.0000002
+                    axis_epsilons = [0.0000002, 0.0000002, 0.2]
+                    epsilon = axis_epsilons[n]
                     error = abs(measurements[2][n] - expected_blended)
                     if error > epsilon:
-                        raise NotAchievedException(f"Blended diverged {measurements[0][n]=} {measurements[1][n]=}")
+                        raise NotAchievedException(f"Blended diverged {n=} {measurements[0][n]=} {measurements[1][n]=}")
                 current_ts = None
 
         self.context_pop()
         self.reboot_sitl()
+
+    def GPSBlendingAffinity(self):
+        '''test blending when affinity in use'''
+        # configure:
+        self.set_parameters({
+            "WP_YAW_BEHAVIOR": 0,  # do not yaw
+            "GPS2_TYPE": 1,
+            "SIM_GPS2_TYPE": 1,
+            "SIM_GPS2_ENABLE": 1,
+            "SIM_GPS1_POS_X": 1.0,
+            "SIM_GPS1_POS_Y": -1.0,
+            "SIM_GPS2_POS_X": -1.0,
+            "SIM_GPS2_POS_Y": 1.0,
+            "GPS_AUTO_SWITCH": 2,
+
+            "EK3_AFFINITY" : 1,
+            "EK3_IMU_MASK": 7,
+            "SIM_IMU_COUNT": 3,
+            "INS_ACC3OFFS_X": 0.001,
+            "INS_ACC3OFFS_Y": 0.001,
+            "INS_ACC3OFFS_Z": 0.001,
+        })
+        # force-calibration of accel:
+        self.run_cmd(mavutil.mavlink.MAV_CMD_PREFLIGHT_CALIBRATION, p5=76)
+        self.reboot_sitl()
+
+        alt = 10
+        self.takeoff(alt, mode='GUIDED')
+        self.fly_guided_move_local(30, 0, alt)
+        self.fly_guided_move_local(30, 30, alt)
+        self.fly_guided_move_local(0, 30, alt)
+        self.fly_guided_move_local(0, 0, alt)
+        self.change_mode('LAND')
+
+        current_log_file = self.dfreader_for_current_onboard_log()
+
+        self.wait_disarmed()
+
+        # ensure that the blended solution is always about half-way
+        # between the two GPSs:
+        current_ts = None
+        max_errors = [0, 0, 0]
+        while True:
+            m = current_log_file.recv_match(type='XKF1')
+            if m is None:
+                break
+            if current_ts is None:
+                if m.C != 0:  # noqa
+                    continue
+                current_ts = m.TimeUS
+                measurements = {}
+            if m.TimeUS != current_ts:
+                current_ts = None
+                continue
+            measurements[m.C] = (m.PN, m.PE, m.PD)
+            if len(measurements) == 3:
+                # check lat:
+                for n in 0, 1, 2:
+                    expected_blended = 0.5*measurements[0][n] + 0.5*measurements[1][n]
+                    axis_epsilons = [0.02, 0.02, 0.03]
+                    epsilon = axis_epsilons[n]
+                    error = abs(measurements[2][n] - expected_blended)
+                    # self.progress(f"{n=} {error=}")
+                    if error > max_errors[n]:
+                        max_errors[n] = error
+                    if error > epsilon:
+                        raise NotAchievedException(f"Blended diverged {n=} {measurements[0][n]=} {measurements[1][n]=} {measurements[2][n]=} {error=}")  # noqa:E501
+                current_ts = None
+        self.progress(f"{max_errors=}")
 
     def Callisto(self):
         '''Test Callisto'''
@@ -9244,6 +9395,10 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         '''test replay correctness'''
         self.progress("Building Replay")
         util.build_SITL('tool/Replay', clean=False, configure=False)
+        self.set_parameters({
+            "LOG_DARM_RATEMAX": 0,
+            "LOG_FILE_RATEMAX": 0,
+        })
 
         bits = [
             ('GPS', self.test_replay_gps_bit),
@@ -9675,28 +9830,15 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
     def GPSForYaw(self):
         '''Moving baseline GPS yaw'''
-        self.context_push()
         self.load_default_params_file("copter-gps-for-yaw.parm")
         self.reboot_sitl()
-        ex = None
-        try:
-            self.wait_gps_fix_type_gte(6, message_type="GPS2_RAW", verbose=True)
-            m = self.assert_receive_message("GPS2_RAW")
-            self.progress(self.dump_message_verbose(m))
-            want = 27000
-            if abs(m.yaw - want) > 500:
-                raise NotAchievedException("Expected to get GPS-from-yaw (want %f got %f)" % (want, m.yaw))
-            self.wait_ready_to_arm()
-        except Exception as e:
-            self.print_exception_caught(e)
-            ex = e
 
-        self.context_pop()
-
-        self.reboot_sitl()
-
-        if ex is not None:
-            raise ex
+        self.wait_gps_fix_type_gte(6, message_type="GPS2_RAW", verbose=True)
+        m = self.assert_receive_message("GPS2_RAW", very_verbose=True)
+        want = 27000
+        if abs(m.yaw - want) > 500:
+            raise NotAchievedException("Expected to get GPS-from-yaw (want %f got %f)" % (want, m.yaw))
+        self.wait_ready_to_arm()
 
     def SMART_RTL_EnterLeave(self):
         '''check SmartRTL behaviour when entering/leaving'''
@@ -10098,6 +10240,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.set_parameters({
                 "LOG_BITMASK": new,
                 "LOG_DISARMED": 1,
+                "LOG_DARM_RATEMAX": 0,
+                "LOG_FILE_RATEMAX": 0,
             })
             path = self.generate_rate_sample_log()
 
@@ -10115,11 +10259,15 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.delay_sim_time(10)  # NFI why this is required
 
         self.check_dflog_message_rates(path, {
-            'ATT': 400,
+            'ANG': 400,
         })
 
     def BaseLoggingRates(self):
         '''ensure messages come out at specific rates'''
+        self.set_parameters({
+            "LOG_DARM_RATEMAX": 0,
+            "LOG_FILE_RATEMAX": 0,
+        })
         path = self.generate_rate_sample_log()
         self.delay_sim_time(10)  # NFI why this is required
         self.check_dflog_message_rates(path, {
@@ -10520,6 +10668,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
              self.SetpointBadVel,
              self.SplineTerrain,
              self.TakeoffCheck,
+             self.GainBackoffTakeoff,
         ])
         return ret
 
@@ -10574,6 +10723,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
              self.MountYawVehicleForMountROI,
              self.MAV_CMD_DO_MOUNT_CONTROL,
              self.MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE,
+             self.AutoYawDO_MOUNT_CONTROL,
              self.Button,
              self.ShipTakeoff,
              self.RangeFinder,
@@ -10645,6 +10795,58 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.context_pop()
         self.reboot_sitl()
 
+    def ScriptCopterPosOffsets(self):
+        '''test the copter-posoffset.lua example script'''
+        self.context_push()
+
+        # enable scripting and arming/takingoff in Auto mode
+        self.set_parameters({
+            "SCR_ENABLE": 1,
+            "AUTO_OPTIONS": 3,
+            "RC12_OPTION": 300
+        })
+        self.reboot_sitl()
+
+        # install copter-posoffset script
+        self.install_example_script_context('copter-posoffset.lua')
+        self.reboot_sitl()
+
+        # create simple mission with a single takeoff command
+        self.upload_simple_relhome_mission([
+            (mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 20)
+        ])
+
+        # switch to loiter to wait for position estimate (aka GPS lock)
+        self.change_mode('LOITER')
+        self.wait_ready_to_arm()
+
+        # arm and takeoff in Auto mode
+        self.change_mode('AUTO')
+        self.arm_vehicle()
+
+        # wait for vehicle to climb to at least 10m
+        self.wait_altitude(8, 12, relative=True)
+
+        # add position offset to East and confirm vehicle moves
+        self.set_parameter("PSC_OFS_POS_E", 20)
+        self.set_rc(12, 2000)
+        self.wait_distance(18)
+
+        # remove position offset and wait for vehicle to return home
+        self.set_parameter("PSC_OFS_POS_E", 0)
+        self.wait_distance_to_home(distance_min=0, distance_max=4, timeout=20)
+
+        # add velocity offset and confirm vehicle moves
+        self.set_parameter("PSC_OFS_VEL_N", 5)
+        self.wait_groundspeed(4.8, 5.2, minimum_duration=5, timeout=20)
+
+        # remove velocity offset and switch to RTL
+        self.set_parameter("PSC_OFS_VEL_N", 0)
+        self.set_rc(12, 1000)
+        self.do_RTL()
+        self.context_pop()
+        self.reboot_sitl()
+
     def AHRSTrimLand(self):
         '''test land detector with significant AHRS trim'''
         self.context_push()
@@ -10656,6 +10858,126 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.wait_ready_to_arm()
         self.takeoff(alt_min=20, mode='LOITER')
         self.do_RTL()
+        self.context_pop()
+        self.reboot_sitl()
+
+    def GainBackoffTakeoff(self):
+        '''test gain backoff on takeoff'''
+        self.context_push()
+        self.progress("Test gains are fully backed off")
+        self.set_parameters({
+            "ATC_LAND_R_MULT": 0.0,
+            "ATC_LAND_P_MULT": 0.0,
+            "ATC_LAND_Y_MULT": 0.0,
+            "GCS_PID_MASK" : 7,
+            "LOG_BITMASK": 180222,
+        })
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+        self.change_mode('ALT_HOLD')
+
+        class ValidatePDZero(vehicle_test_suite.TestSuite.MessageHook):
+            '''asserts correct values in PID_TUNING'''
+
+            def __init__(self, suite, axis):
+                super(ValidatePDZero, self).__init__(suite)
+                self.pid_tuning_count = 0
+                self.p_sum = 0
+                self.d_sum = 0
+                self.i_sum = 0
+                self.axis = axis
+
+            def hook_removed(self):
+                if self.pid_tuning_count == 0:
+                    raise NotAchievedException("Did not get PID_TUNING")
+                if self.i_sum == 0:
+                    raise ValueError("I sum is zero")
+                print(f"ValidatePDZero: PID_TUNING count: {self.pid_tuning_count}")
+
+            def process(self, mav, m):
+                if m.get_type() != 'PID_TUNING' or m.axis != self.axis:
+                    return
+                self.pid_tuning_count += 1
+                self.p_sum += m.P
+                self.d_sum += m.D
+                self.i_sum += m.I
+                if self.p_sum > 0:
+                    raise ValueError("P sum is not zero")
+                if self.d_sum > 0:
+                    raise ValueError("D sum is not zero")
+
+        self.progress("Check that PD values are zero")
+        self.install_message_hook_context(ValidatePDZero(self, mavutil.mavlink.PID_TUNING_ROLL))
+        self.install_message_hook_context(ValidatePDZero(self, mavutil.mavlink.PID_TUNING_PITCH))
+        self.install_message_hook_context(ValidatePDZero(self, mavutil.mavlink.PID_TUNING_YAW))
+        # until the context pop happens, all received PID_TUNINGS will be verified as good
+        self.arm_vehicle()
+        self.set_rc(3, 1500)
+        self.delay_sim_time(2)
+        self.set_rc(2, 1250)
+        self.delay_sim_time(5)
+        self.assert_receive_message('PID_TUNING', timeout=5)
+        self.set_rc_default()
+        self.zero_throttle()
+        self.disarm_vehicle()
+        self.context_pop()
+
+        self.context_push()
+        self.progress("Test gains are not backed off")
+        self.set_parameters({
+            "ATC_LAND_R_MULT": 1.0,
+            "ATC_LAND_P_MULT": 1.0,
+            "ATC_LAND_Y_MULT": 1.0,
+            "GCS_PID_MASK" : 7,
+            "LOG_BITMASK": 180222,
+        })
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+        self.change_mode('ALT_HOLD')
+
+        class ValidatePDNonZero(vehicle_test_suite.TestSuite.MessageHook):
+            '''asserts correct values in PID_TUNING'''
+
+            def __init__(self, suite, axis):
+                super(ValidatePDNonZero, self).__init__(suite)
+                self.pid_tuning_count = 0
+                self.p_sum = 0
+                self.d_sum = 0
+                self.i_sum = 0
+                self.axis = axis
+
+            def hook_removed(self):
+                if self.pid_tuning_count == 0:
+                    raise NotAchievedException("Did not get PID_TUNING")
+                if self.p_sum == 0:
+                    raise ValueError("P sum is zero")
+                if self.i_sum == 0:
+                    raise ValueError("I sum is zero")
+                print(f"ValidatePDNonZero: PID_TUNING count: {self.pid_tuning_count}")
+
+            def process(self, mav, m):
+                if m.get_type() != 'PID_TUNING' or m.axis != self.axis:
+                    return
+                self.pid_tuning_count += 1
+                self.p_sum += m.P
+                self.d_sum += m.D
+                self.i_sum += m.I
+
+        self.progress("Check that PD values are non-zero")
+        self.install_message_hook_context(ValidatePDNonZero(self, mavutil.mavlink.PID_TUNING_ROLL))
+        self.install_message_hook_context(ValidatePDNonZero(self, mavutil.mavlink.PID_TUNING_PITCH))
+        self.install_message_hook_context(ValidatePDNonZero(self, mavutil.mavlink.PID_TUNING_YAW))
+        # until the context pop happens, all received PID_TUNINGS will be verified as good
+        self.arm_vehicle()
+        self.set_rc(3, 1500)
+        self.delay_sim_time(2)
+        self.set_rc(2, 1250)
+        self.delay_sim_time(5)
+        self.assert_receive_message('PID_TUNING', timeout=5)
+        self.set_rc_default()
+        self.zero_throttle()
+        self.disarm_vehicle()
+
         self.context_pop()
         self.reboot_sitl()
 
@@ -11417,7 +11739,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         '''ensure Guided acts appropriately when force-armed'''
         self.set_parameters({
             "EK3_SRC2_VELXY": 5,
-            "SIM_GPS_DISABLE": 1,
+            "SIM_GPS1_ENABLE": 0,
         })
         self.load_default_params_file("copter-optflow.parm")
         self.reboot_sitl()
@@ -11604,7 +11926,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         '''check FlightOption::REQUIRE_POSITION_FOR_ARMING works'''
         self.context_push()
         self.set_parameters({
-            "SIM_GPS_NUMSATS": 3,  # EKF does not like < 6
+            "SIM_GPS1_NUMSATS": 3,  # EKF does not like < 6
         })
         self.reboot_sitl()
         self.change_mode('STABILIZE')
@@ -11634,7 +11956,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             (mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,   0, 0, 10),
             (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 10),
             (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 40, 0, 10),
-            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 60, 0, 10),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 120, 0, 10),
         ])
 
         self.takeoff(mode='LOITER')
@@ -11704,6 +12026,133 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         if abs(new_heading - original_heading) > 5:
             raise NotAchievedException(f"Should return to original heading want={original_heading} got={new_heading}")
 
+    def BatteryInternalUseOnly(self):
+        '''batteries marked as internal use only should not appear over mavlink'''
+        self.set_parameters({
+            "BATT_MONITOR": 4,  # 4 is analog volt+curr
+            "BATT2_MONITOR": 4,
+        })
+        self.reboot_sitl()
+        self.wait_message_field_values('BATTERY_STATUS', {
+            "id": 0,
+        })
+        self.wait_message_field_values('BATTERY_STATUS', {
+            "id": 1,
+        })
+        self.progress("Making battery private")
+        self.set_parameters({
+            "BATT_OPTIONS": 256,
+        })
+        self.wait_message_field_values('BATTERY_STATUS', {
+            "id": 1,
+        })
+        for i in range(10):
+            self.assert_received_message_field_values('BATTERY_STATUS', {
+                "id": 1
+            })
+
+    def MAV_CMD_MISSION_START_p1_p2(self):
+        '''make sure we deny MAV_CMD_MISSION_START if either p1 or p2 non-zero'''
+        self.upload_simple_relhome_mission([
+            (mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 20),
+        ])
+        self.set_parameters({
+            "AUTO_OPTIONS": 3,
+        })
+        self.change_mode('AUTO')
+        self.wait_ready_to_arm()
+
+        self.run_cmd(
+            mavutil.mavlink.MAV_CMD_MISSION_START,
+            p1=1,
+            want_result=mavutil.mavlink.MAV_RESULT_DENIED,
+        )
+
+        self.run_cmd(
+            mavutil.mavlink.MAV_CMD_MISSION_START,
+            p2=1,
+            want_result=mavutil.mavlink.MAV_RESULT_DENIED,
+        )
+
+        self.run_cmd(
+            mavutil.mavlink.MAV_CMD_MISSION_START,
+            p1=1,
+            p2=1,
+            want_result=mavutil.mavlink.MAV_RESULT_DENIED,
+        )
+
+    def ScriptingAHRSSource(self):
+        '''test ahrs-source.lua script'''
+        self.install_example_script_context("ahrs-source.lua")
+        self.set_parameters({
+            "RC10_OPTION": 90,
+            "SCR_ENABLE": 1,
+            "SCR_USER1": 10,    # something else
+            "SCR_USER2": 10,    # GPS something
+            "SCR_USER3": 0.2,   # ExtNav innovation
+        })
+        self.set_rc(10, 2000)
+        self.reboot_sitl()
+        self.context_collect('STATUSTEXT')
+        self.set_rc(10, 1000)
+        self.wait_statustext('Using EKF Source Set 1', check_context=True)
+        self.set_rc(10, 1500)
+        self.wait_statustext('Using EKF Source Set 2', check_context=True)
+        self.set_rc(10, 2000)
+        self.wait_statustext('Using EKF Source Set 3', check_context=True)
+
+    def CommonOrigin(self):
+        """Test common origin between EKF2 and EKF3"""
+        self.context_push()
+
+        # start on EKF2
+        self.set_parameters({
+            'AHRS_EKF_TYPE': 2,
+            'EK2_ENABLE': 1,
+            'EK3_CHECK_SCALE': 1, # make EK3 slow to get origin
+        })
+        self.reboot_sitl()
+
+        self.context_collect('STATUSTEXT')
+
+        self.wait_statustext("EKF2 IMU0 origin set", timeout=60, check_context=True)
+        self.wait_statustext("EKF2 IMU0 is using GPS", timeout=60, check_context=True)
+        self.wait_statustext("EKF2 active", timeout=60, check_context=True)
+
+        self.context_collect('GPS_GLOBAL_ORIGIN')
+
+        # get EKF2 origin
+        self.run_cmd(mavutil.mavlink.MAV_CMD_GET_HOME_POSITION)
+        ek2_origin = self.assert_receive_message('GPS_GLOBAL_ORIGIN', check_context=True)
+
+        # switch to EKF3
+        self.set_parameters({
+            'SIM_GPS1_GLTCH_X' : 0.001, # about 100m
+            'EK3_CHECK_SCALE' : 100,
+            'AHRS_EKF_TYPE'   : 3})
+
+        self.wait_statustext("EKF3 IMU0 is using GPS", timeout=60, check_context=True)
+        self.wait_statustext("EKF3 active", timeout=60, check_context=True)
+
+        self.run_cmd(mavutil.mavlink.MAV_CMD_GET_HOME_POSITION)
+        ek3_origin = self.assert_receive_message('GPS_GLOBAL_ORIGIN', check_context=True)
+
+        self.progress("Checking origins")
+        if ek2_origin.time_usec == ek3_origin.time_usec:
+            raise NotAchievedException("Did not get a new GPS_GLOBAL_ORIGIN message")
+
+        print(ek2_origin, ek3_origin)
+
+        if (ek2_origin.latitude != ek3_origin.latitude or
+                ek2_origin.longitude != ek3_origin.longitude or
+                ek2_origin.altitude != ek3_origin.altitude):
+            raise NotAchievedException("Did not get matching EK2 and EK3 origins")
+
+        self.context_pop()
+
+        # restart GPS driver
+        self.reboot_sitl()
+
     def tests2b(self):  # this block currently around 9.5mins here
         '''return list of all tests'''
         ret = ([
@@ -11712,6 +12161,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.PositionWhenGPSIsZero,
             self.DynamicRpmNotches, # Do not add attempts to this - failure is sign of a bug
             self.PIDNotches,
+            self.StaticNotches,
             self.RefindGPS,
             Test(self.GyroFFT, attempts=1, speedup=8),
             Test(self.GyroFFTHarmonic, attempts=4, speedup=8),
@@ -11734,6 +12184,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.GPSBlending,
             self.GPSWeightedBlending,
             self.GPSBlendingLog,
+            self.GPSBlendingAffinity,
             self.DataFlash,
             Test(self.DataFlashErase, attempts=8),
             self.Callisto,
@@ -11763,6 +12214,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.TerrainDBPreArm,
             self.ThrottleGainBoost,
             self.ScriptMountPOI,
+            self.ScriptCopterPosOffsets,
             self.MountSolo,
             self.FlyMissionTwice,
             self.FlyMissionTwiceWithReset,
@@ -11770,6 +12222,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.InvalidJumpTags,
             self.IMUConsistency,
             self.AHRSTrimLand,
+            self.IBus,
             self.GuidedYawRate,
             self.NoArmWithoutMissionItems,
             self.DO_CHANGE_SPEED_in_guided,
@@ -11801,6 +12254,10 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.REQUIRE_POSITION_FOR_ARMING,
             self.LoggingFormat,
             self.MissionRTLYawBehaviour,
+            self.BatteryInternalUseOnly,
+            self.MAV_CMD_MISSION_START_p1_p2,
+            self.ScriptingAHRSSource,
+            self.CommonOrigin,
         ])
         return ret
 

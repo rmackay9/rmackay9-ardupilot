@@ -32,158 +32,141 @@ PayloadPlace Mode::payload_place;
 // return the static controller object corresponding to supplied mode
 Mode *Copter::mode_from_mode_num(const Mode::Number mode)
 {
-    Mode *ret = nullptr;
 
     switch (mode) {
-#if MODE_ACRO_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED
         case Mode::Number::ACRO:
-            ret = &mode_acro;
-            break;
+            return &mode_acro;
 #endif
 
         case Mode::Number::STABILIZE:
-            ret = &mode_stabilize;
-            break;
+            return &mode_stabilize;
 
         case Mode::Number::ALT_HOLD:
-            ret = &mode_althold;
-            break;
+            return &mode_althold;
 
-#if MODE_AUTO_ENABLED == ENABLED
+#if MODE_AUTO_ENABLED
         case Mode::Number::AUTO:
-            ret = &mode_auto;
-            break;
+            return &mode_auto;
 #endif
 
-#if MODE_CIRCLE_ENABLED == ENABLED
+#if MODE_CIRCLE_ENABLED
         case Mode::Number::CIRCLE:
-            ret = &mode_circle;
-            break;
+            return &mode_circle;
 #endif
 
-#if MODE_LOITER_ENABLED == ENABLED
+#if MODE_LOITER_ENABLED
         case Mode::Number::LOITER:
-            ret = &mode_loiter;
-            break;
+            return &mode_loiter;
 #endif
 
-#if MODE_GUIDED_ENABLED == ENABLED
+#if MODE_GUIDED_ENABLED
         case Mode::Number::GUIDED:
-            ret = &mode_guided;
-            break;
+            return &mode_guided;
 #endif
 
         case Mode::Number::LAND:
-            ret = &mode_land;
-            break;
+            return &mode_land;
 
-#if MODE_RTL_ENABLED == ENABLED
+#if MODE_RTL_ENABLED
         case Mode::Number::RTL:
-            ret = &mode_rtl;
-            break;
+            return &mode_rtl;
 #endif
 
-#if MODE_DRIFT_ENABLED == ENABLED
+#if MODE_DRIFT_ENABLED
         case Mode::Number::DRIFT:
-            ret = &mode_drift;
-            break;
+            return &mode_drift;
 #endif
 
-#if MODE_SPORT_ENABLED == ENABLED
+#if MODE_SPORT_ENABLED
         case Mode::Number::SPORT:
-            ret = &mode_sport;
-            break;
+            return &mode_sport;
 #endif
 
-#if MODE_FLIP_ENABLED == ENABLED
+#if MODE_FLIP_ENABLED
         case Mode::Number::FLIP:
-            ret = &mode_flip;
-            break;
+            return &mode_flip;
 #endif
 
-#if AUTOTUNE_ENABLED == ENABLED
+#if AUTOTUNE_ENABLED
         case Mode::Number::AUTOTUNE:
-            ret = &mode_autotune;
-            break;
+            return &mode_autotune;
 #endif
 
-#if MODE_POSHOLD_ENABLED == ENABLED
+#if MODE_POSHOLD_ENABLED
         case Mode::Number::POSHOLD:
-            ret = &mode_poshold;
-            break;
+            return &mode_poshold;
 #endif
 
-#if MODE_BRAKE_ENABLED == ENABLED
+#if MODE_BRAKE_ENABLED
         case Mode::Number::BRAKE:
-            ret = &mode_brake;
-            break;
+            return &mode_brake;
 #endif
 
-#if MODE_THROW_ENABLED == ENABLED
+#if MODE_THROW_ENABLED
         case Mode::Number::THROW:
-            ret = &mode_throw;
-            break;
+            return &mode_throw;
 #endif
 
 #if HAL_ADSB_ENABLED
         case Mode::Number::AVOID_ADSB:
-            ret = &mode_avoid_adsb;
-            break;
+            return &mode_avoid_adsb;
 #endif
 
-#if MODE_GUIDED_NOGPS_ENABLED == ENABLED
+#if MODE_GUIDED_NOGPS_ENABLED
         case Mode::Number::GUIDED_NOGPS:
-            ret = &mode_guided_nogps;
-            break;
+            return &mode_guided_nogps;
 #endif
 
-#if MODE_SMARTRTL_ENABLED == ENABLED
+#if MODE_SMARTRTL_ENABLED
         case Mode::Number::SMART_RTL:
-            ret = &mode_smartrtl;
-            break;
+            return &mode_smartrtl;
 #endif
 
-#if MODE_FLOWHOLD_ENABLED == ENABLED
+#if MODE_FLOWHOLD_ENABLED
         case Mode::Number::FLOWHOLD:
-            ret = (Mode *)g2.mode_flowhold_ptr;
-            break;
+            return (Mode *)g2.mode_flowhold_ptr;
 #endif
 
-#if MODE_FOLLOW_ENABLED == ENABLED
+#if MODE_FOLLOW_ENABLED
         case Mode::Number::FOLLOW:
-            ret = &mode_follow;
-            break;
+            return &mode_follow;
 #endif
 
-#if MODE_ZIGZAG_ENABLED == ENABLED
+#if MODE_ZIGZAG_ENABLED
         case Mode::Number::ZIGZAG:
-            ret = &mode_zigzag;
-            break;
+            return &mode_zigzag;
 #endif
 
-#if MODE_SYSTEMID_ENABLED == ENABLED
+#if MODE_SYSTEMID_ENABLED
         case Mode::Number::SYSTEMID:
-            ret = (Mode *)g2.mode_systemid_ptr;
-            break;
+            return (Mode *)g2.mode_systemid_ptr;
 #endif
 
-#if MODE_AUTOROTATE_ENABLED == ENABLED
+#if MODE_AUTOROTATE_ENABLED
         case Mode::Number::AUTOROTATE:
-            ret = &mode_autorotate;
-            break;
+            return &mode_autorotate;
 #endif
 
-#if MODE_TURTLE_ENABLED == ENABLED
+#if MODE_TURTLE_ENABLED
         case Mode::Number::TURTLE:
-            ret = &mode_turtle;
-            break;
+            return &mode_turtle;
 #endif
 
         default:
             break;
     }
 
-    return ret;
+#if MODE_GUIDED_ENABLED && AP_SCRIPTING_ENABLED
+    // Check registered custom modes
+    for (uint8_t i = 0; i < ARRAY_SIZE(mode_guided_custom); i++) {
+        if ((mode_guided_custom[i] != nullptr) && (mode_guided_custom[i]->mode_number() == mode)) {
+            return mode_guided_custom[i];
+        }
+    }
+#endif
+
+    return nullptr;
 }
 
 
@@ -273,7 +256,7 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
         return false;
     }
 
-#if MODE_AUTO_ENABLED == ENABLED
+#if MODE_AUTO_ENABLED
     if (mode == Mode::Number::AUTO_RTL) {
         // Special case for AUTO RTL, not a true mode, just AUTO in disguise
         // Attempt to join return path, fallback to do-land-start
@@ -292,20 +275,9 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
 #if FRAME_CONFIG == HELI_FRAME
     // do not allow helis to enter a non-manual throttle mode if the
     // rotor runup is not complete
-    if (!ignore_checks && !new_flightmode->has_manual_throttle() &&
-        (motors->get_spool_state() == AP_Motors::SpoolState::SPOOLING_UP || motors->get_spool_state() == AP_Motors::SpoolState::SPOOLING_DOWN)) {
-        #if MODE_AUTOROTATE_ENABLED == ENABLED
-            //if the mode being exited is the autorotation mode allow mode change despite rotor not being at
-            //full speed.  This will reduce altitude loss on bail-outs back to non-manual throttle modes
-            bool in_autorotation_check = (flightmode != &mode_autorotate || new_flightmode != &mode_autorotate);
-        #else
-            bool in_autorotation_check = false;
-        #endif
-
-        if (!in_autorotation_check) {
-            mode_change_failed(new_flightmode, "runup not complete");
-            return false;
-        }
+    if (!ignore_checks && !new_flightmode->has_manual_throttle() && !motors->rotor_runup_complete()) {
+        mode_change_failed(new_flightmode, "runup not complete");
+        return false;
     }
 #endif
 
@@ -315,7 +287,7 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
     // (e.g. user arms in guided, raises throttle to 1300 (not enough to
     // trigger auto takeoff), then switches into manual):
     bool user_throttle = new_flightmode->has_manual_throttle();
-#if MODE_DRIFT_ENABLED == ENABLED
+#if MODE_DRIFT_ENABLED
     if (new_flightmode == &mode_drift) {
         user_throttle = true;
     }
@@ -369,9 +341,6 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
     // perform any cleanup required by previous flight mode
     exit_mode(flightmode, new_flightmode);
 
-    // store previous flight mode (only used by tradeheli's autorotation)
-    prev_control_mode = flightmode->mode_number();
-
     // update flight mode
     flightmode = new_flightmode;
     control_mode_reason = reason;
@@ -398,11 +367,11 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
 #endif
 
     // set rate shaping time constants
-#if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED || MODE_SPORT_ENABLED
     attitude_control->set_roll_pitch_rate_tc(g2.command_model_acro_rp.get_rate_tc());
 #endif
     attitude_control->set_yaw_rate_tc(g2.command_model_pilot.get_rate_tc());
-#if MODE_ACRO_ENABLED == ENABLED || MODE_DRIFT_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED || MODE_DRIFT_ENABLED
     if (mode== Mode::Number::ACRO || mode== Mode::Number::DRIFT) {
         attitude_control->set_yaw_rate_tc(g2.command_model_acro_y.get_rate_tc());
     }
@@ -1035,12 +1004,15 @@ Mode::AltHoldModeState Mode::get_alt_hold_state(float target_climb_rate_cms)
 
 // transform pilot's yaw input into a desired yaw rate
 // returns desired yaw rate in centi-degrees per second
-float Mode::get_pilot_desired_yaw_rate(float yaw_in)
+float Mode::get_pilot_desired_yaw_rate() const
 {
     // throttle failsafe check
     if (copter.failsafe.radio || !rc().has_ever_seen_rc_input()) {
         return 0.0f;
     }
+
+    // Get yaw input
+    const float yaw_in = channel_yaw->norm_input_dz();
 
     // convert pilot input to the desired yaw rate
     return g2.command_model_pilot.get_rate() * 100.0 * input_expo(yaw_in, g2.command_model_pilot.get_expo());

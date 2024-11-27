@@ -136,6 +136,7 @@ public:
         DEVTYPE_INS_ICM42670 = 0x3A,
         DEVTYPE_INS_ICM45686 = 0x3B,
         DEVTYPE_INS_SCHA63T  = 0x3C,
+        DEVTYPE_INS_IIM42653 = 0x3D,
     };
 
 protected:
@@ -276,9 +277,11 @@ protected:
 
     // common gyro update function for all backends
     void update_gyro(uint8_t instance) __RAMFUNC__; /* front end */
+    void update_gyro_filters(uint8_t instance) __RAMFUNC__; /* front end */
 
     // common accel update function for all backends
     void update_accel(uint8_t instance) __RAMFUNC__; /* front end */
+    void update_accel_filters(uint8_t instance) __RAMFUNC__; /* front end */
 
     // support for updating filter at runtime
     uint16_t _last_accel_filter_hz;

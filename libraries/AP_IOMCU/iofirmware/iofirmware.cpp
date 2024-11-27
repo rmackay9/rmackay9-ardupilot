@@ -489,6 +489,10 @@ void AP_IOMCU_FW::update()
         last_status_ms = now;
         page_status_update();
     }
+
+#if AP_IOMCU_PROFILED_SUPPORT_ENABLED
+    profiled_update();
+#endif
 #ifdef HAL_WITH_BIDIR_DSHOT
     // EDT updates are semt at ~1Hz per ESC, but we want to make sure
     // that we don't delay updates unduly so sample at 5Hz
@@ -920,6 +924,7 @@ bool AP_IOMCU_FW::handle_code_write()
             mode_out.mode = rx_io_packet.regs[1];
             mode_out.bdmask = rx_io_packet.regs[2];
             mode_out.esc_type = rx_io_packet.regs[3];
+            mode_out.reversible_mask = rx_io_packet.regs[4];
             break;
 
         case PAGE_REG_SETUP_HEATER_DUTY_CYCLE:
@@ -1028,6 +1033,20 @@ bool AP_IOMCU_FW::handle_code_write()
         break;
     }
 
+#if AP_IOMCU_PROFILED_SUPPORT_ENABLED
+    case PAGE_PROFILED:
+        if (rx_io_packet.count != 2 || (rx_io_packet.regs[0] & 0xFF) != PROFILED_ENABLE_MAGIC) {
+            return false;
+        }
+        profiled_brg[0] = rx_io_packet.regs[0] >> 8;
+        profiled_brg[1] = rx_io_packet.regs[1] & 0xFF;
+        profiled_brg[2] = rx_io_packet.regs[1] >> 8;
+        // push new led data
+        profiled_num_led_pushed = 0;
+        profiled_control_enabled = true;
+        break;
+#endif
+
     default:
         break;
     }
@@ -1062,6 +1081,48 @@ void AP_IOMCU_FW::calculate_fw_crc(void)
     reg_setup.crc[1] = sum >> 16;
 }
 
+#if AP_IOMCU_PROFILED_SUPPORT_ENABLED
+// bitbang profiled bitstream, 8-10 chunks at a time
+// Max time taken per call is ~7us
+void AP_IOMCU_FW::profiled_update(void)
+{
+    if (profiled_num_led_pushed > PROFILED_LED_LEN) {
+        profiled_byte_index = 0;
+        profiled_leading_zeros = PROFILED_LEADING_ZEROS;
+        return;
+    }
+
+    // push 10 zero leading bits at a time
+    if (profiled_leading_zeros != 0) {
+        for (uint8_t i = 0; i < 10; i++) {
+            palClearLine(HAL_GPIO_PIN_SAFETY_INPUT);
+            palSetLine(HAL_GPIO_PIN_SAFETY_INPUT);
+            profiled_leading_zeros--;
+        }
+        return;
+    }
+
+    if ((profiled_byte_index == 0) ||
+        (profiled_byte_index == PROFILED_OUTPUT_BYTE_LEN)) {
+        // start bit
+        palClearLine(HAL_GPIO_PIN_SAFETY_INPUT);
+        palSetLine(HAL_GPIO_PIN_SAFETY_LED);
+        palSetLine(HAL_GPIO_PIN_SAFETY_INPUT);
+        profiled_byte_index = 0;
+        profiled_num_led_pushed++;
+    }
+
+    uint8_t byte_val = profiled_brg[profiled_byte_index];
+    for (uint8_t i = 0; i < 8; i++) {
+        palClearLine(HAL_GPIO_PIN_SAFETY_INPUT);
+        palWriteLine(HAL_GPIO_PIN_SAFETY_LED, byte_val & 1);
+        byte_val >>= 1;
+        palSetLine(HAL_GPIO_PIN_SAFETY_INPUT);
+    }
+
+    profiled_byte_index++;
+}
+#endif
 
 /*
   update safety state
@@ -1074,6 +1135,15 @@ void AP_IOMCU_FW::safety_update(void)
         return;
     }
     safety_update_ms = now;
+
+#if AP_IOMCU_PROFILED_SUPPORT_ENABLED
+    if (profiled_control_enabled) {
+        // set line mode to output for safety input pin
+        palSetLineMode(HAL_GPIO_PIN_SAFETY_INPUT, PAL_MODE_OUTPUT_PUSHPULL);
+        palSetLineMode(HAL_GPIO_PIN_SAFETY_LED, PAL_MODE_OUTPUT_PUSHPULL);
+        return;
+    }
+#endif
 
     bool safety_pressed = palReadLine(HAL_GPIO_PIN_SAFETY_INPUT);
     if (safety_pressed) {
@@ -1097,6 +1167,8 @@ void AP_IOMCU_FW::safety_update(void)
             hal.rcout->force_safety_on();
         }
     }
+    // update the armed state
+    hal.util->set_soft_armed((reg_setup.arming & P_SETUP_ARMING_FMU_ARMED) != 0);
 
 #if IOMCU_ENABLE_RESET_TEST
     {
@@ -1175,6 +1247,7 @@ void AP_IOMCU_FW::rcout_config_update(void)
     // see if there is anything to do, we only support setting the mode for a particular channel once
     if ((last_output_mode_mask & mode_out.mask) == mode_out.mask
         && (last_output_bdmask & mode_out.bdmask) == mode_out.bdmask
+        && (last_output_reversible_mask & mode_out.reversible_mask) == mode_out.reversible_mask
         && last_output_esc_type == mode_out.esc_type) {
         return;
     }
@@ -1187,13 +1260,15 @@ void AP_IOMCU_FW::rcout_config_update(void)
 #endif
 #ifdef HAL_WITH_BIDIR_DSHOT
         hal.rcout->set_bidir_dshot_mask(mode_out.bdmask);
-        hal.rcout->set_dshot_esc_type(AP_HAL::RCOutput::DshotEscType(mode_out.esc_type));
 #endif
+        hal.rcout->set_reversible_mask(mode_out.reversible_mask);
+        hal.rcout->set_dshot_esc_type(AP_HAL::RCOutput::DshotEscType(mode_out.esc_type));
         hal.rcout->set_output_mode(mode_out.mask, (AP_HAL::RCOutput::output_mode)mode_out.mode);
         // enabling dshot changes the memory allocation
         reg_status.freemem = hal.util->available_memory();
         last_output_mode_mask |= mode_out.mask;
         last_output_bdmask |= mode_out.bdmask;
+        last_output_reversible_mask |= mode_out.reversible_mask;
         last_output_esc_type = mode_out.esc_type;
         break;
     case AP_HAL::RCOutput::MODE_PWM_ONESHOT:

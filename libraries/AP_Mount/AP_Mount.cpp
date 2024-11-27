@@ -1,8 +1,10 @@
+#include "AP_Mount_config.h"
+
+#if HAL_MOUNT_ENABLED
+
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
 #include "AP_Mount.h"
-
-#if HAL_MOUNT_ENABLED
 
 #include "AP_Mount_Backend.h"
 #include "AP_Mount_Servo.h"
@@ -905,6 +907,29 @@ void AP_Mount::send_camera_capture_status(uint8_t instance, mavlink_channel_t ch
         return;
     }
     backend->send_camera_capture_status(chan);
+}
+
+#if AP_MOUNT_SEND_THERMAL_RANGE_ENABLED
+// send camera thermal range message to GCS
+void AP_Mount::send_camera_thermal_range(uint8_t instance, mavlink_channel_t chan) const
+{
+    auto *backend = get_instance(instance);
+    if (backend == nullptr) {
+        return;
+    }
+    backend->send_camera_thermal_range(chan);
+}
+#endif
+
+// change camera settings not normally used by autopilot
+// setting values from AP_Camera::Setting enum
+bool AP_Mount::change_setting(uint8_t instance, CameraSetting setting, float value)
+{
+    auto *backend = get_instance(instance);
+    if (backend == nullptr) {
+        return false;
+    }
+    return backend->change_setting(setting, value);
 }
 
 // get rangefinder distance.  Returns true on success

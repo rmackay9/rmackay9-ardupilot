@@ -297,7 +297,7 @@ void Copter::failsafe_terrain_on_event()
 
     if (should_disarm_on_failsafe()) {
         arming.disarm(AP_Arming::Method::TERRAINFAILSAFE);
-#if MODE_RTL_ENABLED == ENABLED
+#if MODE_RTL_ENABLED
     } else if (flightmode->mode_number() == Mode::Number::RTL) {
         mode_rtl.restart_without_terrain();
 #endif
@@ -434,7 +434,7 @@ void Copter::set_mode_SmartRTL_or_RTL(ModeReason reason)
 // This can come from failsafe or RC option
 void Copter::set_mode_auto_do_land_start_or_RTL(ModeReason reason)
 {
-#if MODE_AUTO_ENABLED == ENABLED
+#if MODE_AUTO_ENABLED
     if (set_mode(Mode::Number::AUTO_RTL, reason)) {
         AP_Notify::events.failsafe_mode_change = 1;
         return;
@@ -449,7 +449,7 @@ void Copter::set_mode_auto_do_land_start_or_RTL(ModeReason reason)
 // This can come from failsafe or RC option
 void Copter::set_mode_brake_or_land_with_pause(ModeReason reason)
 {
-#if MODE_BRAKE_ENABLED == ENABLED
+#if MODE_BRAKE_ENABLED
     if (set_mode(Mode::Number::BRAKE, reason)) {
         AP_Notify::events.failsafe_mode_change = 1;
         return;
@@ -498,7 +498,7 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             set_mode_SmartRTL_or_land_with_pause(reason);
             break;
         case FailsafeAction::TERMINATE: {
-#if ADVANCED_FAILSAFE == ENABLED
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
             g2.afs.gcs_terminate(true, "Failsafe");
 #else
             arming.disarm(AP_Arming::Method::FAILSAFE_ACTION_TERMINATE);

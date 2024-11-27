@@ -16,6 +16,7 @@ _board = None
 # modify our search path:
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../libraries/AP_HAL_ChibiOS/hwdef/scripts'))
 import chibios_hwdef
+import build_options
 
 class BoardMeta(type):
     def __init__(cls, name, bases, dct):
@@ -56,6 +57,7 @@ class Board:
         def srcpath(path):
             return cfg.srcnode.make_node(path).abspath()
         env.SRCROOT = srcpath('')
+
         self.configure_env(cfg, env)
 
         # Setup scripting:
@@ -159,15 +161,26 @@ class Board:
             )
             cfg.msg("Enabled custom controller", 'no', color='YELLOW')
 
-        if cfg.options.enable_ppp:
-            env.CXXFLAGS += ['-DAP_NETWORKING_BACKEND_PPP=1']
+        # support enabling any option in build_options.py
+        for opt in build_options.BUILD_OPTIONS:
+            enable_option = opt.config_option().replace("-","_")
+            disable_option = "disable_" + enable_option[len("enable-"):]
+            if getattr(cfg.options, enable_option, False):
+                env.CXXFLAGS += ['-D%s=1' % opt.define]
+                cfg.msg("Enabled %s" % opt.label, 'yes', color='GREEN')
+            elif getattr(cfg.options, disable_option, False):
+                env.CXXFLAGS += ['-D%s=0' % opt.define]
+                cfg.msg("Enabled %s" % opt.label, 'no', color='YELLOW')
 
         if cfg.options.disable_networking:
             env.CXXFLAGS += ['-DAP_NETWORKING_ENABLED=0']
 
         if cfg.options.enable_networking_tests:
             env.CXXFLAGS += ['-DAP_NETWORKING_TESTS_ENABLED=1']
-            
+
+        if cfg.options.enable_iomcu_profiled_support:
+            env.CXXFLAGS += ['-DAP_IOMCU_PROFILED_SUPPORT_ENABLED=1']
+
         d = env.get_merged_dict()
         # Always prepend so that arguments passed in the command line get
         # the priority.
@@ -351,10 +364,10 @@ class Board:
             '-Wpointer-arith',
             '-Wno-unused-parameter',
             '-Wno-missing-field-initializers',
-            '-Wno-reorder',
             '-Wno-redundant-decls',
             '-Wno-unknown-pragmas',
             '-Wno-expansion-to-defined',
+            '-Werror=reorder',
             '-Werror=cast-align',
             '-Werror=attributes',
             '-Werror=format-security',
@@ -430,6 +443,13 @@ class Board:
                 env.CXXFLAGS += [
                     '-Werror=sizeof-pointer-div',
                 ]
+            if self.cc_version_gte(cfg, 13, 2):
+                env.CXXFLAGS += [
+                    '-Werror=use-after-free',
+                ]
+                env.CFLAGS += [
+                    '-Werror=use-after-free',
+                ]
 
         if cfg.options.Werror:
             errors = ['-Werror',
@@ -486,12 +506,6 @@ class Board:
 
         # We always want to use PRI format macros
         cfg.define('__STDC_FORMAT_MACROS', 1)
-
-        if cfg.options.enable_ekf2:
-            env.CXXFLAGS += ['-DHAL_NAVEKF2_AVAILABLE=1']
-
-        if cfg.options.disable_ekf3:
-            env.CXXFLAGS += ['-DHAL_NAVEKF3_AVAILABLE=0']
 
         if cfg.options.postype_single:
             env.CXXFLAGS += ['-DHAL_WITH_POSTYPE_DOUBLE=0']
@@ -684,6 +698,12 @@ class sitl(Board):
 
         cfg.define('AP_NOTIFY_LP5562_BUS', 2)
         cfg.define('AP_NOTIFY_LP5562_ADDR', 0x30)
+
+        # turn on fencepoint and rallypoint protocols so they're still tested:
+        env.CXXFLAGS.extend([
+            '-DAP_MAVLINK_RALLY_POINT_PROTOCOL_ENABLED=HAL_GCS_ENABLED&&HAL_RALLY_ENABLED',
+            '-DAC_POLYFENCE_FENCE_POINT_PROTOCOL_SUPPORT=HAL_GCS_ENABLED&&AP_FENCE_ENABLED'
+        ])
 
         try:
             env.CXXFLAGS.remove('-DHAL_NAVEKF2_AVAILABLE=0')
@@ -941,6 +961,7 @@ class sitl_periph_universal(sitl_periph):
             AP_BATTERY_ESC_ENABLED = 1,
             HAL_PWM_COUNT = 32,
             HAL_WITH_ESC_TELEM = 1,
+            AP_EXTENDED_ESC_TELEM_ENABLED = 1,
             AP_TERRAIN_AVAILABLE = 1,
         )
 
@@ -991,7 +1012,7 @@ class esp32(Board):
         )
 
         tt = self.name[5:] #leave off 'esp32' so we just get 'buzz','diy','icarus, etc
-        
+
         # this makes sure we get the correct subtype
         env.DEFINES.update(
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_ESP32_%s' %  tt.upper() ,
@@ -1006,6 +1027,9 @@ class esp32(Board):
             ]
         else:
             env.DEFINES.update(AP_SIM_ENABLED = 0)
+
+        # FreeRTOS component from esp-idf expects this define
+        env.DEFINES.update(ESP_PLATFORM = 1)
 
         env.AP_LIBRARIES += [
             'AP_HAL_ESP32',
@@ -1418,6 +1442,17 @@ class navigator(linux):
         env.DEFINES.update(
             CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR',
         )
+
+class navigator64(linux):
+    toolchain = 'aarch64-linux-gnu'
+
+    def configure_env(self, cfg, env):
+        super(navigator64, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE='HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR',
+        )
+
 
 class erleboard(linux):
     toolchain = 'arm-linux-gnueabihf'

@@ -146,6 +146,7 @@ const struct MultiplierStructure log_Multipliers[] = {
 #include <AP_Landing/LogStructure.h>
 #include <AC_AttitudeControl/LogStructure.h>
 #include <AP_HAL/LogStructure.h>
+#include <AP_Mission/LogStructure.h>
 
 // structure used to define logging format
 // It is packed on ChibiOS to save flash space; however, this causes problems
@@ -348,22 +349,6 @@ struct PACKED log_MCU {
     float MCU_voltage;
     float MCU_voltage_min;
     float MCU_voltage_max;
-};
-
-struct PACKED log_Cmd {
-    LOG_PACKET_HEADER;
-    uint64_t time_us;
-    uint16_t command_total;
-    uint16_t sequence;
-    uint16_t command;
-    float param1;
-    float param2;
-    float param3;
-    float param4;
-    int32_t latitude;
-    int32_t longitude;
-    float altitude;
-    uint8_t frame;
 };
 
 struct PACKED log_MAVLink_Command {
@@ -571,6 +556,7 @@ struct PACKED log_Performance {
     uint32_t i2c_count;
     uint32_t i2c_isr_count;
     uint32_t extra_loop_us;
+    uint64_t rtc;
 };
 
 struct PACKED log_SRTL {
@@ -712,21 +698,6 @@ struct PACKED log_VER {
 // @Field: TR: innovation test ratio
 // @Field: Pri: True if sensor is the primary sensor
 
-// @LoggerMessage: CMD
-// @Description: Executed mission command information
-// @Field: TimeUS: Time since system startup
-// @Field: CTot: Total number of mission commands
-// @Field: CNum: This command's offset in mission
-// @Field: CId: Command type
-// @Field: Prm1: Parameter 1
-// @Field: Prm2: Parameter 2
-// @Field: Prm3: Parameter 3
-// @Field: Prm4: Parameter 4
-// @Field: Lat: Command latitude
-// @Field: Lng: Command longitude
-// @Field: Alt: Command altitude
-// @Field: Frame: Frame used for position
-
 // @LoggerMessage: CSRV
 // @Description: Servo feedback data
 // @Field: TimeUS: Time since system startup
@@ -829,7 +800,7 @@ struct PACKED log_VER {
 // @Field: txp: transmitted packet count
 // @Field: rxp: received packet count
 // @Field: rxdp: perceived number of packets we never received
-// @Field: flags: compact representation of some stage of the channel
+// @Field: flags: compact representation of some state of the channel
 // @FieldBitmaskEnum: flags: GCS_MAVLINK::Flags
 // @Field: ss: stream slowdown is the number of ms being added to each message to fit within bandwidth
 // @Field: tf: times buffer was full when a message was going to be sent
@@ -925,14 +896,15 @@ struct PACKED log_VER {
 // @Field: MaxT: Maximum loop time
 // @Field: Mem: Free memory available
 // @Field: Load: System processor load
-// @Field: IntE: Internal error mask; which internal errors have been detected
-// @FieldBitmaskEnum: IntE: AP_InternalError::error_t
+// @Field: InE: Internal error mask; which internal errors have been detected
+// @FieldBitmaskEnum: InE: AP_InternalError::error_t
 // @Field: ErrL: Internal error line number; last line number on which a internal error was detected
-// @Field: ErrC: Internal error count; how many internal errors have been detected
+// @Field: ErC: Internal error count; how many internal errors have been detected
 // @Field: SPIC: Number of SPI transactions processed
 // @Field: I2CC: Number of i2c transactions processed
 // @Field: I2CI: Number of i2c interrupts serviced
 // @Field: Ex: number of microseconds being added to each loop to address scheduler overruns
+// @Field: R: RTC time, time since Unix epoch
 
 // @LoggerMessage: POWR
 // @Description: System power information
@@ -1164,7 +1136,9 @@ struct PACKED log_VER {
 // @Description: Ardupilot version
 // @Field: TimeUS: Time since system startup
 // @Field: BT: Board type
+// @FieldValueEnum: BT: HAL_BOARD
 // @Field: BST: Board subtype
+// @FieldValueEnum: BST: HAL_BOARD_SUBTYPE
 // @Field: Maj: Major version number
 // @Field: Min: Minor version number
 // @Field: Pat: Patch number
@@ -1173,6 +1147,7 @@ struct PACKED log_VER {
 // @Field: FWS: Firmware version string
 // @Field: APJ: Board ID
 // @Field: BU: Build vehicle type
+// @FieldValueEnum: BU: APM_BUILD
 // @Field: FV: Filter version
 
 // @LoggerMessage: MOTB
@@ -1218,8 +1193,7 @@ LOG_STRUCTURE_FROM_PRECLAND \
       "POWR","QffHHB","TimeUS,Vcc,VServo,Flags,AccFlags,Safety", "svv---", "F00---", true }, \
     { LOG_MCU_MSG, sizeof(log_MCU), \
       "MCU","Qffff","TimeUS,MTemp,MVolt,MVmin,MVmax", "sOvvv", "F0000", true }, \
-    { LOG_CMD_MSG, sizeof(log_Cmd), \
-      "CMD", "QHHHffffLLfB","TimeUS,CTot,CNum,CId,Prm1,Prm2,Prm3,Prm4,Lat,Lng,Alt,Frame", "s-------DUm-", "F-------GG0-" }, \
+LOG_STRUCTURE_FROM_MISSION \
     { LOG_MAVLINK_COMMAND_MSG, sizeof(log_MAVLink_Command), \
       "MAVC", "QBBBBBHffffiifBB","TimeUS,TS,TC,SS,SC,Fr,Cmd,P1,P2,P3,P4,X,Y,Z,Res,WL", "s---------------", "F---------------" }, \
     { LOG_RADIO_MSG, sizeof(log_Radio), \
@@ -1239,7 +1213,7 @@ LOG_STRUCTURE_FROM_MOUNT \
     LOG_STRUCTURE_FROM_BEACON                                       \
     LOG_STRUCTURE_FROM_PROXIMITY                                    \
     { LOG_PERFORMANCE_MSG, sizeof(log_Performance),                     \
-      "PM",  "QHHHIIHHIIIIII", "TimeUS,LR,NLon,NL,MaxT,Mem,Load,ErrL,IntE,ErrC,SPIC,I2CC,I2CI,Ex", "sz---b%------s", "F----0A------F" }, \
+      "PM",  "QHHHIIHHIIIIIIQ", "TimeUS,LR,NLon,NL,MaxT,Mem,Load,ErrL,InE,ErC,SPIC,I2CC,I2CI,Ex,R", "sz---b%------ss", "F----0A------FF" }, \
     { LOG_SRTL_MSG, sizeof(log_SRTL), \
       "SRTL", "QBHHBfff", "TimeUS,Active,NumPts,MaxPts,Action,N,E,D", "s----mmm", "F----000" }, \
 LOG_STRUCTURE_FROM_AVOIDANCE \
@@ -1249,7 +1223,7 @@ LOG_STRUCTURE_FROM_AVOIDANCE \
       "TERR","QBLLHffHHf","TimeUS,Status,Lat,Lng,Spacing,TerrH,CHeight,Pending,Loaded,ROfs", "s-DU-mm--m", "F-GG-00--0", true }, \
 LOG_STRUCTURE_FROM_ESC_TELEM \
     { LOG_CSRV_MSG, sizeof(log_CSRV), \
-      "CSRV","QBfffBfffffB","TimeUS,Id,Pos,Force,Speed,Pow,PosCmd,V,A,MotT,PCBT,Err", "s#---%dvAOO-", "F-000000000-", true }, \
+      "CSRV","QBfffBfffffB","TimeUS,Id,Pos,Force,Speed,Pow,PosCmd,V,A,MotT,PCBT,Err", "s#---%dvAOO-", "F-000000000-", false }, \
     { LOG_PIDR_MSG, sizeof(log_PID), \
       "PIDR", PID_FMT,  PID_LABELS, PID_UNITS, PID_MULTS, true },  \
     { LOG_PIDP_MSG, sizeof(log_PID), \
@@ -1326,7 +1300,6 @@ enum LogMessages : uint8_t {
     LOG_MCU_MSG,
     LOG_IDS_FROM_AHRS,
     LOG_SIMSTATE_MSG,
-    LOG_CMD_MSG,
     LOG_MAVLINK_COMMAND_MSG,
     LOG_RADIO_MSG,
     LOG_ATRP_MSG,
@@ -1337,6 +1310,7 @@ enum LogMessages : uint8_t {
     LOG_IDS_FROM_ESC_TELEM,
     LOG_IDS_FROM_BATTMONITOR,
     LOG_IDS_FROM_HAL_CHIBIOS,
+    LOG_IDS_FROM_MISSION,
 
     LOG_IDS_FROM_GPS,
 

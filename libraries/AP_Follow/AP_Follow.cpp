@@ -389,7 +389,7 @@ bool AP_Follow::handle_follow_target_message(const mavlink_message_t &msg)
         Location new_loc = _target_location;
         new_loc.lat = packet.lat;
         new_loc.lng = packet.lon;
-        new_loc.set_alt_cm(packet.alt*100, Location::AltFrame::ABSOLUTE);
+        new_loc.set_alt_m(packet.alt, Location::AltFrame::ABSOLUTE);
 
         // FOLLOW_TARGET is always AMSL, change the provided alt to
         // above home if we are configured for relative alt
@@ -488,13 +488,13 @@ void AP_Follow::init_offsets_if_required(const Vector3f &dist_vec_ned)
     if ((_offset_type == AP_FOLLOW_OFFSET_TYPE_RELATIVE) && get_target_heading_deg(target_heading_deg)) {
         // rotate offsets from north facing to vehicle's perspective
         _offset.set(rotate_vector(-dist_vec_ned, -target_heading_deg));
-        gcs().send_text(MAV_SEVERITY_INFO, "Relative follow offset loaded");
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Relative follow offset loaded");
     } else {
         // initialise offset in NED frame
         _offset.set(-dist_vec_ned);
         // ensure offset_type used matches frame of offsets saved
         _offset_type.set(AP_FOLLOW_OFFSET_TYPE_NED);
-        gcs().send_text(MAV_SEVERITY_INFO, "N-E-D follow offset loaded");
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "N-E-D follow offset loaded");
     }
 }
 

@@ -52,6 +52,10 @@
 #define __LITTLE_ENDIAN  1234
 #define __BYTE_ORDER     __LITTLE_ENDIAN
 
+// ArduPilot uses __RAMFUNC__ to place functions in fast instruction RAM
+#define __RAMFUNC__ IRAM_ATTR
+
+
 // whenver u get ... error: "xxxxxxx" is not defined, evaluates to 0 [-Werror=undef]  just define it below as 0
 #define CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY 0
 #define XCHAL_ERRATUM_453 0
@@ -116,3 +120,6 @@
 // other big things..
 #define HAL_QUADPLANE_ENABLED 0
 #define HAL_GYROFFT_ENABLED 0
+
+// remove once ESP32 isn't so chronically slow
+#define AP_SCHEDULER_OVERTIME_MARGIN_US 50000UL
