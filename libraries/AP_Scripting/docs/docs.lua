@@ -414,6 +414,16 @@ function CAN:get_device(buffer_len) end
 ---@return ScriptingCANBuffer_ud|nil
 function CAN:get_device2(buffer_len) end
 
+
+-- get latest FlexDebug message from a CAN node
+---@param bus number -- CAN bus number, 0 for first bus, 1 for 2nd
+---@param node number -- CAN node
+---@param id number -- FlexDebug message ID
+---@param last_us uint32_t_ud|integer|number -- timestamp of last received message, new message will be returned if timestamp is different
+---@return uint32_t_ud|nil -- timestamp of message (first frame arrival time)
+---@return string|nil -- up to 255 byte buffer
+function DroneCAN_get_FlexDebug(bus,node,id,last_us) end
+
 -- Auto generated binding
 
 -- desc
@@ -2815,6 +2825,25 @@ function vehicle:is_landing() end
 ---@param new_start_location Location_ud
 ---@return boolean -- true on success
 function vehicle:set_crosstrack_start(new_start_location) end
+
+-- Register a custom mode. This behaves like guided mode but will report with a custom number and name
+---@param number integer -- mode number to use, should be over 100
+---@param full_name string -- Full mode name
+---@param short_name string -- Short mode name upto 4 characters
+---@return AP_Vehicle__custom_mode_state_ud|nil -- Returns custom mode state which allows customisation of behavior, nil if mode register fails
+function vehicle:register_custom_mode(number, full_name, short_name) end
+
+-- Custom mode state, allows customisation of mode behavior
+---@class (exact) AP_Vehicle__custom_mode_state_ud
+local AP_Vehicle__custom_mode_state_ud = {}
+
+-- get allow_entry, if true the vehicle is allowed to enter this custom mode
+---@return boolean
+function AP_Vehicle__custom_mode_state_ud:allow_entry() end
+
+-- set allow_entry, if true the vehicle is allowed to enter this custom mode
+---@param value boolean
+function AP_Vehicle__custom_mode_state_ud:allow_entry(value) end
 
 -- desc
 onvif = {}

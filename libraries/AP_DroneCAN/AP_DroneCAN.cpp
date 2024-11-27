@@ -128,7 +128,7 @@ const AP_Param::GroupInfo AP_DroneCAN::var_info[] = {
     // @Param: OPTION
     // @DisplayName: DroneCAN options
     // @Description: Option flags
-    // @Bitmask: 0:ClearDNADatabase,1:IgnoreDNANodeConflicts,2:EnableCanfd,3:IgnoreDNANodeUnhealthy,4:SendServoAsPWM,5:SendGNSS,6:UseHimarkServo,7:HobbyWingESC,8:EnableStats
+    // @Bitmask: 0:ClearDNADatabase,1:IgnoreDNANodeConflicts,2:EnableCanfd,3:IgnoreDNANodeUnhealthy,4:SendServoAsPWM,5:SendGNSS,6:UseHimarkServo,7:HobbyWingESC,8:EnableStats,9:EnableFlexDebug
     // @User: Advanced
     AP_GROUPINFO("OPTION", 5, AP_DroneCAN, _options, 0),
     
@@ -368,44 +368,49 @@ void AP_DroneCAN::init(uint8_t driver_index, bool enable_filters)
     }
 
     // Roundup all subscribers from supported drivers
+    bool subscribed = true;
 #if AP_GPS_DRONECAN_ENABLED
-    AP_GPS_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_GPS_DroneCAN::subscribe_msgs(this);
 #endif
 #if AP_COMPASS_DRONECAN_ENABLED
-    AP_Compass_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_Compass_DroneCAN::subscribe_msgs(this);
 #endif
 #if AP_BARO_DRONECAN_ENABLED
-    AP_Baro_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_Baro_DroneCAN::subscribe_msgs(this);
 #endif
-    AP_BattMonitor_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_BattMonitor_DroneCAN::subscribe_msgs(this);
 #if AP_AIRSPEED_DRONECAN_ENABLED
-    AP_Airspeed_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_Airspeed_DroneCAN::subscribe_msgs(this);
 #endif
 #if AP_OPTICALFLOW_HEREFLOW_ENABLED
-    AP_OpticalFlow_HereFlow::subscribe_msgs(this);
+    subscribed = subscribed && AP_OpticalFlow_HereFlow::subscribe_msgs(this);
 #endif
 #if AP_RANGEFINDER_DRONECAN_ENABLED
-    AP_RangeFinder_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_RangeFinder_DroneCAN::subscribe_msgs(this);
 #endif
 #if AP_RCPROTOCOL_DRONECAN_ENABLED
-    AP_RCProtocol_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_RCProtocol_DroneCAN::subscribe_msgs(this);
 #endif
 #if AP_EFI_DRONECAN_ENABLED
-    AP_EFI_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_EFI_DroneCAN::subscribe_msgs(this);
 #endif
 
 #if AP_PROXIMITY_DRONECAN_ENABLED
-    AP_Proximity_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_Proximity_DroneCAN::subscribe_msgs(this);
 #endif
 #if HAL_MOUNT_XACTI_ENABLED
-    AP_Mount_Xacti::subscribe_msgs(this);
+    subscribed = subscribed && AP_Mount_Xacti::subscribe_msgs(this);
 #endif
 #if AP_TEMPERATURE_SENSOR_DRONECAN_ENABLED
-    AP_TemperatureSensor_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_TemperatureSensor_DroneCAN::subscribe_msgs(this);
 #endif
 #if AP_RPM_DRONECAN_ENABLED
-    AP_RPM_DroneCAN::subscribe_msgs(this);
+    subscribed = subscribed && AP_RPM_DroneCAN::subscribe_msgs(this);
 #endif
+
+    if (!subscribed) {
+        AP_BoardConfig::allocation_error("DroneCAN callback");
+    }
 
     act_out_array.set_timeout_ms(5);
     act_out_array.set_priority(CANARD_TRANSFER_PRIORITY_HIGH);
@@ -1503,6 +1508,62 @@ bool AP_DroneCAN::is_esc_data_index_valid(const uint8_t index) {
     return true;
 }
 
+#if AP_SCRIPTING_ENABLED
+/*
+  handle FlexDebug message, holding a copy locally for a lua script to access
+ */
+void AP_DroneCAN::handle_FlexDebug(const CanardRxTransfer& transfer, const dronecan_protocol_FlexDebug &msg)
+{
+    if (!option_is_set(Options::ENABLE_FLEX_DEBUG)) {
+        return;
+    }
+
+    // find an existing element in the list
+    const uint8_t source_node = transfer.source_node_id;
+    for (auto *p = flexDebug_list; p != nullptr; p = p->next) {
+        if (p->node_id == source_node && p->msg.id == msg.id) {
+            p->msg = msg;
+            p->timestamp_us = uint32_t(transfer.timestamp_usec);
+            return;
+        }
+    }
+
+    // new message ID, add to the list. Note that this gets called
+    // only from one thread, so no lock needed
+    auto *p = NEW_NOTHROW FlexDebug;
+    if (p == nullptr) {
+        return;
+    }
+    p->node_id = source_node;
+    p->msg = msg;
+    p->timestamp_us = uint32_t(transfer.timestamp_usec);
+    p->next = flexDebug_list;
+
+    // link into the list
+    flexDebug_list = p;
+}
+
+/*
+  get the last FlexDebug message from a node
+ */
+bool AP_DroneCAN::get_FlexDebug(uint8_t node_id, uint16_t msg_id, uint32_t &timestamp_us, dronecan_protocol_FlexDebug &msg) const
+{
+    for (const auto *p = flexDebug_list; p != nullptr; p = p->next) {
+        if (p->node_id == node_id && p->msg.id == msg_id) {
+            if (timestamp_us == p->timestamp_us) {
+                // stale message
+                return false;
+            }
+            timestamp_us = p->timestamp_us;
+            msg = p->msg;
+            return true;
+        }
+    }
+    return false;
+}
+
+#endif // AP_SCRIPTING_ENABLED
+
 /*
   handle LogMessage debug
  */
@@ -1900,7 +1961,7 @@ bool AP_DroneCAN::add_11bit_driver(CANSensor *sensor)
 }
 
 // handler for outgoing frames for auxillary drivers
-bool AP_DroneCAN::write_aux_frame(AP_HAL::CANFrame &out_frame, const uint64_t timeout_us)
+bool AP_DroneCAN::write_aux_frame(AP_HAL::CANFrame &out_frame, const uint32_t timeout_us)
 {
     if (out_frame.isExtended()) {
         // don't allow extended frames to be sent by auxillary driver
