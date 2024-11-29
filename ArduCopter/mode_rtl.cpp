@@ -15,9 +15,9 @@ bool ModeRTL::init(bool ignore_checks)
     AP::ahrs().set_posvelyaw_source_set(0);
 
    if (!copter.position_ok() ||!AP::ahrs().home_is_set() ) {
-                set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
-                copter.cr= true;
-                gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
+        set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
+        copter.cr= true;
+        gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
    }
 
     // initialise waypoint and spline controller
@@ -148,7 +148,7 @@ void ModeRTL::climb_start()
         LOGGER_WRITE_ERROR(LogErrorSubsystem::NAVIGATION, LogErrorCode::FAILED_TO_SET_DESTINATION);
         copter.set_mode(Mode::Number::LAND, ModeReason::TERRAIN_FAILSAFE);
         return;
-
+    }
     // hold current yaw during initial climb
     auto_yaw.set_mode(AutoYaw::Mode::HOLD);
 }
