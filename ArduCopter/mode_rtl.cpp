@@ -14,9 +14,11 @@ bool ModeRTL::init(bool ignore_checks)
 {
     AP::ahrs().set_posvelyaw_source_set(0);
 
-    if (!ignore_checks) {
-        return true;
-    }
+   if (!copter.position_ok() ||!ahrs.home_is_set() ) {
+                set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
+                copter.cr= true;
+                gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
+   }
 
     // initialise waypoint and spline controller
     wp_nav->wp_and_spline_init(g.rtl_speed_cms);
@@ -64,18 +66,10 @@ ModeRTL::RTLAltType ModeRTL::get_alt_type() const
 // should be called at 100hz or more
 void ModeRTL::run(bool disarm_on_land)
 {
-    if (!motors->armed() || !copter.position_ok()) {
+    if (!motors->armed()) {
         return;
     }
-    
-    if (!copter.position_ok()) {
-        
-        set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
-        copter.cr= true;
-        gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
-        copter.compass_rtl_run();
-    }
-
+     
     // check if we need to move to next state
     if (_state_complete) {
         switch (_state) {
@@ -84,7 +78,13 @@ void ModeRTL::run(bool disarm_on_land)
             climb_start();
             break;
         case SubMode::INITIAL_CLIMB:
-            return_start();
+        //if we loose GPS during climb- Compass RTL run
+            if (!copter.position_ok()) {
+                set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
+                copter.cr= true;
+                gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
+             }else{
+                return_start();}
             break;
         case SubMode::RETURN_HOME:
             loiterathome_start();
@@ -145,9 +145,6 @@ void ModeRTL::climb_start()
     if (!wp_nav->set_wp_destination_loc(rtl_path.climb_target) || !wp_nav->set_wp_destination_next_loc(rtl_path.return_target)) {
         // this should not happen because rtl_build_path will have checked terrain data was available
         AP::logger().Write_Error(LogErrorSubsystem::NAVIGATION, LogErrorCode::FAILED_TO_SET_DESTINATION);
-        gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
-        copter.set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::TERRAIN_FAILSAFE);        
-        copter.compass_rtl_run();
         return;
     }
 
