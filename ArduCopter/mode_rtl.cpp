@@ -14,7 +14,7 @@ bool ModeRTL::init(bool ignore_checks)
 {
     AP::ahrs().set_posvelyaw_source_set(0);
 
-   if (!copter.position_ok() ||!ahrs.home_is_set() ) {
+   if (!copter.position_ok() ||!AP::ahrs().home_is_set() ) {
                 set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
                 copter.cr= true;
                 gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");
@@ -144,9 +144,10 @@ void ModeRTL::climb_start()
     // set the destination
     if (!wp_nav->set_wp_destination_loc(rtl_path.climb_target) || !wp_nav->set_wp_destination_next_loc(rtl_path.return_target)) {
         // this should not happen because rtl_build_path will have checked terrain data was available
-        AP::logger().Write_Error(LogErrorSubsystem::NAVIGATION, LogErrorCode::FAILED_TO_SET_DESTINATION);
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"RTL: unexpected error setting climb target");
+        LOGGER_WRITE_ERROR(LogErrorSubsystem::NAVIGATION, LogErrorCode::FAILED_TO_SET_DESTINATION);
+        copter.set_mode(Mode::Number::LAND, ModeReason::TERRAIN_FAILSAFE);
         return;
-    }
 
     // hold current yaw during initial climb
     auto_yaw.set_mode(AutoYaw::Mode::HOLD);
