@@ -817,22 +817,22 @@ void NavEKF3_core::correctEkfOriginHeight()
 
     // calculate the observation variance assuming EKF error relative to datum is independent of GPS observation error
     // when not using GPS as height source
-    ftype originHgtObsVar = sq(gpsHgtAccuracy) + P[9][9];
+ //   ftype originHgtObsVar = sq(gpsHgtAccuracy) + P[9][9];
 
     // calculate the correction gain
-    ftype gain = ekfOriginHgtVar / (ekfOriginHgtVar + originHgtObsVar);
+  //  ftype gain = ekfOriginHgtVar / (ekfOriginHgtVar + originHgtObsVar);
 
     // calculate the innovation
-    ftype innovation = - stateStruct.position.z - gpsDataDelayed.hgt;
+ //   ftype innovation = - stateStruct.position.z - gpsDataDelayed.hgt;
 
     // check the innovation variance ratio
-    ftype ratio = sq(innovation) / (ekfOriginHgtVar + originHgtObsVar);
+  //  ftype ratio = sq(innovation) / (ekfOriginHgtVar + originHgtObsVar);
 
     // correct the EKF origin and variance estimate if the innovation is less than 5-sigma
-    if (ratio < 25.0f && gpsAccuracyGood) {
-        ekfGpsRefHgt -= (double)(gain * innovation);
-        ekfOriginHgtVar -= MAX(gain * ekfOriginHgtVar , 0.0f);
-    }
+ //   if (ratio < 25.0f && gpsAccuracyGood) {
+ //       ekfGpsRefHgt -= (double)(gain * innovation);
+ //       ekfOriginHgtVar -= MAX(gain * ekfOriginHgtVar , 0.0f);
+ //   }
 }
 
 /********************************************************
