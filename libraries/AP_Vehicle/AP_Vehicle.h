@@ -172,17 +172,13 @@ public:
     // returns true if the vehicle has crashed
     virtual bool is_crashed() const;
 
-<<<<<<< HEAD
 #if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
     // Method to takeoff for use by external control
     virtual bool start_takeoff(const float alt) { return false; }
-=======
-//#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
->>>>>>> 2e7441402b (Master upd)
     // Method to control vehicle position for use by external control
     virtual bool set_target_location(const Location& target_loc) { return false; }
-//#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
-//#if AP_SCRIPTING_ENABLED
+#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+#if AP_SCRIPTING_ENABLED
     /*
       methods to control vehicle for use by scripting
     */

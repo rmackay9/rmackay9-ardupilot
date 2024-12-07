@@ -277,11 +277,6 @@ void Copter::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
 
 constexpr int8_t Copter::_failsafe_priorities[7];
 
-
-<<<<<<< HEAD
-=======
-//#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
->>>>>>> c72b632b17 (LB trouble&)
 #if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 #if MODE_GUIDED_ENABLED
 // set target location (for use by external control and scripting)
@@ -964,8 +959,6 @@ bool Copter::get_rate_ef_targets(Vector3f& rate_ef_targets) const
     return true;
 }
 
-<<<<<<< HEAD
-=======
 // Set during flight compass heading for non-GPS RTL
 void Copter::set_compass_rtl_heading()
 {
@@ -982,7 +975,6 @@ void Copter::set_compass_rtl_heading()
 }
 
 
->>>>>>> 63e924295d (Big Copters Var)
 /*
   constructor for main Copter class
  */

@@ -676,7 +676,6 @@ private:
     void get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
                              uint8_t &task_count,
                              uint32_t &log_bit) override;
-<<<<<<< HEAD
 #if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 #if MODE_GUIDED_ENABLED
     bool set_target_location(const Location& target_loc) override;
@@ -686,17 +685,6 @@ private:
 
 #if AP_SCRIPTING_ENABLED
 #if MODE_GUIDED_ENABLED
-=======
-//#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
-#if MODE_GUIDED_ENABLED == ENABLED
-    bool set_target_location(const Location& target_loc) override;
-#endif // MODE_GUIDED_ENABLED == ENABLED
-//#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
-
-//#if AP_SCRIPTING_ENABLED
-#if MODE_GUIDED_ENABLED == ENABLED
-    bool start_takeoff(float alt) override;
->>>>>>> 77042fed8a (LittleBro)
     bool get_target_location(Location& target_loc) override;
     bool update_target_location(const Location &old_loc, const Location &new_loc) override;
     bool set_target_pos_NED(const Vector3f& target_pos, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative, bool terrain_alt) override;
@@ -723,7 +711,7 @@ private:
     // lua scripts use this to retrieve EKF failsafe state
     // returns true if the EKF failsafe has triggered
     bool has_ekf_failsafed() const override;
-//#endif // AP_SCRIPTING_ENABLED
+#endif // AP_SCRIPTING_ENABLED
     bool is_landing() const override;
     bool is_taking_off() const override;
     void rc_loop();
