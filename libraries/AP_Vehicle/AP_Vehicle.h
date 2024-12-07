@@ -248,7 +248,6 @@ public:
     // returns true on success and control_value is set to a value in the range -1 to +1
     virtual bool get_control_output(AP_Vehicle::ControlOutput control_output, float &control_value) { return false; }
 
-<<<<<<< HEAD
     // Register a custom mode with given number and names, return a structure which the script can edit
     struct custom_mode_state {
         bool allow_entry;
@@ -256,9 +255,6 @@ public:
     virtual custom_mode_state* register_custom_mode(const uint8_t number, const char* full_name, const char* short_name) { return nullptr; }
 
 #endif // AP_SCRIPTING_ENABLED
-=======
-//#endif // AP_SCRIPTING_ENABLED
->>>>>>> 2e7441402b (Master upd)
 
     // returns true if vehicle is in the process of landing
     virtual bool is_landing() const { return false; }
