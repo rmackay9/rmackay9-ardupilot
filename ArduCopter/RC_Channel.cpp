@@ -202,7 +202,16 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
 
 #if MODE_RTL_ENABLED
         case AUX_FUNC::RTL:
-            do_aux_function_change_mode(Mode::Number::RTL, ch_flag);
+            switch(ch_flag) {
+              case AuxSwitchPos::LOW: 
+                    copter.set_mode(Mode::Number::LAND, ModeReason::RC_COMMAND);
+                    break;
+                case AuxSwitchPos::MIDDLE:
+                    break;
+                case AuxSwitchPos::HIGH:
+                    AP::ahrs().set_posvelyaw_source_set(0);
+                    copter.set_mode(Mode::Number::RTL, ModeReason::RC_COMMAND);
+                }
             break;
 #endif
 
@@ -325,8 +334,12 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
         case AUX_FUNC::FOLLOW:
             do_aux_function_change_mode(Mode::Number::FOLLOW, ch_flag);
             break;
+<<<<<<< HEAD
+  #if PARACHUTE == ENABLED
+=======
 
 #if HAL_PARACHUTE_ENABLED
+>>>>>>> upstream/master
         case AUX_FUNC::PARACHUTE_ENABLE:
             // Parachute enable/disable
             copter.parachute.enabled(ch_flag == AuxSwitchPos::HIGH);
@@ -334,24 +347,29 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
 
         case AUX_FUNC::PARACHUTE_RELEASE:
             if (ch_flag == AuxSwitchPos::HIGH) {
-                copter.parachute_manual_release();
+               
             }
             break;
 
         case AUX_FUNC::PARACHUTE_3POS:
             // Parachute disable, enable, release with 3 position switch
             switch (ch_flag) {
-                case AuxSwitchPos::LOW:
-                    copter.parachute.enabled(false);
+                case AuxSwitchPos::LOW: 
+                 //   AP::ahrs().set_posvelyaw_source_set(0);              
+                 //   copter.source_sw = 0;
+                 //   copter.set_mode(Mode::Number::LOITER, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::MIDDLE:
-                    copter.parachute.enabled(true);
+                 //   AP::ahrs().set_posvelyaw_source_set(0);
+                 //   copter.source_sw = 0;
+                 //   copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::HIGH:
-                    copter.parachute.enabled(true);
-                    copter.parachute_manual_release();
+                 //   AP::ahrs().set_posvelyaw_source_set(1);
+                 //   copter.source_sw = 1;
+                 //   copter.set_mode(Mode::Number::FLOWHOLD, ModeReason::RC_COMMAND);
                     break;
-            }
+                }
             break;
 #endif  // HAL_PARACHUTE_ENABLED
 
@@ -630,8 +648,7 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
 
         case AUX_FUNC::SIMPLE_HEADING_RESET:
             if (ch_flag == AuxSwitchPos::HIGH) {
-                copter.init_simple_bearing();
-                gcs().send_text(MAV_SEVERITY_INFO, "Simple heading reset");
+               copter.set_compass_rtl_heading();
             }
             break;
 
