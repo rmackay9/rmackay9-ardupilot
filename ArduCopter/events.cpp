@@ -542,7 +542,7 @@ void Copter::rf_amp_power()
             gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
         }else{
            copter.relay.on(0);
-           gcs().send_text(MAV_SEVERITY_INFO, "RF  OFF");
+           gcs().send_text(MAV_SEVERITY_INFO, "RF AMP OFF");
         }
     }
     }

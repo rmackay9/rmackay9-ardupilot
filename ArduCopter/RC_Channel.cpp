@@ -171,6 +171,7 @@ void RC_Channel_Copter::do_aux_function_change_mode(const Mode::Number mode,
 // do_aux_function - implement the function invoked by auxiliary switches
 bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitchPos ch_flag)
 {
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
     switch(ch_option) {
         case AUX_FUNC::FLIP:
             // flip if switch is on, positive throttle and we're actually flying
@@ -347,8 +348,6 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
             break;
 
         case AUX_FUNC::PARACHUTE_3POS:
-            
-            AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
             switch (ch_flag) {
                 case AuxSwitchPos::LOW: 
                     source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
