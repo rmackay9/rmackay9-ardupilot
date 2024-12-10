@@ -342,7 +342,7 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
 
         case AUX_FUNC::PARACHUTE_RELEASE:
             if (ch_flag == AuxSwitchPos::HIGH) {
-               
+                copter.parachute_manual_release();
             }
             break;
 
@@ -367,6 +367,7 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
                     break;
                 }
             break;
+    
 #endif  // HAL_PARACHUTE_ENABLED
 
         case AUX_FUNC::ATTCON_FEEDFWD:
