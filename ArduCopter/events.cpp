@@ -489,12 +489,15 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             set_mode_land_with_pause(reason);
             break;
         case FailsafeAction::RTL:
+            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
             set_mode_RTL_or_land_with_pause(reason);
             break;
         case FailsafeAction::SMARTRTL:
+            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
             set_mode_SmartRTL_or_RTL(reason);
             break;
         case FailsafeAction::SMARTRTL_LAND:
+            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
             set_mode_SmartRTL_or_land_with_pause(reason);
             break;
         case FailsafeAction::TERMINATE: {
@@ -506,6 +509,7 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             break;
         }
         case FailsafeAction::AUTO_DO_LAND_START:
+            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
             set_mode_auto_do_land_start_or_RTL(reason);
             break;
         case FailsafeAction::BRAKE_LAND:
@@ -577,26 +581,27 @@ void Copter::compass_rtl_run() {
     }
 
     if (!copter.failsafe.radio) {
-        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,45);
+        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,40);
     }
 // Compass RTL when Radiofailsafe   
     if (copter.failsafe.radio && !flte) {
     if (baro_alt <= g.rtl_altitude){
-        set_target_angle_and_climbrate(0,-14,rtl_heading,4,true,45);
+        set_target_angle_and_climbrate(0,-14,rtl_heading,4,true,40);
     }else{
-        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,45);         
+        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,40);         
     }
     }
 
     if (copter.failsafe.radio && flte) {
     if (baro_alt <= g.rtl_altitude){
-        set_target_angle_and_climbrate(0,0,rtl_heading,4,true,45);
+        set_target_angle_and_climbrate(0,0,rtl_heading,4,true,40);
     }else{
-        set_target_angle_and_climbrate(0,0,rtl_heading,0,true,45);         
+        set_target_angle_and_climbrate(0,0,rtl_heading,0,true,40);         
     }
     }
     
     if (ahrs.home_is_set() && position_ok()) {
+        AP::ahrs().set_posvelyaw_source_set((uint8_t)0); 
         set_mode(Mode::Number::RTL, ModeReason::RADIO_FAILSAFE);
     }
 }

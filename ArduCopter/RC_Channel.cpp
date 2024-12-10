@@ -334,12 +334,8 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
         case AUX_FUNC::FOLLOW:
             do_aux_function_change_mode(Mode::Number::FOLLOW, ch_flag);
             break;
-<<<<<<< HEAD
-  #if PARACHUTE == ENABLED
-=======
 
 #if HAL_PARACHUTE_ENABLED
->>>>>>> upstream/master
         case AUX_FUNC::PARACHUTE_ENABLE:
             // Parachute enable/disable
             copter.parachute.enabled(ch_flag == AuxSwitchPos::HIGH);
@@ -1124,19 +1120,19 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
             // Parachute disable, enable, release with 3 position switch
             switch (ch_flag) {
                 case AuxSwitchPos::LOW: 
-                 //   AP::ahrs().set_posvelyaw_source_set(0);              
-                 //   copter.source_sw = 0;
-                 //   copter.set_mode(Mode::Number::LOITER, ModeReason::RC_COMMAND);
+                   AP::ahrs().set_posvelyaw_source_set(0);              
+                   copter.source_sw = 0;
+                    copter.set_mode(Mode::Number::LOITER, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::MIDDLE:
-                 //   AP::ahrs().set_posvelyaw_source_set(0);
-                 //   copter.source_sw = 0;
-                 //   copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
+                    AP::ahrs().set_posvelyaw_source_set(0);
+                    copter.source_sw = 0;
+                    copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::HIGH:
-                 //   AP::ahrs().set_posvelyaw_source_set(1);
-                 //   copter.source_sw = 1;
-                 //   copter.set_mode(Mode::Number::FLOWHOLD, ModeReason::RC_COMMAND);
+                    AP::ahrs().set_posvelyaw_source_set(1);
+                    copter.source_sw = 1;
+                    copter.set_mode(Mode::Number::FLOWHOLD, ModeReason::RC_COMMAND);
                     break;
                 }
             break;
