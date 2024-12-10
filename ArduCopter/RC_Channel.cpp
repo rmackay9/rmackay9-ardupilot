@@ -347,20 +347,21 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
             break;
 
         case AUX_FUNC::PARACHUTE_3POS:
-            // Parachute disable, enable, release with 3 position switch
+            
+            AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
             switch (ch_flag) {
                 case AuxSwitchPos::LOW: 
-                    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
                     AP::ahrs().set_posvelyaw_source_set(source_setted); 
                     copter.set_mode(Mode::Number::LOITER, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::MIDDLE:
-                    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
                     AP::ahrs().set_posvelyaw_source_set(source_setted); 
                     copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::HIGH:
-                    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
                     AP::ahrs().set_posvelyaw_source_set(source_setted); 
                     copter.set_mode(Mode::Number::FLOWHOLD, ModeReason::RC_COMMAND);
                     break;
