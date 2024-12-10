@@ -12,7 +12,10 @@
 // rtl_init - initialise rtl controller
 bool ModeRTL::init(bool ignore_checks)
 {
-    //AP::ahrs().set_posvelyaw_source_set(0);
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+    AP::ahrs().set_posvelyaw_source_set(source_setted);
+    
    if (!copter.position_ok()) {
         set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
         copter.cr= true;

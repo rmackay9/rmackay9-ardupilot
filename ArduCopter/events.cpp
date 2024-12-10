@@ -488,16 +488,13 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
         case FailsafeAction::LAND:
             set_mode_land_with_pause(reason);
             break;
-        case FailsafeAction::RTL:
-            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
+        case FailsafeAction::RTL: 
             set_mode_RTL_or_land_with_pause(reason);
             break;
         case FailsafeAction::SMARTRTL:
-            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
             set_mode_SmartRTL_or_RTL(reason);
             break;
         case FailsafeAction::SMARTRTL_LAND:
-            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
             set_mode_SmartRTL_or_land_with_pause(reason);
             break;
         case FailsafeAction::TERMINATE: {
@@ -509,7 +506,6 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             break;
         }
         case FailsafeAction::AUTO_DO_LAND_START:
-            AP::ahrs().set_posvelyaw_source_set(uint8_t 0); 
             set_mode_auto_do_land_start_or_RTL(reason);
             break;
         case FailsafeAction::BRAKE_LAND:
@@ -553,7 +549,8 @@ void Copter::rf_amp_power()
 
     //Switch sourse set at "low speed alt" to use optical flow when gps glitching and OpFlow Enabled
     if (motors->armed() && ap.gps_glitching && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
-        AP::ahrs().set_posvelyaw_source_set(1);
+        AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+        AP::ahrs().set_posvelyaw_source_set(source_setted); 
         gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
     }
 
@@ -601,7 +598,6 @@ void Copter::compass_rtl_run() {
     }
     
     if (ahrs.home_is_set() && position_ok()) {
-        AP::ahrs().set_posvelyaw_source_set((uint8_t)0); 
         set_mode(Mode::Number::RTL, ModeReason::RADIO_FAILSAFE);
     }
 }
