@@ -24,6 +24,7 @@
 --     ESRC_FLOW_QUAL holds the optical flow quality threshold (about 50 is a good choice)
 --     ESRC_FLOW_THRESH holds the threshold for optical flow innovations (about 0.15 is a good choice)
 --     ESRC_RNGFND_MAX holds the threshold (in meters) for rangefinder altitude
+--     ESRC_FLOW_ACTION may be set to force the vehicle to 1:Land or 2:Brake if the source switches automatically to OpticalFlow
 --
 --     If ExternalNav's quality is above ESRC_EXTN_QUAL and innovations are below ESRC_EXTN_THRESH, ExternalNav is used
 --     Optical flow is used if the above is not true and:
@@ -34,6 +35,11 @@
 local PARAM_TABLE_KEY = 81
 PARAM_TABLE_PREFIX = "ESRC_"
 local MAV_SEVERITY = {EMERGENCY=0, ALERT=1, CRITICAL=2, ERROR=3, WARNING=4, NOTICE=5, INFO=6, DEBUG=7}
+local AUTO_SWITCH_FLOW_ACTION = {NONE=0, LAND=1, BRAKE=2}
+local COPTER_MODES = {STABILIZE=0, ACRO=1, ALT_HOLD=2, AUTO=3, GUIDED=4, LOITER=5, RTL=6, CIRCLE=7,
+                      LAND=9, DRIFT=11, SPORT=13, FLIP=14, AUTOTUNE=15, POSHOLD=16, BRAKE=17, THROW=18,
+                      AVOID_ADSB=19, GUIDED_NOGPS=20, SMART_RTL=21, FLOWHOLD=22, FOLLOW=23, ZIGZAG=24,
+                      SYSTEMID=25, AUTOROTATE=26, AUTO_RTL=27, TURTLE=28}
 
 -- bind a parameter to a variable
 function bind_param(name)
@@ -49,7 +55,7 @@ local function bind_add_param(name, idx, default_value)
 end
 
 -- add param table
-assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 5), 'ahrs-source-extnav-optflow: could not add param table')
+assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 6), 'ahrs-source-extnav-optflow: could not add param table')
 
 --[[
   // @Param: ESRC_EXTN_THRESH
@@ -98,6 +104,15 @@ local ESRC_FLOW_QUAL = bind_add_param('FLOW_QUAL', 4, 50)
   // @User: Standard
 --]]
 local ESRC_RNGFND_MAX = bind_add_param('RNGFND_MAX', 5, 7)
+
+--[[
+  // @Param: ESRC_FLOW_ACTION
+  // @DisplayName: EKF Source OpticalFlow Action
+  // @Description: Action taken when source is automatically changed to optical flow
+  // @Values: 0:None, 1:Land, 2:Brake
+  // @User: Standard
+--]]
+local ESRC_FLOW_ACTION = bind_add_param('FLOW_ACTION', 6, 0)
 
 local last_rc_ekfsrc_pos = 0        -- last known position of EKF source select switch
 local last_rc_autosrc_pos = 0       -- last known position of automatic source select switch
@@ -255,6 +270,16 @@ function update()
     ahrs:set_posvelyaw_source_set(source_prev) -- switch to pilot's selected source
     gcs:send_text(MAV_SEVERITY.INFO, "Auto switched to Source " .. string.format("%d", source_prev+1))
     play_source_tune(source_prev)
+
+    -- take action if source has automatically switched to optical flow
+    if source_prev == 1 then
+      local action = ESRC_FLOW_ACTION:get()
+      if action == AUTO_SWITCH_FLOW_ACTION.LAND then
+        vehicle:set_mode(COPTER_MODES.LAND)
+      elseif action == AUTO_SWITCH_FLOW_ACTION.BRAKE then
+        vehicle:set_mode(COPTER_MODES.BRAKE)
+      end
+    end
   end
 
   return update, 100

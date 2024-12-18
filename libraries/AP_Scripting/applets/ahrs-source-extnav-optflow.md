@@ -10,6 +10,7 @@ This script is intended to help vehicles automatically switch between ExternalNa
 -- ESRC_FLOW_THRESH : OpticalFlow innovation threshold
 -- ESRC_FLOW_QUAL : OpticalFlow quality threshold
 -- ESRC_RNGFND_MAX : Rangefinder altitude threshold (in meters)
+-- ESRC_FLOW_ACTION : Action to take (if any) when source automatically falls back to optical flow
 
 ## How to use
 
