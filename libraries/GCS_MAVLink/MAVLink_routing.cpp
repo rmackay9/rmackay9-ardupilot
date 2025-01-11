@@ -117,7 +117,7 @@ bool MAVLink_routing::check_and_forward(GCS_MAVLINK &in_link, const mavlink_mess
     learn_route(in_link, msg);
 
     if (msg.msgid == MAVLINK_MSG_ID_RADIO ||
-        msg.msgid == MAVLINK_MSG_ID_RADIO_STATUS) {
+        msg.msgid == MAVLINK_MSG_ID_RADIO_STATUS || MAVLINK_MSG_ID_GLOBAL_VISION_POSITION_ESTIMATE) {
         // don't forward RADIO packets
         return true;
     }
