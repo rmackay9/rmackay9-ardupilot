@@ -153,7 +153,7 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             return &mode_turtle;
 #endif
 
-        case Mode::Number::REVERSESTAB:
+        case Mode::Number::REVERSE_STAB:
             return &mode_reversestab;
 
         default:

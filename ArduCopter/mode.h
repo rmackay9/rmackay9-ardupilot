@@ -8,8 +8,6 @@
 #include "afs_copter.h"
 #endif
 
-#include "mode_reversestab.h"
-
 class Parameters;
 class ParametersG2;
 
@@ -102,6 +100,7 @@ public:
         AUTOROTATE =   26,  // Autonomous autorotation
         AUTO_RTL =     27,  // Auto RTL, this is not a true mode, AUTO will report as this mode if entered to perform a DO_LAND_START Landing sequence
         TURTLE =       28,  // Flip over after crash
+        REVERSE_STAB = 29,  // Reverse Stabilize mode
 
         // Mode number 30 reserved for "offboard" for external/lua control.
 
@@ -2077,5 +2076,3 @@ protected:
 private:
 
 };
-
-ModeReverseStab mode_reversestab;
