@@ -9,7 +9,11 @@
 // loiter_init - initialise loiter controller
 bool ModeLoiter::init(bool ignore_checks)
 {
-    if (!copter.failsafe.radio) {
+   // change EKF Source set
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::TERTIARY;
+    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+
+    if (!copter.failsafe.radio && (AP::ahrs().get_posvelyaw_source_set() == 2)){
         float target_roll, target_pitch;
         // apply SIMPLE mode transform to pilot inputs
         update_simple_mode();

@@ -15,7 +15,7 @@ bool ModeRTL::init(bool ignore_checks)
     AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
     AP::ahrs().set_posvelyaw_source_set(source_setted); 
     
-   if (!copter.position_ok()) {
+   if (!copter.position_ok() || (AP::ahrs().get_posvelyaw_source_set() != 0)) {
         set_mode(Mode::Number::GUIDED_NOGPS, ModeReason::GPS_GLITCH);
         copter.cr= true;
         gcs().send_text(MAV_SEVERITY_WARNING,"Compass RTL, no GPS");

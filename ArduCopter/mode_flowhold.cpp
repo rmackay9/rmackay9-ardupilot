@@ -87,6 +87,15 @@ bool ModeFlowHold::init(bool ignore_checks)
     if (!copter.optflow.enabled() || !copter.optflow.healthy()) {
         return false;
     }
+    
+    // change EKF Source set
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+  
+     if (AP::ahrs().get_posvelyaw_source_set() != 1) {
+     return false;
+     }
+ 
 
     // set vertical speed and acceleration limits
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);

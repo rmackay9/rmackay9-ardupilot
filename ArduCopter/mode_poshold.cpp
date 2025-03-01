@@ -27,6 +27,14 @@
 // poshold_init - initialise PosHold controller
 bool ModePosHold::init(bool ignore_checks)
 {
+     // change EKF Source set
+     AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+     AP::ahrs().set_posvelyaw_source_set(source_setted); 
+ 
+    if (AP::ahrs().get_posvelyaw_source_set() != 0) {
+    return false;
+    }
+
     // set vertical speed and acceleration limits
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
     pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);

@@ -9,6 +9,10 @@
 bool ModeAltHold::init(bool ignore_checks)
 {
 
+    // change EKF Source set
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+ 
     // initialise the vertical position controller
     if (!pos_control->is_active_z()) {
         pos_control->init_z_controller();

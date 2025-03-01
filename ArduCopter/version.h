@@ -6,14 +6,14 @@
 
 #include "ap_version.h"
 
-#define THISFIRMWARE "Little Bro V4.7.0"
+#define THISFIRMWARE "Little Bro V4.5.7"
 
 // the following line is parsed by the autotest scripts
-#define FIRMWARE_VERSION 4,7,0,FIRMWARE_VERSION_TYPE_DEV
+#define FIRMWARE_VERSION 4,5,7,FIRMWARE_VERSION_TYPE_DEV
 
 #define FW_MAJOR 4
-#define FW_MINOR 7
-#define FW_PATCH 0
+#define FW_MINOR 5
+#define FW_PATCH 7
 #define FW_TYPE FIRMWARE_VERSION_TYPE_DEV
 
 #include <AP_Common/AP_FWVersionDefine.h>

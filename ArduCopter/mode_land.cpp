@@ -3,6 +3,10 @@
 // land_init - initialise land controller
 bool ModeLand::init(bool ignore_checks)
 {
+    // change EKF Source set
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+ 
     // check if we have GPS and decide which LAND we're going to do
     control_position = copter.position_ok();
 
