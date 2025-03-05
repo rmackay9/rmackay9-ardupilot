@@ -1,7 +1,7 @@
 #pragma once
 #include "AP_RangeFinder_config.h"
 
-#if AP_RANGEFINDER_NRA24_CAN_ENABLED
+#if AP_RANGEFINDER_NRA24_CAN_ENABLED || AP_RANGEFINDER_HEXSOONRADAR_ENABLED
 #include "AP_RangeFinder_Backend_CAN.h"
 
 class AP_RangeFinder_NRA24_CAN : public AP_RangeFinder_Backend_CAN {

@@ -579,8 +579,13 @@ void RangeFinder::detect_instance(uint8_t instance, uint8_t& serial_instance)
         _add_backend(NEW_NOTHROW AP_RangeFinder_TOFSenseP_CAN(state[instance], params[instance]), instance);
         break;
 #endif
-#if AP_RANGEFINDER_NRA24_CAN_ENABLED
+#if AP_RANGEFINDER_NRA24_CAN_ENABLED || AP_RANGEFINDER_HEXSOONRADAR_ENABLED
+  #if AP_RANGEFINDER_NRA24_CAN_ENABLED
     case Type::NRA24_CAN:
+  #endif
+  #if AP_RANGEFINDER_HEXSOONRADAR_ENABLED
+    case Type::HEXSOON_RADAR:
+  #endif
         _add_backend(NEW_NOTHROW AP_RangeFinder_NRA24_CAN(state[instance], params[instance]), instance);
         break;
 #endif
