@@ -6,7 +6,7 @@
 
 #include "ap_version.h"
 
-#define THISFIRMWARE "Little Bro V4.5.7"
+#define THISFIRMWARE "Battle Drone V4.5.8"
 
 // the following line is parsed by the autotest scripts
 #define FIRMWARE_VERSION 4,5,7,FIRMWARE_VERSION_TYPE_DEV

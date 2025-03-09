@@ -349,13 +349,13 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
         case AUX_FUNC::PARACHUTE_3POS:
             switch (ch_flag) {
                 case AuxSwitchPos::LOW: 
-                    copter.set_mode(Mode::Number::LOITER, ModeReason::RC_COMMAND);
+                    copter.set_mode(Mode::Number::LAND, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::MIDDLE:
-                    copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
+                    
                     break;
                 case AuxSwitchPos::HIGH:
-                    copter.set_mode(Mode::Number::FLOWHOLD, ModeReason::RC_COMMAND);
+                    copter.set_mode(Mode::Number::RTL, ModeReason::RC_COMMAND);
                     break;
                 }
             break;

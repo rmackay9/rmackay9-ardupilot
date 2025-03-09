@@ -214,7 +214,7 @@ void Copter::failsafe_ekf_off_event(void)
     failsafe.ekf = false;
     if (AP_Notify::flags.failsafe_ekf) {
         AP_Notify::flags.failsafe_ekf = false;
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "EKF OK");
+        gcs().send_text(MAV_SEVERITY_CRITICAL, "EKF Good");
     }
     LOGGER_WRITE_ERROR(LogErrorSubsystem::FAILSAFE_EKFINAV, LogErrorCode::FAILSAFE_RESOLVED);
 }
