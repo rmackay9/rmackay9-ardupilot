@@ -1,15 +1,12 @@
 #include "Copter.h"
 
-#if MODE_SPORT_ENABLED
-
 /*
- * Init and run calls for althold, flight mode
+ * Init and run calls for sport flight mode for Chupakabra
  */
 
-// althold_init - initialise althold controller
+// sport_init - initialise sport controller
 bool ModeSport::init(bool ignore_checks)
 {
-
     // change EKF Source set
     AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
     AP::ahrs().set_posvelyaw_source_set(source_setted); 
@@ -23,10 +20,11 @@ bool ModeSport::init(bool ignore_checks)
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
     pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
+    SRV_Channels::set_output_pwm(SRV_Channel::k_motor5, 1000);
     return true;
 }
 
-// sport-althold_run - runs the althold controller
+// althold_run - runs the althold controller
 // should be called at 100hz or more
 void ModeSport::run()
 {
@@ -81,9 +79,6 @@ void ModeSport::run()
     case AltHoldModeState::Flying:
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
-        // get avoidance adjusted climb rate
-        target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
-
 #if AP_RANGEFINDER_ENABLED
         // update the vertical offset based on the surface measurement
         copter.surface_tracking.update_surface_offset();
@@ -93,6 +88,18 @@ void ModeSport::run()
         pos_control->set_pos_target_z_from_climb_rate_cm(target_climb_rate);
         break;
     }
+
+    // limit front Pitch to -10 deg if max Pitch 30 deg and throttle high
+    if (target_pitch < -100){
+        // control Motors 5,6 over pitch stick and Throttle
+        //uint16_t kthrtl = constrain_uint16((motors->get_throttle_out() - 0.2) *10, 0.01, 1.0);
+
+        uint16_t chupamotors = -target_pitch / copter.aparm.angle_max * 800 + 1000;
+        target_pitch *= 0.33;
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor5, chupamotors);
+    }else{
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor5, 1000);
+    }   
 
     // call attitude controller
     attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, target_yaw_rate);
