@@ -3,63 +3,39 @@
 #if MODE_SPORT_ENABLED
 
 /*
- * Init and run calls for sport flight mode
+ * Init and run calls for althold, flight mode
  */
 
-// sport_init - initialise sport controller
+// althold_init - initialise althold controller
 bool ModeSport::init(bool ignore_checks)
 {
-    // set vertical speed and acceleration limits
-    pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
-    pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
+    // change EKF Source set
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+ 
     // initialise the vertical position controller
     if (!pos_control->is_active_z()) {
         pos_control->init_z_controller();
     }
 
+    // set vertical speed and acceleration limits
+    pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
+    pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
+
     return true;
 }
 
-// sport_run - runs the sport controller
+// sport-althold_run - runs the althold controller
 // should be called at 100hz or more
 void ModeSport::run()
 {
     // set vertical speed and acceleration limits
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
-    // apply SIMPLE mode transform
-    update_simple_mode();
-
-    // get pilot's desired roll and pitch rates
-
-    // calculate rate requests
-    float target_roll_rate = channel_roll->get_control_in() * g2.command_model_acro_rp.get_rate() * 100.0 / ROLL_PITCH_YAW_INPUT_MAX;
-    float target_pitch_rate = channel_pitch->get_control_in() * g2.command_model_acro_rp.get_rate() * 100.0 / ROLL_PITCH_YAW_INPUT_MAX;
-
-    // get attitude targets
-    const Vector3f att_target = attitude_control->get_att_target_euler_cd();
-
-    // Calculate trainer mode earth frame rate command for roll
-    int32_t roll_angle = wrap_180_cd(att_target.x);
-    target_roll_rate -= constrain_int32(roll_angle, -ACRO_LEVEL_MAX_ANGLE, ACRO_LEVEL_MAX_ANGLE) * g.acro_balance_roll;
-
-    // Calculate trainer mode earth frame rate command for pitch
-    int32_t pitch_angle = wrap_180_cd(att_target.y);
-    target_pitch_rate -= constrain_int32(pitch_angle, -ACRO_LEVEL_MAX_ANGLE, ACRO_LEVEL_MAX_ANGLE) * g.acro_balance_pitch;
-
-    const float angle_max = copter.aparm.angle_max;
-    if (roll_angle > angle_max){
-        target_roll_rate +=  sqrt_controller(angle_max - roll_angle, g2.command_model_acro_rp.get_rate() * 100.0 / ACRO_LEVEL_MAX_OVERSHOOT, attitude_control->get_accel_roll_max_cdss(), G_Dt);
-    }else if (roll_angle < -angle_max) {
-        target_roll_rate +=  sqrt_controller(-angle_max - roll_angle, g2.command_model_acro_rp.get_rate() * 100.0 / ACRO_LEVEL_MAX_OVERSHOOT, attitude_control->get_accel_roll_max_cdss(), G_Dt);
-    }
-
-    if (pitch_angle > angle_max){
-        target_pitch_rate +=  sqrt_controller(angle_max - pitch_angle, g2.command_model_acro_rp.get_rate() * 100.0 / ACRO_LEVEL_MAX_OVERSHOOT, attitude_control->get_accel_pitch_max_cdss(), G_Dt);
-    }else if (pitch_angle < -angle_max) {
-        target_pitch_rate +=  sqrt_controller(-angle_max - pitch_angle, g2.command_model_acro_rp.get_rate() * 100.0 / ACRO_LEVEL_MAX_OVERSHOOT, attitude_control->get_accel_pitch_max_cdss(), G_Dt);
-    }
+    // get pilot desired lean angles
+    float target_roll, target_pitch;
+    get_pilot_desired_lean_angles(target_roll, target_pitch, copter.aparm.angle_max, attitude_control->get_althold_lean_angle_max_cd());
 
     // get pilot's desired yaw rate
     float target_yaw_rate = get_pilot_desired_yaw_rate();
@@ -68,11 +44,11 @@ void ModeSport::run()
     float target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->get_control_in());
     target_climb_rate = constrain_float(target_climb_rate, -get_pilot_speed_dn(), g.pilot_speed_up);
 
-    // Sport State Machine Determination
-    AltHoldModeState sport_state = get_alt_hold_state(target_climb_rate);
+    // Alt Hold State Machine Determination
+    AltHoldModeState althold_state = get_alt_hold_state(target_climb_rate);
 
-    // State Machine
-    switch (sport_state) {
+    // Alt Hold State Machine
+    switch (althold_state) {
 
     case AltHoldModeState::MotorStopped:
         attitude_control->reset_rate_controller_I_terms();
@@ -119,10 +95,8 @@ void ModeSport::run()
     }
 
     // call attitude controller
-    attitude_control->input_euler_rate_roll_pitch_yaw(target_roll_rate, target_pitch_rate, target_yaw_rate);
+    attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, target_yaw_rate);
 
     // run the vertical position controller and set output throttle
     pos_control->update_z_controller();
 }
-
-#endif

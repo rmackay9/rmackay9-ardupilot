@@ -1609,7 +1609,7 @@ private:
 
 class ModeSport : public Mode {
 
-public:
+    public:
     // inherit constructor
     using Mode::Mode;
     Number mode_number() const override { return Number::SPORT; }
@@ -1624,6 +1624,8 @@ public:
     bool has_user_takeoff(bool must_navigate) const override {
         return !must_navigate;
     }
+    bool allows_autotune() const override { return true; }
+    bool allows_flip() const override { return true; }
 
 protected:
 
