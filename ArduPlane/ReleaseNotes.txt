@@ -24,6 +24,13 @@ Changes from 4.6.0-beta4
 3) Plane specific fixes and enhancements
 
 - Tiltrotor motor check fixed used in throttle control handover from VTOL to forward flight
+- improved QAssist and VTOL mode recovery from bad attitudes
+- fixed rudder output in VTOL modes
+- added fix for indecision in the roll controller close to inverted
+- ensure tiltrotors use consistent fixed wing and VTOL rates
+- clear inverted control flag on Q-mode entry
+- auto-deploy landing gear on all fixed wing landings when enabled
+- prevent learning bad ARSP_RATIO values when not flying
 
 4) Parameter description improvements
 
