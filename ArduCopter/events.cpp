@@ -531,10 +531,10 @@ void Copter::rf_amp_power()
 
     if(g.rf_amp_switch){
     // switching RF copter RC amplifier in dependence of hight and distance to home
-    if (home_distance() < 1500){
+    if (home_distance() < 150000){
         copter.ampstate = false;
     }
-    if (home_distance() >= 2000){
+    if (home_distance() >= 200000){
        copter.ampstate = true;
     }
 
@@ -548,13 +548,6 @@ void Copter::rf_amp_power()
            gcs().send_text(MAV_SEVERITY_INFO, "RF AMP OFF");
         }
     }
-    }
-
-    //Switch sourse set at "low speed alt" to use optical flow when gps glitching and OpFlow Enabled
-    if (motors->armed() && ap.gps_glitching && (baro_alt <= 500) && optflow.healthy()) {
-        AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
-        AP::ahrs().set_posvelyaw_source_set(source_setted); 
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
     }
 
     if(!copter.failsafe.radio) {
@@ -585,10 +578,10 @@ void Copter::compass_rtl_run() {
     }
 // Compass RTL when Radiofailsafe   
     if (copter.failsafe.radio && !flte) {
-    if (baro_alt <= g.rtl_altitude){
+    if (baro_alt < g.rtl_altitude + 500){
         set_target_angle_and_climbrate(0,0,rtl_heading,4,true,40);
     }else{
-        set_target_angle_and_climbrate(0,-24,rtl_heading,0,true,40);         
+        set_target_angle_and_climbrate(0,-24,rtl_heading,0,true,40);
     }
     }
 
@@ -596,7 +589,7 @@ void Copter::compass_rtl_run() {
     if (baro_alt <= g.rtl_altitude){
         set_target_angle_and_climbrate(0,0,rtl_heading,4,true,40);
     }else{
-        set_target_angle_and_climbrate(0,0,rtl_heading,0,true,40);         
+        set_target_angle_and_climbrate(0,0,rtl_heading,0,true,40);
     }
     }
     
