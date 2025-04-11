@@ -481,6 +481,7 @@ bool Copter::should_disarm_on_failsafe() {
 
 void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
 
+    AP_NavEKF_Source::SourceSetSelection source_sett = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
     // Execute the specified desired_action
     switch (action) {
         case FailsafeAction::NONE:
@@ -489,6 +490,8 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             set_mode_land_with_pause(reason);
             break;
         case FailsafeAction::RTL: 
+            source_sett = AP_NavEKF_Source::SourceSetSelection::TERTIARY;
+            AP::ahrs().set_posvelyaw_source_set(source_sett); 
             set_mode_RTL_or_land_with_pause(reason);
             break;
         case FailsafeAction::SMARTRTL:
@@ -528,10 +531,10 @@ void Copter::rf_amp_power()
 
     if(g.rf_amp_switch){
     // switching RF copter RC amplifier in dependence of hight and distance to home
-    if (position_ok() && (home_distance() < 5000) && (baro_alt < 1500)){
+    if (home_distance() < 1500){
         copter.ampstate = false;
     }
-    if (baro_alt >= 2000){
+    if (home_distance() >= 2000){
        copter.ampstate = true;
     }
 
@@ -548,7 +551,7 @@ void Copter::rf_amp_power()
     }
 
     //Switch sourse set at "low speed alt" to use optical flow when gps glitching and OpFlow Enabled
-    if (motors->armed() && ap.gps_glitching && (baro_alt <= g2.land_alt_low) && optflow.healthy()) {
+    if (motors->armed() && ap.gps_glitching && (baro_alt <= 500) && optflow.healthy()) {
         AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
         AP::ahrs().set_posvelyaw_source_set(source_setted); 
         gcs().send_text(MAV_SEVERITY_CRITICAL, "Optic Stab Enabled"); 
@@ -578,14 +581,14 @@ void Copter::compass_rtl_run() {
     }
 
     if (!copter.failsafe.radio) {
-        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,40);
+        set_target_angle_and_climbrate(0,-24,rtl_heading,0,true,40);
     }
 // Compass RTL when Radiofailsafe   
     if (copter.failsafe.radio && !flte) {
     if (baro_alt <= g.rtl_altitude){
-        set_target_angle_and_climbrate(0,-14,rtl_heading,4,true,40);
+        set_target_angle_and_climbrate(0,0,rtl_heading,4,true,40);
     }else{
-        set_target_angle_and_climbrate(0,-14,rtl_heading,0,true,40);         
+        set_target_angle_and_climbrate(0,-24,rtl_heading,0,true,40);         
     }
     }
 

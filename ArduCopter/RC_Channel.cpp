@@ -171,6 +171,8 @@ void RC_Channel_Copter::do_aux_function_change_mode(const Mode::Number mode,
 // do_aux_function - implement the function invoked by auxiliary switches
 bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitchPos ch_flag)
 {
+    AP_NavEKF_Source::SourceSetSelection source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+
     switch(ch_option) {
         case AUX_FUNC::FLIP:
             // flip if switch is on, positive throttle and we're actually flying
@@ -203,12 +205,16 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
 #if MODE_RTL_ENABLED
         case AUX_FUNC::RTL:
             switch(ch_flag) {
-              case AuxSwitchPos::LOW: 
+              case AuxSwitchPos::LOW:
+                source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+                AP::ahrs().set_posvelyaw_source_set(source_setted); 
                     copter.set_mode(Mode::Number::LAND, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::MIDDLE:
                     break;
                 case AuxSwitchPos::HIGH:
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::TERTIARY;
+                    AP::ahrs().set_posvelyaw_source_set(source_setted); 
                     copter.set_mode(Mode::Number::RTL, ModeReason::RC_COMMAND);
                 }
             break;
@@ -346,16 +352,23 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
             }
             break;
 
-        case AUX_FUNC::PARACHUTE_3POS:
+       case AUX_FUNC::PARACHUTE_3POS:
+            
             switch (ch_flag) {
                 case AuxSwitchPos::LOW: 
-                    copter.set_mode(Mode::Number::LAND, ModeReason::RC_COMMAND);
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::TERTIARY;
+                    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+                    copter.set_mode(Mode::Number::LOITER, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::MIDDLE:
-                    
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+                    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+                    copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::HIGH:
-                    copter.set_mode(Mode::Number::RTL, ModeReason::RC_COMMAND);
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+                    AP::ahrs().set_posvelyaw_source_set(source_setted); 
+                    copter.set_mode(Mode::Number::FLOWHOLD, ModeReason::RC_COMMAND);
                     break;
                 }
             break;
