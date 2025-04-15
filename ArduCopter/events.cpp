@@ -490,7 +490,7 @@ void Copter::do_failsafe_action(FailsafeAction action, ModeReason reason){
             set_mode_land_with_pause(reason);
             break;
         case FailsafeAction::RTL: 
-            source_sett = AP_NavEKF_Source::SourceSetSelection::TERTIARY;
+            source_sett = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
             AP::ahrs().set_posvelyaw_source_set(source_sett); 
             set_mode_RTL_or_land_with_pause(reason);
             break;
