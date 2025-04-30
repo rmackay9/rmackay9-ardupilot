@@ -547,8 +547,8 @@ void Copter::rf_amp_power()
         
         if (g.rf_amp_control == 1) {
             if (ampswitch) {
-            relay.on(0);
-            gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
+                relay.on(0);
+                gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
             }else{
                 relay.off(0);
                 gcs().send_text(MAV_SEVERITY_INFO, "RF AMP OFF");
