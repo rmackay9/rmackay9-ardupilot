@@ -37,7 +37,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Description: RF_Amp power supply control- 0 off , 1-switching, 2- reverse switching
     // @Values: 0:non switch ,1:off/on control, 2: off/on inverted
     // @User: Standard
-    GSCALAR(rf_amp_switch, "RF_AMP_CONTROL", RF_AMP_CONTROL_DEFAULT),
+    GSCALAR(rf_amp_control, "RF_AMP_CONTROL", RF_AMP_CONTROL_DEFAULT),
 
     // @Param: BRD_RF_AMP_ON_DIST
     // @DisplayName: RF Amp power 

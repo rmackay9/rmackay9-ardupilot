@@ -381,7 +381,11 @@ public:
         k_param_vehicle = 257, // vehicle common block of parameters
         k_param_throw_altitude_min,
         k_param_throw_altitude_max,
-        k_param_rf_amp_switch,
+        k_param_rf_amp_control,
+        k_param_rf_amp_on_dist,
+        k_param_rf_amp_off_dist,
+        
+
 
 
         // the k_param_* space is 9-bits in size
