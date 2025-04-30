@@ -34,10 +34,24 @@ const AP_Param::Info Copter::var_info[] = {
 
     // @Param: RF_AMP_SWITCH
     // @DisplayName: RF Amp power 
-    // @Description: RF_Amp power supply - 0 off (always ON), 1- supply of at home, on at 50 m distance and 15 m height
-    // @Values: 0:Always on,1:off/on
+    // @Description: RF_Amp power supply control- 0 off , 1- supply of at home, on at 50 m distance and 15 m height
+    // @Values: 0:non switch ,1:off/on control, 2: off/on inverted
     // @User: Standard
     GSCALAR(rf_amp_switch, "RF_AMP_SWITCH", RF_AMP_SWITCH_DEFAULT),
+
+    // @Param: RF_AMP_ON_DIST
+    // @DisplayName: RF Amp power 
+    // @Description: RF_Amp power supply controll- 0 off , 1- supply of at home, on at 50 m distance and 15 m height
+    // @Values: 0:non switch ,1:off/on controll
+    // @User: Standard
+    GSCALAR(rf_amp_on_dist, "RF_AMP_ON_DIST", RF_AMP_ON_DEFAULT),
+
+    // @Param: RF_AMP_OFF_DIST
+    // @DisplayName: RF Amp power 
+    // @Description: RF_Amp power supply controll- 0 off , 1- supply of at home, on at 50 m distance and 15 m height
+    // @Values: 0:non switch ,1:off/on controll
+    // @User: Standard
+    GSCALAR(rf_amp_off_dist, "RF_AMP_OFF_DIST", RF_AMP_OFF_DEFAULT),
 
     // @Param: FORMAT_VERSION
     // @DisplayName: Eeprom format version number
