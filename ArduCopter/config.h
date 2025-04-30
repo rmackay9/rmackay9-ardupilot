@@ -509,8 +509,16 @@
 
 //////////////////////////////////////////////////////////////////////////////
 
-#ifndef RF_AMP_SWITCH_DEFAULT
- # define RF_AMP_SWITCH_DEFAULT     1    // Enable/disable RF AMP rower management
+#ifndef RF_AMP_CONTROL_DEFAULT
+ # define RF_AMP_CONTROL_DEFAULT     1    // Enable/disable RF AMP power management
+#endif
+
+#ifndef RF_AMP_ON_DEFAULT
+ # define RF_AMP_ON_DEFAULT     200000    // RF Amp ON dist to home in cm
+#endif
+
+#ifndef RF_AMP_OFF_DEFAULT
+ # define RF_AMP_OFF_DEFAULT     150000    //  RF Amp OFF dist to home in cm
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

@@ -529,28 +529,44 @@ void Copter::rf_amp_power()
     AP_Stats *statts = AP::stats();
     flt = statts->get_flight_time_s();
 
-    if(g.rf_amp_switch){
-    // switching RF copter RC amplifier in dependence of hight and distance to home
-    if (home_distance() < 150000){
-        copter.ampstate = false;
-    }
-    if (home_distance() >= 200000){
-       copter.ampstate = true;
+    if (g.rf_amp_control == 0){
+        return;
     }
 
-    if (copter.ampswitch != copter.ampstate){
-        copter.ampswitch = copter.ampstate;
-        if (copter.ampswitch){
-            copter.relay.off(0); //Matek BEC control inverted on PCB
+    // switching RF amplifier in dependence of distance to home
+    if (home_distance() < g.rf_amp_off_dist) {
+        ampstate = false;
+    }
+    if (home_distance() > g.rf_amp_on_dist) {
+        ampstate = true;
+    }
+    
+
+    if (ampswitch != ampstate) {
+        ampswitch = ampstate;
+        
+        if (g.rf_amp_control == 1) {
+            if (ampswitch) {
+            relay.on(0);
             gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
-        }else{
-           copter.relay.on(0);
-           gcs().send_text(MAV_SEVERITY_INFO, "RF AMP OFF");
+            }else{
+                relay.off(0);
+                gcs().send_text(MAV_SEVERITY_INFO, "RF AMP OFF");
+            }
+        }
+
+        if (g.rf_amp_control == 2){
+            if (ampswitch){
+                relay.off(0);
+                gcs().send_text(MAV_SEVERITY_INFO, "RF AMP ON");
+            }else{
+                relay.on(0);
+                gcs().send_text(MAV_SEVERITY_INFO, "RF AMP OFF");
+            }
         }
     }
-    }
 
-    if(!copter.failsafe.radio) {
+    if(!failsafe.radio) {
         flth = flt - fltrc; //last flight time in RC
         fltnorc = flt; // time when RC fail
         flte = false;
@@ -573,11 +589,11 @@ void Copter::compass_rtl_run() {
     return;
     }
 
-    if (!copter.failsafe.radio) {
+    if (!failsafe.radio) {
         set_target_angle_and_climbrate(0,-24,rtl_heading,0,true,40);
     }
 // Compass RTL when Radiofailsafe   
-    if (copter.failsafe.radio && !flte) {
+    if (failsafe.radio && !flte) {
     if (baro_alt < g.rtl_altitude + 500){
         set_target_angle_and_climbrate(0,0,rtl_heading,4,true,40);
     }else{
@@ -585,7 +601,7 @@ void Copter::compass_rtl_run() {
     }
     }
 
-    if (copter.failsafe.radio && flte) {
+    if (failsafe.radio && flte) {
     if (baro_alt <= g.rtl_altitude){
         set_target_angle_and_climbrate(0,0,rtl_heading,4,true,40);
     }else{

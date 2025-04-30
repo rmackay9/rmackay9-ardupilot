@@ -460,7 +460,9 @@ public:
     AP_Int8         fs_crash_check;
     AP_Float        fs_ekf_thresh;
     AP_Int16        gcs_pid_mask;
-    AP_Int8         rf_amp_switch;
+    AP_Int8         rf_amp_control;
+    AP_Int32        rf_amp_on_dist;
+    AP_Int32        rf_amp_off_dist;
 
 #if MODE_THROW_ENABLED
     AP_Enum<ModeThrow::PreThrowMotorState>         throw_motor_start;
