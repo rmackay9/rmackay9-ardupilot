@@ -1,0 +1,275 @@
+# hw definition file for processing by chibios_pins.py
+# for DefDrones H743
+
+# MCU class and specific type
+MCU STM32H7xx STM32H743xx
+
+# board ID for firmware load
+APJ_BOARD_ID 9999
+
+# crystal frequency, setup to use external oscillator
+OSCILLATOR_HZ 24000000
+
+FLASH_SIZE_KB 2048
+# with 2M flash we can afford to optimize for speed
+env OPTIMIZE -O2
+
+# bootloader takes first sector 128kb
+FLASH_RESERVE_START_KB 32
+
+define HAL_STORAGE_SIZE 32768
+
+# use last page for flash storage
+# H743 has 16 pages of 128k each
+STORAGE_FLASH_PAGE 14
+
+
+# ChibiOS system timer
+STM32_ST_USE_TIMER 13
+define CH_CFG_ST_RESOLUTION 16
+
+SERIAL_ORDER OTG1 USART3 USART2 USART1 UART4 UART7 USART6 UART8 OTG2
+
+# default the 2nd interface to MAVLink2 until MissionPlanner updates drivers
+define HAL_OTG2_PROTOCOL SerialProtocol_MAVLink2
+
+#--------------------------------USB-----------------------------------
+# This is the pin that senses USB being connected. It is an input pin
+# setup as OPENDRAIN.
+#PB15 VBUS INPUT OPENDRAIN
+
+# Now we define the pins that USB is connected on.
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+
+# enable DFU reboot for installing bootloader
+# note that if firmware is build with --secure-bl then DFU is
+# disabled
+#ENABLE_DFU_BOOT 1
+
+#--------------------------------SWD-----------------------------------
+# These are the pins for SWD debugging with a STlinkv2 or black-magic probe.
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+#-------------------------------SD MMC---------------------------------
+# Now setup the pins for the microSD card, if available.
+PC8 SDMMC1_D0 SDMMC1
+PC9 SDMMC1_D1 SDMMC1
+PC10 SDMMC1_D2 SDMMC1
+PC11 SDMMC1_D3 SDMMC1
+PC12 SDMMC1_CK SDMMC1
+PD2 SDMMC1_CMD SDMMC1
+
+# Enable FAT filesystem support (needs a microSD defined via SDMMC).
+define HAL_OS_FATFS_IO 1
+define HAL_BOARD_LOG_DIRECTORY "/APM/LOGS"
+define HAL_BOARD_TERRAIN_DIRECTORY "/APM/TERRAIN"
+
+#------------------------------CAN---------------------------------------
+# supports upto 8MBits/s
+CANFD_SUPPORTED 8
+
+# CAN bus
+PD0 CAN1_RX CAN1
+PD1 CAN1_TX CAN1
+
+# 2nd CAN bus. Cannot be used at same time as USB_HS
+PB12 CAN2_RX CAN2
+PB6 CAN2_TX CAN2
+
+#------------------------------UART--------------------------------------
+# Another USART, this one for telem1. This one has RTS and CTS lines.
+# USART3 serial telem1
+PD8 USART3_TX USART3
+PD9 USART3_RX USART3
+PB13 USART3_CTS_NSS USART3
+PB14 USART3_RTS USART3
+
+#USART2 serial telem2
+PD5 USART2_TX USART2
+PD6 USART2_RX USART2
+
+#USART1 serial GPS
+PA9 USART1_TX USART1
+PA10 USART1_RX USART1
+
+
+#UART4 serial GPS2
+PA0 UART4_TX UART4
+PA1 UART4_RX UART4
+
+#UART7 serial RC
+PE8 UART7_TX UART7
+PE7 UART7_RX UART7
+
+#USART6 OSD telem
+PC6 USART6_TX USART6
+PC7 USART6_RX USART6
+
+#UART8 ESC telem
+PE1 UART8_TX UART8
+PE0 UART8_RX UART8
+
+#------------------------------I2C--------------------------------------
+# order of I2C buses
+I2C_ORDER I2C1 I2C4
+
+# Now the first I2C bus. The pin speeds are automatically setup
+# correctly, but can be overridden here if needed.
+PB8 I2C1_SCL I2C1
+PB9 I2C1_SDA I2C1
+
+# the 2nd I2C bus - external
+PD12 I2C4_SCL I2C4
+PD13 I2C4_SDA I2C4
+
+#------------------------------SPI--------------------------------------
+#SPI1 for Invensense IMU
+PB4 SPI1_MISO SPI1
+PD7 SPI1_MOSI SPI1
+PB3 SPI1_SCK SPI1
+
+#SPI2 for Bosch IMUs
+PC2 SPI2_MISO SPI2
+PC3 SPI2_MOSI SPI2
+PD3 SPI2_SCK SPI2
+
+#SPI4 for OSD
+PE5 SPI4_MISO SPI4
+PE6 SPI4_MOSI SPI4
+PE2 SPI4_SCK SPI4
+
+# CS pins for SPI sensors. The labels for all CS pins need to
+# match the SPI device table later in this file.
+PC0 ICM42688_2_CS CS  #second ICM42688
+PA4 BMIxx0_CS CS    #BMI160/BMI270
+PB7 ICM42688_CS CS  #first ICM42688
+PE4 MAX7456_CS CS
+
+SPIDEV icm42688    SPI1 DEVID1  ICM42688_CS MODE3  4*MHZ  8*MHZ
+SPIDEV bmi270 SPI2 DEVID1 BMIxx0_CS MODE3 4*MHZ 8*MHZ
+SPIDEV icm42688_2 SPI2 DEVID2 ICM42688_2_CS MODE3 4*MHZ 8*MHZ
+SPIDEV osd       SPI4 DEVID1 MAX7456_CS   MODE0 10*MHZ 10*MHZ
+
+#------------------------------ADC----------------------------------------
+PA7 BATT_VOLTAGE_SENS ADC1 SCALE(1)
+PC4 BATT_CURRENT_SENS ADC1 SCALE(1) #ADC PIN 4
+PC5 QUAD_ESC_CUR ADC1 SCALE(1) #ADC PIN 8
+PA5 VDD_5V_SENS ADC1 SCALE(2)
+#PC4 FMU_SERVORAIL_VCC_SENS ADC1 SCALE(1)
+
+# define default battery setup
+define HAL_BATT_MONITOR_DEFAULT 4
+define HAL_BATT_VOLT_PIN 7
+define HAL_BATT_CURR_PIN 8
+define HAL_BATT_VOLT_SCALE 11
+define HAL_BATT_CURR_SCALE 40.0
+
+#------------------------------IMU-------------------------------------
+IMU Invensensev3 SPI:icm42688 ROTATION_ROLL_180
+IMU Invensensev3 SPI:icm42688_2 ROTATION_ROLL_180
+IMU BMI270 SPI:bmi270 ROTATION_ROLL_180
+
+# Enable all IMUs to be used and therefore three active EKF Lanes
+define HAL_EKF_IMU_MASK_DEFAULT 7
+
+define HAL_DEFAULT_INS_FAST_SAMPLE 7
+
+#------------------------------BARO------------------------------------
+BARO DPS280 I2C:0:0x77 #or DPS310
+BARO BMP388 I2C:0:0x76 #or BMP390
+
+# also allow for probing of external barometers
+define HAL_PROBE_EXTERNAL_I2C_BAROS
+
+#------------------------------COMPASS---------------------------------
+# no built-in compass, but probe the i2c bus for all possible
+# external compass types
+define ALLOW_ARM_NO_COMPASS
+define HAL_PROBE_EXTERNAL_I2C_COMPASSES
+define HAL_I2C_INTERNAL_MASK 0
+define HAL_COMPASS_AUTO_ROT_DEFAULT 2
+
+#------------------------------PWM--------------------------------------
+#Bidirectional ESC PWM
+PA8		TIM1_CH1 TIM1 PWM(1) GPIO(50) # this will automatically be shared with TIM1_CH2
+PE11	TIM1_CH2 TIM1 PWM(2) GPIO(51) BIDIR
+PE13	TIM1_CH3 TIM1 PWM(3) GPIO(52) BIDIR
+PE14	TIM1_CH4 TIM1 PWM(4) GPIO(53)# this will automatically be shared with TIM1_CH4
+
+#Servo on-board
+PB10	TIM2_CH3 TIM2 PWM(5) GPIO(54)
+PB11	TIM2_CH4 TIM2 PWM(6) GPIO(55) BIDIR
+
+
+#Servo rail
+PA6		TIM3_CH1 TIM3 PWM(7) GPIO(56) BIDIR
+PB5		TIM3_CH2 TIM3 PWM(8) GPIO(57)
+PD14	TIM4_CH3 TIM4 PWM(9) GPIO(60) BIDIR
+PD15	TIM4_CH4 TIM4 PWM(10) GPIO(61)
+PA2		TIM5_CH3 TIM5 PWM(11) GPIO(62)
+PA3		TIM5_CH4 TIM5 PWM(12) GPIO(63)
+
+
+#BUZZER
+#PA15 TIM2_CH1 TIM2 ALARM GPIO(68)
+PB15 TIM12_CH2 TIM12 ALARM GPIO(67)
+
+#------------------------------GPIO--------------------------------------
+define AP_RELAY_NUM_RELAYS 7
+PC15 RELAY_1 OUTPUT LOW GPIO(70) #LOCK1
+
+PE3 RELAY_2 OUTPUT LOW GPIO(71) #LOCK2
+
+PC14 RELAY_3 OUTPUT HIGH GPIO(72) #VTX_POWER_EN 							HIGH ENABLE
+
+PE10 RELAY_4 OUTPUT LOW GPIO(73) #CAMERA_SWITCH
+
+PD4 RELAY_5 OUTPUT LOW OPENDRAIN GPIO(74) #USART3 POWER RELAY +5VSERIAL1_EN		LOW ENABLE
+
+PD11 RELAY_6 OUTPUT LOW OPENDRAIN GPIO(81) #SERIAL3 POWER RELAY LOW ENABLE
+
+PB2 RELAY_7 OUTPUT LOW OPENDRAIN GPIO(75) #UART7 POWER RELAY +5VSERIAL5_EN		LOW ENABLE
+
+
+
+
+PA15 FPC_RESERVE INPUT PULLDOWN GPIO(69) #reserved for FPC cable extensions
+PD10 TEST_POIN_105 INPUT PULLDOWN GPIO(80)
+PC1 TEST_POINT_109 INPUT PULLDOWN GPIO(82)
+
+
+# LED
+# green LED1 marked as B/E
+# blue LED0 marked as ACT
+PB0 LED0 OUTPUT HIGH GPIO(90) # B/E blue (red)
+PB1 LED1 OUTPUT HIGH GPIO(91) # ACT green (yellow)
+define HAL_GPIO_A_LED_PIN 91
+define HAL_GPIO_B_LED_PIN 90
+
+
+#------------------------------POWER ENABLE-----------------------------
+PE9 VDD_3V3_SENSORS_EN OUTPUT HIGH #sensors (+3V3PEREPH_EN)			HIGH ENABLE
+PE12 VDD_5V_PERIPH_EN OUTPUT HIGH #CAN power, not UART (5VCAN_EN)	HIGH ENABLE
+
+
+#------------------------------POWER GOOD-------------------------------
+PE15 VDD_BRICK_VALID INPUT PULLUP #PERIPH POWER GOOD () 	LOW IS FAULT
+PC13 VDD_BRICK2_VALID INPUT PULLUP #VTX POWER GOOD 			LOW IS FAULT
+
+
+#-----------------------------OSD-------------------------------------
+# setup for OSD
+define OSD_ENABLED 1
+define HAL_OSD_TYPE_DEFAULT 1
+ROMFS_WILDCARD libraries/AP_OSD/fonts/font*.bin
+
+
+#-----------------------------DMA---------------------------------
+
+DMA_PRIORITY S*
+
+DMA_NOSHARE SPI1* SPI2*
+
+#define AP_BOOTLOADER_FLASHING_ENABLED 0
