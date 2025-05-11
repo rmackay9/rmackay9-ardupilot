@@ -405,6 +405,7 @@ bool Copter::set_mode(const uint8_t new_mode, const ModeReason reason)
 // called at 100hz or more
 void Copter::update_flight_mode()
 {
+    pos_control->update_estimates(vibration_check.high_vibes);
 #if AP_RANGEFINDER_ENABLED
     surface_tracking.invalidate_for_logging();  // invalidate surface tracking alt, flight mode will set to true if used
 #endif
