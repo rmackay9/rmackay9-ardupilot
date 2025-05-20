@@ -664,7 +664,7 @@ bool AC_WPNav::get_terrain_offset_cm(float& offset_cm)
         AP_Terrain *terrain = AP::terrain();
         if (terrain != nullptr &&
             terrain->height_above_terrain(terr_alt, true)) {
-            offset_cm = _pos_control.get_pos_estimate_NEU_cm().tofloat().z - (terr_alt * 100.0);
+            offset_cm = _pos_control.get_pos_estimate_NEU_cm().z - (terr_alt * 100.0);
             return true;
         }
 #endif
