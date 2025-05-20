@@ -378,7 +378,7 @@ void ModeAuto::takeoff_start(const Location& dest_loc)
     // by default current_alt_cm and alt_target_cm are alt-above-EKF-origin
     int32_t alt_target_cm;
     bool alt_target_terrain = false;
-    float current_alt_cm = pos_control->get_pos_estimate_NEU_cm().tofloat().z;
+    float current_alt_cm = pos_control->get_pos_estimate_NEU_cm().z;
     float terrain_offset;   // terrain's altitude in cm above the ekf origin
     if ((dest_loc.get_alt_frame() == Location::AltFrame::ABOVE_TERRAIN) && wp_nav->get_terrain_offset_cm(terrain_offset)) {
         // subtract terrain offset to convert vehicle's alt-above-ekf-origin to alt-above-terrain
