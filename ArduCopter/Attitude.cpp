@@ -46,11 +46,17 @@ void Copter::update_throttle_hover()
         return;
     }
 
+    // do not update if no vertical velocity estimate
+    Vector3f vel_ned_ms;
+    if (!AP::ahrs().get_velocity_NED(vel_ned_ms)) {
+        return;
+    }
+
     // get throttle output
     float throttle = motors->get_throttle();
 
     // calc average throttle if we are in a level hover.  accounts for heli hover roll trim
-    if (throttle > 0.0f && fabsf(inertial_nav.get_velocity_z_up_cms()) < 60 &&
+    if (throttle > 0.0f && fabsf(vel_ned_ms.z) < 0.6 &&
         fabsf(ahrs.roll_sensor-attitude_control->get_roll_trim_cd()) < 500 && labs(ahrs.pitch_sensor) < 500) {
         // Can we set the time constant automatically
         motors->update_throttle_hover(0.01f);
