@@ -31,14 +31,12 @@ AC_AutoTune::AC_AutoTune()
 bool AC_AutoTune::init_internals(bool _use_poshold,
                                  AC_AttitudeControl *_attitude_control,
                                  AC_PosControl *_pos_control,
-                                 AP_AHRS_View *_ahrs_view,
-                                 AP_InertialNav *_inertial_nav)
+                                 AP_AHRS_View *_ahrs_view)
 {
     use_poshold = _use_poshold;
     attitude_control = _attitude_control;
     pos_control = _pos_control;
     ahrs_view = _ahrs_view;
-    inertial_nav = _inertial_nav;
     motors = AP_Motors::get_singleton();
     const uint32_t now = AP_HAL::millis();
 
