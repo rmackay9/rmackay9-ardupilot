@@ -10,6 +10,16 @@ extern const AP_HAL::HAL& hal;
 // update - should be called at 50hz
 void AP_Camera_MAVLinkCamV2::update()
 {
+    // 1hz update on status
+    static uint32_t last_status_ms = 0;
+    uint32_t now_ms = AP_HAL::millis();
+    if (now_ms - last_status_ms >= 1000) {
+        last_status_ms = now_ms;
+
+        // send camera information message to GCS
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "cam:%u init:%u sysid:%u compid:%u", (unsigned)_instance, (unsigned)_initialised, (unsigned)_sysid, (unsigned)_compid);
+    }
+
     // exit immediately if not initialised
     if (!_initialised) {
         find_camera();
@@ -202,6 +212,8 @@ void AP_Camera_MAVLinkCamV2::find_camera()
         if (_link == nullptr) {
             // have not yet found a camera so return
             return;
+        } else {
+            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Found cam:%u sysid:%u compid:%u", (unsigned)_instance, (unsigned)_sysid, (unsigned)compid);
         }
         _compid = compid;
     }
