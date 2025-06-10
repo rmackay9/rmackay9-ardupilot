@@ -34,6 +34,8 @@ bool AP_Camera_MAVLinkCamV2::trigger_pic()
 {
     // exit immediately if have not found camera or does not support taking pictures
     if (_link == nullptr || !(_cam_info.flags & CAMERA_CAP_FLAGS_CAPTURE_IMAGE)) {
+        // send camera information message to GCS
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "trigger pic ignored cam:%u flag:%u", (unsigned)_instance, (unsigned)(_cam_info.flags & CAMERA_CAP_FLAGS_CAPTURE_IMAGE));
         return false;
     }
 
@@ -44,6 +46,7 @@ bool AP_Camera_MAVLinkCamV2::trigger_pic()
     pkt.param4 = image_index+1; // starting sequence number
 
     _link->send_message(MAVLINK_MSG_ID_COMMAND_LONG, (const char*)&pkt);
+    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "trigger pic sent cam:%u cmd:%u p3:%u p4:%u", (unsigned)_instance, (unsigned)pkt.command, (unsigned)pkt.param3, (unsigned)pkt.param4);
 
     return true;
 }
