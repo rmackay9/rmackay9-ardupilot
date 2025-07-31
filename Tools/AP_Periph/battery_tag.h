@@ -25,6 +25,10 @@ private:
 
     uint32_t arm_start_ms;
     bool was_armed;
+
+    // startup LED variables
+    uint8_t init_stage; // current stage of the startup LED sequence
+    bool init_done;     // true once the startup LED sequence has completed
 };
 
 #endif // AP_PERIPH_BATTERY_TAG_ENABLED
