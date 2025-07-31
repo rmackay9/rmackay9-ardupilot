@@ -70,6 +70,18 @@ const AP_Param::GroupInfo BatteryTag::var_info[] {
 BatteryTag::BatteryTag(void)
 {
     AP_Param::setup_object_defaults(this, var_info);
+
+    // initialise LEDs
+#if HAL_GPIO_LED_ON != 0
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED1, HAL_GPIO_OUTPUT);
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED2, HAL_GPIO_OUTPUT);
+    /*hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED3, HAL_GPIO_OUTPUT);
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED4, HAL_GPIO_OUTPUT);
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED5, HAL_GPIO_OUTPUT);
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED6, HAL_GPIO_OUTPUT);
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED7, HAL_GPIO_OUTPUT);
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED8, HAL_GPIO_OUTPUT);*/
+#endif
 }
 
 void BatteryTag::update(void)
@@ -149,6 +161,52 @@ void BatteryTag::update(void)
                                 CANARD_TRANSFER_PRIORITY_LOW,
                                 &buffer[0],
                                 total_size);
+    }
+
+    // display startup patterns if LEDs are present
+    // exit immediately if LED patterns have already been completed
+    if (init_done) {
+        return;
+    }
+    // advance init stage
+    init_stage++;
+    switch (init_stage) {
+    case 1:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED1, HAL_GPIO_LED_ON);
+        break;
+    case 2:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED2, HAL_GPIO_LED_ON);
+        break;
+    case 3:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED3, HAL_GPIO_LED_ON);
+        break;
+    case 4:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED4, HAL_GPIO_LED_ON);
+        break;
+    case 5:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED5, HAL_GPIO_LED_ON);
+        break;
+    case 6:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED6, HAL_GPIO_LED_ON);
+        break;
+    case 7:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED7, HAL_GPIO_LED_ON);
+        break;
+    case 8:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED8, HAL_GPIO_LED_ON);
+        break;
+    case 9:
+    default:
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED1, HAL_GPIO_LED_OFF);
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED2, HAL_GPIO_LED_OFF);
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED3, HAL_GPIO_LED_OFF);
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED4, HAL_GPIO_LED_OFF);
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED5, HAL_GPIO_LED_OFF);
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED6, HAL_GPIO_LED_OFF);
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED7, HAL_GPIO_LED_OFF);
+        hal.gpio->write(HAL_GPIO_PIN_BMS_LED8, HAL_GPIO_LED_OFF);
+        init_done = true;  // all LEDs have been lit, so we can stop
+        break;
     }
 }
 
