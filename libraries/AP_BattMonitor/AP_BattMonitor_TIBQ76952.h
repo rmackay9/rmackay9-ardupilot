@@ -15,9 +15,9 @@ public:
                           AP_BattMonitor::BattMonitor_State &mon_state,
                           AP_BattMonitor_Params &params);
 
-    bool has_cell_voltages() const override { return false; }
-    bool has_temperature() const override { return false; }
-    bool has_current() const override { return true; }
+    bool has_cell_voltages() const override { return false; }  // TODO: BQ76952 can read individual cells
+    bool has_temperature() const override { return false; }   // TODO: BQ76952 has temperature sensors
+    bool has_current() const override { return false; }       // For now, only voltage implemented
     bool get_cycle_count(uint16_t &cycles) const override { return false; }
 
     void init(void) override;
@@ -41,14 +41,11 @@ protected:
     struct {
         uint16_t count;
         float volt_sum;
-        float current_sum;
         HAL_Semaphore sem;
     } accumulate;
-    float current_LSB;
     float voltage_LSB;
 
-    AP_Float max_amps;
-    AP_Float rShunt;
+    AP_Float max_voltage;  // Maximum pack voltage parameter
 };
 
 #endif // AP_BATTERY_TIBQ76952_ENABLED
