@@ -815,6 +815,12 @@ void Copter::one_hz_loop()
         }
     }
 #endif
+
+    // update fan output
+    // get RC6 input value
+    uint8_t rc6_in_pct = rc().channel(5)->percent_input();
+    SRV_Channels::set_output_scaled(SRV_Channel::k_unused1, rc6_in_pct);
+    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "RC6 input: %u", rc6_in_pct);
 }
 
 void Copter::init_simple_bearing()

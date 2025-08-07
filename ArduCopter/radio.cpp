@@ -79,6 +79,12 @@ void Copter::init_rc_out()
     uint16_t safety_ignore_mask = (~copter.motors->get_motor_mask()) & 0x3FFF;
     BoardConfig.set_default_safety_ignore_mask(safety_ignore_mask);
 #endif
+
+    // initialise ESC fan output
+    SRV_Channels::set_range(SRV_Channel::k_unused1, 100);
+    const uint32_t fan_output_mask = SRV_Channels::get_output_channel_mask(SRV_Channel::k_unused1);
+    hal.rcout->set_output_mode(fan_output_mask, AP_HAL::RCOutput::MODE_PWM_BRUSHED);
+    hal.rcout->set_freq(fan_output_mask, uint16_t(16 * 1000));
 }
 
 
