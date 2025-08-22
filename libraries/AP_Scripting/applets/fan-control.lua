@@ -25,8 +25,10 @@ local RELAY_NUM = 0
 
 -- add new param POI_DIST_MAX
 local PARAM_TABLE_KEY = 94
-assert(param:add_table(PARAM_TABLE_KEY, "FAN_", 1), "could not add param table")
+assert(param:add_table(PARAM_TABLE_KEY, "FAN_", 3), "could not add param table")
 assert(param:add_param(PARAM_TABLE_KEY, 1, "ENABLE", 1), "could not add FAN_ENABLE param")
+assert(param:add_param(PARAM_TABLE_KEY, 2, "FILT_TC", 0.1), "could not add FAN_FILT_TC param")
+assert(param:add_param(PARAM_TABLE_KEY, 3, "DEBUG", 0), "could not add FAN_DEBUG param")
 
 --[[
   // @Param: FAN_ENABLE
@@ -37,11 +39,31 @@ assert(param:add_param(PARAM_TABLE_KEY, 1, "ENABLE", 1), "could not add FAN_ENAB
 --]]
 local FAN_ENABLE = Parameter("FAN_ENABLE")
 
+--[[
+  // @Param: FAN_FILT_TC
+  // @DisplayName: Fan Control Filter Time Constant
+  // @Description: Time constant for filtering fan control input (smaller = faster response, larger = smoother)
+  // @Range: 0.01 2.0
+  // @Units: s
+  // @User: Standard
+--]]
+local FAN_FILT_TC = Parameter("FAN_FILT_TC")
+
+--[[
+  // @Param: FAN_DEBUG
+  // @DisplayName: Fan Control Debug
+  // @Description: Enable debug output for fan control
+  // @Values: 0:Disable, 1:Enable
+  // @User: Standard
+--]]
+local FAN_DEBUG = Parameter("FAN_DEBUG")
+
 -- local variables and definitions
 local last_send_text_ms = 0     -- system time of last message to user (used to prevent spamming)
-local relay_output_total = 0    -- total number of relay outputs (including both low and high)
-local relay_output_high = 0     -- number of high relay outputs (never more than relay_output_total)
 local relay_output_last = 0     -- last output to relay (used to avoid unnecessarily changing relay output)
+local relay_output_filtered = 0 -- filtered output
+local pwm_accumulator = 0        -- accumulator for PWM generation
+local last_debug_text_ms = 0    -- system time of last debug output to user
 
 -- send text message to user at no more than 1hz
 function send_text(priority, warning_msg)
@@ -81,14 +103,20 @@ function update()
     end
     rc_fan_control_norm = (rc_fan_control_norm + 1.0) / 2.0
 
-    -- determine if relay output should be moved high or low
-    local relay_output_average = 0
-    if relay_output_total > 0 then
-        relay_output_average = relay_output_high / relay_output_total
-    end
+    -- apply low-pass filter to the desired output
+    -- filter equation: filtered = filtered + (dt/tc) * (input - filtered)
+    local dt = UPDATE_INTERVAL_MS / 1000.0  -- convert ms to seconds
+    local filter_tc = FAN_FILT_TC:get()     -- get time constant from parameter
+    local alpha = dt / (filter_tc + dt)
+    relay_output_filtered = relay_output_filtered + alpha * (rc_fan_control_norm - relay_output_filtered)
+
+    -- generate PWM output using filtered value
+    -- accumulate the filtered value and output high when accumulator >= 1
+    pwm_accumulator = pwm_accumulator + relay_output_filtered
     local relay_output_new = 0
-    if relay_output_average < rc_fan_control_norm then
+    if pwm_accumulator >= 1.0 then
         relay_output_new = 1
+        pwm_accumulator = pwm_accumulator - 1.0  -- subtract 1 but keep remainder
     end
 
     -- set relay to high or low
@@ -101,18 +129,13 @@ function update()
     end
     relay_output_last = relay_output_new
 
-    -- update totals
-    relay_output_total = relay_output_total + 1
-    if relay_output_new > 0 then
-        relay_output_high = relay_output_high + 1
-    end
-
-    -- reset totals each 1000 updates
-    if relay_output_total >= 1000 then
-        -- debug output to user
-        gcs:send_text(MAV_SEVERITY.DEBUG, string.format("Fan control: %.2f outputs, %.2f high", rc_fan_control_norm, relay_output_average))
-        relay_output_total = 0
-        relay_output_high = 0
+    -- debug output to user (every 1000 updates = 1 second)
+    if FAN_DEBUG:get() == 1 then
+        local now_ms = millis()
+        if (now_ms - last_debug_text_ms) > 1000 then
+            gcs:send_text(MAV_SEVERITY.DEBUG, string.format("Fan control: input=%.2f, filtered=%.2f, output=%d", rc_fan_control_norm, relay_output_filtered, relay_output_new))
+            last_debug_text_ms = now_ms
+        end
     end
 
     return update, UPDATE_INTERVAL_MS
