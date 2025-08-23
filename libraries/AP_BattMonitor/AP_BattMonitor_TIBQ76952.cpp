@@ -67,7 +67,7 @@ void AP_BattMonitor_TIBQ76952::init(void)
     }
 
     // Register periodic callback at 10hz for reading voltage
-    dev->register_periodic_callback(1000000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_TIBQ76952::timer, void));
+    dev->register_periodic_callback(100000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_TIBQ76952::timer, void));
 }
 
 /// read the battery_voltage, should be called at 10hz
@@ -88,14 +88,14 @@ void AP_BattMonitor_TIBQ76952::read(void)
     const uint32_t tnow = AP_HAL::micros();
     _state.last_time_micros = tnow;
     */
-   _state.healthy = true;
-   _state.voltage = accumulate.voltage;
-   _state.current_amps = accumulate.current;
-   _state.temperature = accumulate.temp;
-   _state.last_time_micros = AP_HAL::micros();
+    _state.healthy = true;
+    _state.voltage = accumulate.voltage;
+    _state.current_amps = accumulate.current;
+    _state.temperature = accumulate.temp;
+    _state.last_time_micros = AP_HAL::micros();
 
-   // debug toggle 1st LED on each read (10hz)
-   hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED1);
+    // debug toggle 1st LED on each read (10hz)
+    hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED1);
 }
 
 /*
@@ -106,13 +106,23 @@ bool AP_BattMonitor_TIBQ76952::read_word(uint8_t reg, bool use_crc, uint16_t& da
 {
     // BQ76952 uses 7-bit direct commands for voltage readings
     // Data is stored in little endian format as per datasheet
-    uint8_t buf[3];
-    if (!dev->read_registers(reg, (uint8_t *)&buf, use_crc ? 3 : 2)) {
+    //uint8_t buf[3];
+    /*if (!dev->read_registers(reg, (uint8_t *)&buf, use_crc ? 3 : 2)) {
+        return false;
+    }*/
+    //const uint8_t send_buf[] = {0x14, 0xFF, 0xF0};
+    const uint8_t send_buf[] = {reg, 0xFF, 0xF0};
+    const uint8_t bytes_to_send = use_crc ? 3 : 2;
+    uint8_t recv_buf[3];
+    if (!dev->transfer(send_buf, bytes_to_send, recv_buf, bytes_to_send)) {
+        return false;
+    }
+    if (!dev->transfer(send_buf, bytes_to_send, recv_buf, bytes_to_send)) {
         return false;
     }
 
     // BQ76952 uses little endian byte order
-    data = le16toh(UINT16_VALUE(buf[1], buf[0]));
+    data = le16toh(UINT16_VALUE(recv_buf[1], recv_buf[0]));
     return true;
 }
 
@@ -136,29 +146,28 @@ void AP_BattMonitor_TIBQ76952::timer(void)
 
     // Read stack voltage from BQ76952 using direct commands 0x34/0x35
     // According to datasheet Table 4-1: Stack (VC16 pin) voltage in µV units
-    /*int16_t voltage_lsb;
-    if (!read_word(REG_STACK_VOLTAGE_L, voltage_lsb)) {
+    uint16_t voltage_lsb;
+    if (!read_word(REG_STACK_VOLTAGE_L, false, voltage_lsb)) {
         voltage_lsb = 99;
-    }*/
-    //int16_t voltage_msb;
-    /*if (!read_word(REG_STACK_VOLTAGE_L, voltage_lsb) ||
-        !read_word(REG_STACK_VOLTAGE_H, voltage_msb)) {
-        return;
-    }*/
+    }
+    uint16_t voltage_msb;
+    if (!read_word(REG_STACK_VOLTAGE_H, false, voltage_msb)) {
+        voltage_msb = 99;
+    }
     /*if (!read_word(REG_PACK_VOLTAGE_L, voltage_lsb) ||
         !read_word(REG_PACK_VOLTAGE_H, voltage_msb)) {
         return;
     }*/
-    uint16_t otp_check;
-    if (!read_word(REG_OTP_CHECK, true, otp_check)) {
+    /*uint16_t otp_check;
+    if (!read_word(REG_OTP_CHECK, false, otp_check)) {
         otp_check = 99;
-    }
+    }*/
 
     // calculate voltage
     //float voltage_v = UINT16_VALUE(LOWBYTE(voltage_msb),LOWBYTE(voltage_lsb)) * 0.001;
 
     WITH_SEMAPHORE(accumulate.sem);
-    accumulate.voltage = otp_check;
+    accumulate.voltage = float(UINT32_VALUE(HIGHBYTE(voltage_msb), LOWBYTE(voltage_msb), HIGHBYTE(voltage_lsb), LOWBYTE(voltage_lsb))) * 0.000001;
     accumulate.temp = 4;
     accumulate.current = 3;
     accumulate.count = 1;
