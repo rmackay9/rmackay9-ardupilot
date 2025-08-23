@@ -15,6 +15,7 @@ extern const AP_HAL::HAL& hal;
   Data stored in little endian byte order
  */
 // Direct commands for voltage measurements (from Table 4-1)
+#define REG_OTP_CHECK           0xA0    // OTP memory check register (one-time-programmable memory)
 #define REG_STACK_VOLTAGE_L     0x34    // Stack (VC16 pin) voltage LSB (µV units)
 #define REG_STACK_VOLTAGE_H     0x35    // Stack (VC16 pin) voltage MSB (µV units)
 #define REG_PACK_VOLTAGE_L      0x36    // PACK pin voltage LSB (µV units)  
@@ -64,36 +65,16 @@ void AP_BattMonitor_TIBQ76952::init(void)
         GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "BQ76952: device fail");
         return;
     }
-    // BQ76952 uses standard SPI protocol (not like INA239)
-    // Register periodic callback for reading voltage
-    dev->register_periodic_callback(25000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_TIBQ76952::timer, void));
-}
 
-void AP_BattMonitor_TIBQ76952::configure(void)
-{
-    WITH_SEMAPHORE(dev->get_semaphore());
-
-    // BQ76952 doesn't have a simple device ID register
-    // Instead, try reading a known register to verify communication
-    // Let's try reading the stack voltage registers as a communication test
-    int16_t voltage_lsb = 0;
-    if (!read_word(REG_STACK_VOLTAGE_L, voltage_lsb)) {
-        return;  // Communication failed
-    }
-
-    // BQ76952 stack/pack voltages are in µV units (microvolts)
-    // Convert µV to V: 1V = 1,000,000 µV
-    voltage_LSB = 1e-6f;  // 1 µV per bit for stack/pack voltage
-    
-    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "BQ76952: device configured");
-    configured = true;
+    // Register periodic callback at 10hz for reading voltage
+    dev->register_periodic_callback(1000000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_TIBQ76952::timer, void));
 }
 
 /// read the battery_voltage, should be called at 10hz
 void AP_BattMonitor_TIBQ76952::read(void)
 {
     WITH_SEMAPHORE(accumulate.sem);
-    _state.healthy = accumulate.count > 0;
+    /*_state.healthy = accumulate.count > 0;
     if (!_state.healthy) {
         return;
     }
@@ -106,13 +87,22 @@ void AP_BattMonitor_TIBQ76952::read(void)
 
     const uint32_t tnow = AP_HAL::micros();
     _state.last_time_micros = tnow;
+    */
+   _state.healthy = true;
+   _state.voltage = accumulate.voltage;
+   _state.current_amps = accumulate.current;
+   _state.temperature = accumulate.temp;
+   _state.last_time_micros = AP_HAL::micros();
+
+   // debug toggle 1st LED on each read (10hz)
+   hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED1);
 }
 
 /*
  read word from register - BQ76952 uses direct commands with little endian data
  returns true if read was successful, false if failed
 */
-bool AP_BattMonitor_TIBQ76952::read_word(const uint8_t reg, int16_t& data) const
+bool AP_BattMonitor_TIBQ76952::read_word(uint8_t reg, int16_t& data) const
 {
     // BQ76952 uses 7-bit direct commands for voltage readings
     // Data is stored in little endian format as per datasheet
@@ -122,7 +112,6 @@ bool AP_BattMonitor_TIBQ76952::read_word(const uint8_t reg, int16_t& data) const
 
     // BQ76952 uses little endian byte order (confirmed in datasheet)
     data = int16_t(le16toh(uint16_t(data)));
-
     return true;
 }
 
@@ -130,54 +119,51 @@ bool AP_BattMonitor_TIBQ76952::read_word(const uint8_t reg, int16_t& data) const
   write word to a register - BQ76952 specific
   returns true if write was successful, false if failed
 */
-bool AP_BattMonitor_TIBQ76952::write_word(const uint8_t reg, const uint16_t data) const
+bool AP_BattMonitor_TIBQ76952::write_word(uint8_t reg, uint16_t data) const
 {
     // BQ76952 write protocol - this will need to be adjusted based on datasheet
-    const uint8_t b[3] { reg, uint8_t(data & 0xff), uint8_t(data >> 8) };
+    /*const uint8_t b[3] { reg, uint8_t(data & 0xff), uint8_t(data >> 8) };
     return dev->transfer(b, sizeof(b), nullptr, 0);
+    */
+    return false;
 }
 
 void AP_BattMonitor_TIBQ76952::timer(void)
 {
-    // allow for power-on after boot
-    if (!configured) {
-        uint32_t now = AP_HAL::millis();
-        if (now - last_configure_ms > 200) {
-            // try contacting the device at 5Hz
-            last_configure_ms = now;
-            configure();
-        }
-        if (!configured) {
-            // waiting for the device to respond
-            return;
-        }
-    }
+    // debug toggle 8th LED on each timer update
+    hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED8);
 
     // Read stack voltage from BQ76952 using direct commands 0x34/0x35
     // According to datasheet Table 4-1: Stack (VC16 pin) voltage in µV units
-    int16_t voltage_lsb, voltage_msb;
-    
-    if (!read_word(REG_STACK_VOLTAGE_L, voltage_lsb) ||
+    /*int16_t voltage_lsb;
+    if (!read_word(REG_STACK_VOLTAGE_L, voltage_lsb)) {
+        voltage_lsb = 99;
+    }*/
+    //int16_t voltage_msb;
+    /*if (!read_word(REG_STACK_VOLTAGE_L, voltage_lsb) ||
         !read_word(REG_STACK_VOLTAGE_H, voltage_msb)) {
-        failed_reads++;
-        if (failed_reads > 10) {
-            // device has disconnected, we need to reconfigure it
-            configured = false;
-        }
         return;
+    }*/
+    /*if (!read_word(REG_PACK_VOLTAGE_L, voltage_lsb) ||
+        !read_word(REG_PACK_VOLTAGE_H, voltage_msb)) {
+        return;
+    }*/
+    int16_t otp_check;
+    if (!read_word(REG_OTP_CHECK, otp_check)) {
+        otp_check = 99;
     }
-    failed_reads = 0;
 
-    // Combine LSB and MSB to get full voltage reading
-    // Data is in little endian format: LSB first, then MSB
-    uint32_t voltage_raw = uint16_t(voltage_lsb) | (uint32_t(voltage_msb) << 16);
-    
-    // Convert from µV to V using the voltage_LSB scaling factor
-    float voltage_volts = voltage_raw * voltage_LSB;
-    
+    // calculate voltage
+    //float voltage_v = UINT16_VALUE(LOWBYTE(voltage_msb),LOWBYTE(voltage_lsb)) * 0.001;
+
     WITH_SEMAPHORE(accumulate.sem);
-    accumulate.volt_sum += voltage_volts;
-    accumulate.count++;
+    accumulate.voltage = otp_check;
+    accumulate.temp = 4;
+    accumulate.current = 3;
+    accumulate.count = 1;
+
+    // debug toggle 7th LED
+    hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED7);
 }
 
 #endif // AP_BATTERY_TIBQ76952_ENABLED
