@@ -28,7 +28,7 @@ public:
 protected:
     AP_HAL::Device *dev;
 
-    bool read_word(uint8_t reg, int16_t& data) const;
+    bool read_word(uint8_t reg, bool use_crc, uint16_t& data) const;
     bool write_word(uint8_t reg, uint16_t data) const;
     void timer(void);
 
