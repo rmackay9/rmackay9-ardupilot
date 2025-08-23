@@ -51,7 +51,8 @@ void AP_Periph_FW::can_battery_update(void)
         if (battery_lib.get_temperature(temperature, i)) {
             // Battery lib reports temperature in Celsius.
             // Convert Celsius to Kelvin for transmission on CAN.
-            pkt.temperature = C_TO_KELVIN(temperature);
+            //pkt.temperature = C_TO_KELVIN(temperature);
+            pkt.temperature = temperature;
         }
 
         // Populate state of health
