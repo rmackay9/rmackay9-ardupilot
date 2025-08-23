@@ -16,8 +16,8 @@ public:
                           AP_BattMonitor_Params &params);
 
     bool has_cell_voltages() const override { return false; }  // TODO: BQ76952 can read individual cells
-    bool has_temperature() const override { return false; }   // TODO: BQ76952 has temperature sensors
-    bool has_current() const override { return false; }       // For now, only voltage implemented
+    bool has_temperature() const override { return true; }   // TODO: BQ76952 has temperature sensors
+    bool has_current() const override { return true; }       // For now, only voltage implemented
     bool get_cycle_count(uint16_t &cycles) const override { return false; }
 
     void init(void) override;
@@ -28,9 +28,8 @@ public:
 protected:
     AP_HAL::Device *dev;
 
-    void configure(void);
-    bool read_word(const uint8_t reg, int16_t& data) const;
-    bool write_word(const uint8_t reg, const uint16_t data) const;
+    bool read_word(uint8_t reg, int16_t& data) const;
+    bool write_word(uint8_t reg, uint16_t data) const;
     void timer(void);
 
     bool configured;
@@ -40,10 +39,11 @@ protected:
 
     struct {
         uint16_t count;
-        float volt_sum;
+        float voltage;
+        float current;
+        float temp;
         HAL_Semaphore sem;
     } accumulate;
-    float voltage_LSB;
 
     AP_Float max_voltage;  // Maximum pack voltage parameter
 };
