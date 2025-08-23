@@ -18,9 +18,6 @@ define AP_PERIPH_BATTERY_MODEL_NAME "VM-L431-BMS"
 PB3 SPI1_SCK SPI1
 PB4 SPI1_MISO SPI1
 PB5 SPI1_MOSI SPI1
-
-# CS pins for SPI sensors. The labels for all CS pins need to
-# match the SPI device table later in this file.
 PA15 TIBQ76952_CS CS
 
 # SPI device table
