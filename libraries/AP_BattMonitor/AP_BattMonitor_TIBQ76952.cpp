@@ -102,16 +102,17 @@ void AP_BattMonitor_TIBQ76952::read(void)
  read word from register - BQ76952 uses direct commands with little endian data
  returns true if read was successful, false if failed
 */
-bool AP_BattMonitor_TIBQ76952::read_word(uint8_t reg, int16_t& data) const
+bool AP_BattMonitor_TIBQ76952::read_word(uint8_t reg, bool use_crc, uint16_t& data) const
 {
     // BQ76952 uses 7-bit direct commands for voltage readings
     // Data is stored in little endian format as per datasheet
-    if (!dev->read_registers(reg, (uint8_t *)&data, sizeof(data))) {
+    uint8_t buf[3];
+    if (!dev->read_registers(reg, (uint8_t *)&buf, use_crc ? 3 : 2)) {
         return false;
     }
 
-    // BQ76952 uses little endian byte order (confirmed in datasheet)
-    data = int16_t(le16toh(uint16_t(data)));
+    // BQ76952 uses little endian byte order
+    data = le16toh(UINT16_VALUE(buf[1], buf[0]));
     return true;
 }
 
@@ -148,8 +149,8 @@ void AP_BattMonitor_TIBQ76952::timer(void)
         !read_word(REG_PACK_VOLTAGE_H, voltage_msb)) {
         return;
     }*/
-    int16_t otp_check;
-    if (!read_word(REG_OTP_CHECK, otp_check)) {
+    uint16_t otp_check;
+    if (!read_word(REG_OTP_CHECK, true, otp_check)) {
         otp_check = 99;
     }
 
