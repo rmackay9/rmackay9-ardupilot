@@ -364,7 +364,7 @@ bool RC_Channel_Copter::do_aux_function(const AUX_FUNC ch_option, const AuxSwitc
                     copter.set_mode(Mode::Number::LOITER, ModeReason::RC_COMMAND);
                     break;
                 case AuxSwitchPos::MIDDLE:
-                    source_setted = AP_NavEKF_Source::SourceSetSelection::PRIMARY;
+                    source_setted = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
                     AP::ahrs().set_posvelyaw_source_set(source_setted); 
                     copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
                     break;

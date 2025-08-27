@@ -166,6 +166,7 @@ bool Copter::ekf_over_threshold()
 // failsafe_ekf_event - perform ekf failsafe
 void Copter::failsafe_ekf_event()
 {
+     AP_NavEKF_Source::SourceSetSelection source_ = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
     // EKF failsafe event has occurred
     failsafe.ekf = true;
     LOGGER_WRITE_ERROR(LogErrorSubsystem::FAILSAFE_EKFINAV, LogErrorCode::FAILSAFE_OCCURRED);
@@ -189,7 +190,9 @@ void Copter::failsafe_ekf_event()
     // take action based on fs_ekf_action parameter
     switch (g.fs_ekf_action) {
         case FS_EKF_ACTION_ALTHOLD:
-           set_mode(Mode::Number::ALT_HOLD, ModeReason::EKF_FAILSAFE);
+            source_ = AP_NavEKF_Source::SourceSetSelection::SECONDARY;
+            AP::ahrs().set_posvelyaw_source_set(source_); 
+            set_mode(Mode::Number::ALT_HOLD, ModeReason::EKF_FAILSAFE);
             break;
         case FS_EKF_ACTION_LAND:
         case FS_EKF_ACTION_LAND_EVEN_STABILIZE:
