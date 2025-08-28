@@ -167,7 +167,7 @@ void NavEKF3_core::calcGpsGoodToAlign(void)
     }
 
     // fail if satellite geometry is poor
-    bool hdopFail = (gps.get_hdop(preferred_gps) > 250)  && (frontend->_gpsCheck & MASK_GPS_HDOP);
+    bool hdopFail = ((gps.get_hdop(preferred_gps) > 250) || (gps.get_hdop(preferred_gps) == 0)) && (frontend->_gpsCheck & MASK_GPS_HDOP);
 
     // Report check result as a text string and bitmask
     if (hdopFail) {
@@ -188,6 +188,16 @@ void NavEKF3_core::calcGpsGoodToAlign(void)
         gpsCheckStatus.bad_sats = true;
     } else {
         gpsCheckStatus.bad_sats = false;
+    }
+
+    //GPS total fail if GPS alt < -50 m but we have HDOP and NSAT
+    if (!numSatsFail && !hdopFail && (gps.location(preferred_gps).alt < -5000)) {
+        gpsGoodToAlign = false;
+        dal.snprintf(prearm_fail_string, sizeof(prearm_fail_string),
+                           "GPS Alt %.1f (needs > -50)", (double)(0.01f * gps.location(preferred_gps).alt));
+        AP::gps().force_disable(1);
+        dal.snprintf(prearm_fail_string, sizeof(prearm_fail_string), "Spoofing! GPS Disabled!");
+        return;
     }
 
     // fail if magnetometer innovations are outside limits indicating bad yaw
