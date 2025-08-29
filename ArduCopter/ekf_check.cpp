@@ -261,7 +261,7 @@ void Copter::check_vibration()
 {
     uint32_t now = AP_HAL::millis();
 
-    // assume checks will succeed
+    // assume checks will succeede
     bool innovation_checks_valid = true;
 
     // check if vertical velocity and position innovations are positive (NKF3.IVD & NKF3.IPD are both positive)
