@@ -344,16 +344,16 @@
  # define LAND_AIRMODE_DETECTOR_TRIGGER_SEC 3.0f    // number of seconds to detect a landing in air mode
 #endif
 #ifndef LAND_DETECTOR_MAYBE_TRIGGER_SEC
- # define LAND_DETECTOR_MAYBE_TRIGGER_SEC   0.2f    // number of seconds that means we might be landed (used to reset horizontal position targets to prevent tipping over)
+ # define LAND_DETECTOR_MAYBE_TRIGGER_SEC   0.3f    // number of seconds that means we might be landed (used to reset horizontal position targets to prevent tipping over)
 #endif
 #ifndef LAND_DETECTOR_ACCEL_LPF_CUTOFF
 # define LAND_DETECTOR_ACCEL_LPF_CUTOFF     1.0f    // frequency cutoff of land detector accelerometer filter
 #endif
 #ifndef LAND_DETECTOR_ACCEL_MAX
-# define LAND_DETECTOR_ACCEL_MAX            1.0f    // vehicle acceleration must be under 1m/s/s
+# define LAND_DETECTOR_ACCEL_MAX            2.0f    // vehicle acceleration must be under 1m/s/s
 #endif
 #ifndef LAND_DETECTOR_VEL_Z_MAX
-# define LAND_DETECTOR_VEL_Z_MAX              1.0f    // vehicle vertical velocity must be under 1m/s
+# define LAND_DETECTOR_VEL_Z_MAX              2.0f    // vehicle vertical velocity must be under 1m/s
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
