@@ -46,6 +46,8 @@ extern const AP_HAL::HAL& hal;
 #define DISABLE_TS1
 #define DISABLE_TS3
 
+#define CELL_COUNT 3
+
 // Expected device IDs
 #define DEVICE_ID_TIBQ7695 0x7695
 
@@ -146,6 +148,12 @@ bool AP_BattMonitor_TIBQ76952::configure() const
     sub_command(TIBQ769x2_SLEEP_DISABLE);
     hal.scheduler->delay_microseconds(10000);
 
+    // Clear any remaining permanent failure alerts
+    direct_command(TIBQ769x2_PFAlertA, 0xFF, WRITE);
+    direct_command(TIBQ769x2_PFAlertB, 0xFF, WRITE);
+    direct_command(TIBQ769x2_PFAlertC, 0xFF, WRITE);
+    direct_command(TIBQ769x2_PFAlertD, 0xFF, WRITE);
+
     // enable FETs so we can switch between charging and discharging
     sub_command(TIBQ769x2_FET_ENABLE);
 
@@ -190,7 +198,7 @@ bool AP_BattMonitor_TIBQ76952::configure() const
     
     // 'VCell Mode' - Enable 16 cells - 0x9304
     // Writing 0x0000 sets the default of 16 cells, but we'll calculate based on actual cell count
-    uint16_t vcell_mode = 0xFFFF; // Enable all 16 cells by default
+    uint16_t vcell_mode = (1 << CELL_COUNT) - 1;
     set_register(TIBQ769x2_VCellMode, vcell_mode, 2);
     
 #if defined(DISABLE_PROTECTION_A)
@@ -267,10 +275,7 @@ void AP_BattMonitor_TIBQ76952::read(void)
     _state.last_time_micros = tnow;
     */
     _state.healthy = true;
-    _state.voltage = accumulate.voltage;
-    _state.current_amps = accumulate.current;
-    _state.temperature = accumulate.temp;
-    _state.last_time_micros = AP_HAL::micros();
+    _state.voltage = accumulate.voltage / accumulate.count;
 
     // debug toggle 1st LED on each read (10hz)
     // hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED1);
@@ -398,7 +403,7 @@ uint8_t AP_BattMonitor_TIBQ76952::checksum(const uint8_t *data, uint8_t len) con
 
 bool AP_BattMonitor_TIBQ76952::sub_command(uint16_t command) const
 {
-    printf("BQ76952: sub_command called - cmd=0x%04X\n", command);
+    //printf("BQ76952: sub_command called - cmd=0x%04X\n", command);
     uint8_t tx_buffer[2] = {0,0};
     tx_buffer[0] = command & 0xFF;
     tx_buffer[1] = (command >> 8) & 0xFF;
@@ -408,7 +413,7 @@ bool AP_BattMonitor_TIBQ76952::sub_command(uint16_t command) const
 
 bool AP_BattMonitor_TIBQ76952::sub_command(uint16_t command, uint16_t data, SubcommandType type, uint8_t *rx_data, uint8_t rx_len) const
 {
-    printf("BQ76952: sub_command called - cmd=0x%04X, type=%d\n", command, (int)type);
+    //printf("BQ76952: sub_command called - cmd=0x%04X, type=%d\n", command, (int)type);
     
     uint8_t tx_reg[4] = {0};
     uint8_t tx_buffer[2] = {0};
@@ -485,14 +490,19 @@ bool AP_BattMonitor_TIBQ76952::sub_command(uint16_t command, uint16_t data, Subc
 
 bool AP_BattMonitor_TIBQ76952::direct_command(uint16_t command, uint16_t data, SubcommandType type, uint8_t *rx_data, uint8_t rx_len) const
 {
-    printf("BQ76952: direct_command called - cmd=0x%04X, data=0x%04X, type=%d\n", command, data, (int)type);
+    //printf("BQ76952: direct_command called - cmd=0x%04X, data=0x%04X, type=%d\n", command, data, (int)type);
+
+    // sanity check read buffer
+    if (type == READ && rx_data == nullptr) {
+        return false;
+    }
 
     uint8_t tx_buffer[2] = {0, 0};
     tx_buffer[0] = data & 0xFF;
     tx_buffer[1] = (data >> 8) & 0xFF;
 
     if (type == READ) {
-        read_register(command, tx_buffer, rx_len);
+        read_register(command, rx_data, rx_len);
     } else if (type == WRITE) {
         write_register(command, tx_buffer, rx_len);
     }
@@ -578,8 +588,11 @@ uint32_t AP_BattMonitor_TIBQ76952::read_hv_version(void) const
 
 uint16_t AP_BattMonitor_TIBQ76952::read_voltage(uint8_t command) const
 {
-    if (command != TIBQ769x2_StackVoltage && command != TIBQ769x2_PACKPinVoltage && command != TIBQ769x2_LDPinVoltage &&
+    if (command != TIBQ769x2_StackVoltage &&
+        command != TIBQ769x2_PACKPinVoltage &&
+        command != TIBQ769x2_LDPinVoltage &&
         (command < TIBQ769x2_Cell1Voltage || command > TIBQ769x2_Cell16Voltage)) {
+            printf("BQ76952: Invalid voltage command: 0x%02X\n", command);
         return 0;
     }
     uint8_t rx_data[2];
@@ -590,6 +603,7 @@ uint16_t AP_BattMonitor_TIBQ76952::read_voltage(uint8_t command) const
             return 10 * (rx_data[1] << 8 | rx_data[0]);
         }
     }
+    printf("BQ76952: Failed to read voltage: 0x%02X\n", command);
     return 0;
 }
 
@@ -605,8 +619,8 @@ uint16_t AP_BattMonitor_TIBQ76952::read_alarm_status(void) const
 void AP_BattMonitor_TIBQ76952::alarm_status_update(void)
 {
     uint16_t alarm_status = read_alarm_status();
-    /*printf("BQ76952: Alarm status: 0x%04X\n", alarm_status);
-    if (alarm_status & 0x8000) {
+    printf("BQ76952: Alarm status: 0x%04X\n", alarm_status);
+    /*if (alarm_status & 0x8000) {
         printf("BQ76952: Alarm status protection triggered\n");
     }
     if (alarm_status & 0x4000) {
@@ -631,13 +645,26 @@ void AP_BattMonitor_TIBQ76952::alarm_status_update(void)
             printf("cell_voltage[%d]: %d mV\n", i, cell_voltages[i]);
         }*/
 
+        // read voltage
+        WITH_SEMAPHORE(accumulate.sem);
+        uint16_t pack_voltage_mv = read_voltage(TIBQ769x2_PACKPinVoltage);
+        uint16_t stack_voltage_mv = read_voltage(TIBQ769x2_StackVoltage);
+        uint16_t ld_voltage_mv = read_voltage(TIBQ769x2_LDPinVoltage);
+        printf("pack_voltage: %f mV\n", pack_voltage_mv);
+        printf("stack_voltage: %f mV\n", stack_voltage_mv);
+        printf("ld_voltage: %f mV\n", ld_voltage_mv);
+        
+        uint16_t cell_voltage_mv[CELL_COUNT];
+        uint32_t cell_voltage_sum_mv = 0;
+        for (uint8_t i = 0; i < CELL_COUNT; i++) {
+            cell_voltage_mv[i] = read_voltage(TIBQ769x2_Cell1Voltage + i*2);
+            printf("cell_voltage[%d]: %d mV\n", i, cell_voltage_mv[i]);
+            cell_voltage_sum_mv += cell_voltage_mv[i];
+            _state.cell_voltages.cells[i] = cell_voltage_mv[i];
+        }
+        accumulate.voltage += cell_voltage_sum_mv * 0.001;
+        accumulate.count++;
     }
-    // read voltage
-    WITH_SEMAPHORE(accumulate.sem);
-    uint16_t pack_voltage_mv = read_voltage(TIBQ769x2_PACKPinVoltage);
-    printf("pack_voltage: %f mV\n", pack_voltage_mv);
-    accumulate.voltage = pack_voltage_mv * 0.001;
-    accumulate.count = 1;
 
     /*if (alarm_status & 0x0001) {
         printf("BQ76952: Alarm status wakened from SLEEP mode\n");
@@ -682,7 +709,7 @@ uint16_t AP_BattMonitor_TIBQ76952::read_permanent_fail_status_D(void) const
 
 void AP_BattMonitor_TIBQ76952::permanent_fail_status_update(void) const
 {
-    uint16_t status_A = read_permanent_fail_status_A();
+    /*uint16_t status_A = read_permanent_fail_status_A();
     uint16_t status_B = read_permanent_fail_status_B();
     uint16_t status_C = read_permanent_fail_status_C();
     uint16_t status_D = read_permanent_fail_status_D();
@@ -691,6 +718,7 @@ void AP_BattMonitor_TIBQ76952::permanent_fail_status_update(void) const
     printf("BQ76952: Permanent Fail Status B: 0x%04X\n", status_B);
     printf("BQ76952: Permanent Fail Status C: 0x%04X\n", status_C);
     printf("BQ76952: Permanent Fail Status D: 0x%04X\n", status_D);
+    */
 }
 
 uint16_t AP_BattMonitor_TIBQ76952::read_battery_status(void) const
@@ -704,7 +732,7 @@ uint16_t AP_BattMonitor_TIBQ76952::read_battery_status(void) const
 
 void AP_BattMonitor_TIBQ76952::battery_status_update(void) const
 {
-    uint16_t battery_status = read_battery_status();
+    /*uint16_t battery_status = read_battery_status();
     printf("BQ76952: Battery status: 0x%04X\n", battery_status);
     if (battery_status & 0x8000) {
         printf("BQ76952: Battery status: in sleep mode\n");
@@ -723,7 +751,7 @@ void AP_BattMonitor_TIBQ76952::battery_status_update(void) const
     }
     if (battery_status & 0x0200) {
         printf("BQ76952: Battery status: fuse pin inactive\n");
-    }
+    }*/
 }
 
 #endif // AP_BATTERY_TIBQ76952_ENABLED

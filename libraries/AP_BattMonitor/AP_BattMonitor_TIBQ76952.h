@@ -430,9 +430,9 @@ public:
                           AP_BattMonitor::BattMonitor_State &mon_state,
                           AP_BattMonitor_Params &params);
 
-    bool has_cell_voltages() const override { return false; }  // TODO: BQ76952 can read individual cells
-    bool has_temperature() const override { return true; }   // TODO: BQ76952 has temperature sensors
-    bool has_current() const override { return true; }       // For now, only voltage implemented
+    bool has_cell_voltages() const override { return true; }  // TODO: BQ76952 can read individual cells
+    bool has_temperature() const override { return false; }   // TODO: BQ76952 has temperature sensors
+    bool has_current() const override { return false; }       // For now, only voltage implemented
     bool get_cycle_count(uint16_t &cycles) const override { return false; }
 
     void init(void) override;
