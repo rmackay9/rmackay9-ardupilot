@@ -24,6 +24,8 @@
 
 #if AP_PERIPH_BATTERY_TAG_ENABLED
 
+#include "stdio.h"
+
 #include <dronecan_msgs.h>
 
 extern const AP_HAL::HAL &hal;
@@ -71,6 +73,11 @@ BatteryTag::BatteryTag(void)
 {
     AP_Param::setup_object_defaults(this, var_info);
 
+    // Initialize button state variables
+    button_last_state = true;  // Assuming button is pulled up (true = not pressed)
+    button_press_start_ms = 0;
+    button_press_handled = false;
+
     // initialise LEDs
 #if HAL_GPIO_LED_ON != 0
     hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED1, HAL_GPIO_OUTPUT);
@@ -81,13 +88,20 @@ BatteryTag::BatteryTag(void)
     hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED6, HAL_GPIO_OUTPUT);
     hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED7, HAL_GPIO_OUTPUT);
     hal.gpio->pinMode(HAL_GPIO_PIN_BMS_LED8, HAL_GPIO_OUTPUT);*/
+    
+    // Configure button as input with pullup
+    hal.gpio->pinMode(HAL_GPIO_PIN_BMS_BTN1, HAL_GPIO_INPUT);
+    hal.gpio->write(HAL_GPIO_PIN_BMS_BTN1, 1); // Enable pullup
 #endif
 }
 
 void BatteryTag::update(void)
 {
+#ifdef HAL_GPIO_PIN_BMS_BTN1
+    handle_button_press();
+#endif
     const uint32_t now = AP_HAL::millis();
-    if (now - last_update_ms < 1000U) {
+    if (now - last_update_ms < 100U) {
         return;
     }
     last_update_ms = now;
@@ -209,5 +223,53 @@ void BatteryTag::update(void)
         break;
     }
 }
+
+#ifdef HAL_GPIO_PIN_BMS_BTN1
+void BatteryTag::handle_button_press(void)
+{
+    // Read current button state (assuming active low - pressed = 0)
+    bool button_raw_state = hal.gpio->read(HAL_GPIO_PIN_BMS_BTN1);
+    bool button_current_state = (button_raw_state == 0); // pressed = true
+    uint32_t now_ms = AP_HAL::millis();
+    
+    // Button just pressed (transition from released to pressed)
+    if (button_current_state && !button_last_state) {
+        button_press_start_ms = now_ms;
+        button_press_handled = false;
+        printf("BMS: Button pressed!\n");
+    }
+    
+    // Button is currently pressed - check for long press
+    if (button_current_state && !button_press_handled) {
+        uint32_t press_duration = now_ms - button_press_start_ms;
+        
+        // Long press detected (2+ seconds)
+        if (press_duration >= LONG_PRESS_THRESHOLD_MS) {
+            button_press_handled = true;
+            printf("BMS: LONG PRESS DETECTED! (2+ seconds)\n");
+        }
+    }
+    
+    // Button just released (transition from pressed to released)
+    if (!button_current_state && button_last_state) {
+        uint32_t press_duration = now_ms - button_press_start_ms;
+        
+        // Short press detected (less than 2 seconds and not already handled as long press)
+        if (press_duration < LONG_PRESS_THRESHOLD_MS && !button_press_handled) {
+            printf("BMS: SHORT PRESS DETECTED! (%d ms)\n", press_duration);
+        }
+        
+        // If it was a long press
+        if (button_press_handled) {
+            printf("BMS: Long press released after %d ms\n", press_duration);
+        }
+        
+        button_press_handled = false;
+    }
+    
+    // Update last state for next iteration
+    button_last_state = button_current_state;
+}
+#endif
 
 #endif  // AP_PERIPH_BATTERY_TAG_ENABLED
