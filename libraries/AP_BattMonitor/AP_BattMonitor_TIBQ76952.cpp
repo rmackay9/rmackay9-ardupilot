@@ -105,40 +105,11 @@ void AP_BattMonitor_TIBQ76952::timer(void)
 {
     // permanent_fail_status_update();
     alarm_status_update();
-    battery_status_update();
-
+    //battery_status_update();
     return;
 
     // debug toggle 8th LED on each timer update
     hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED8);
-
-    // Read stack voltage from BQ76952 using direct commands 0x34/0x35
-    // According to datasheet Table 4-1: Stack (VC16 pin) voltage in µV units
-    uint16_t voltage_lsb;
-    if (!read_word(REG_STACK_VOLTAGE_L, false, voltage_lsb)) {
-        voltage_lsb = 99;
-    }
-    uint16_t voltage_msb;
-    if (!read_word(REG_STACK_VOLTAGE_H, false, voltage_msb)) {
-        voltage_msb = 99;
-    }
-    /*if (!read_word(REG_PACK_VOLTAGE_L, voltage_lsb) ||
-        !read_word(REG_PACK_VOLTAGE_H, voltage_msb)) {
-        return;
-    }*/
-    /*uint16_t otp_check;
-    if (!read_word(REG_OTP_CHECK, false, otp_check)) {
-        otp_check = 99;
-    }*/
-
-    // calculate voltage
-    //float voltage_v = UINT16_VALUE(LOWBYTE(voltage_msb),LOWBYTE(voltage_lsb)) * 0.001;
-
-    WITH_SEMAPHORE(accumulate.sem);
-    accumulate.voltage = float(UINT32_VALUE(HIGHBYTE(voltage_msb), LOWBYTE(voltage_msb), HIGHBYTE(voltage_lsb), LOWBYTE(voltage_lsb))) * 0.000001;
-    accumulate.temp = 4;
-    accumulate.current = 3;
-    accumulate.count = 1;
 
     // // debug toggle 7th LED
     // hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED7);
@@ -305,48 +276,6 @@ void AP_BattMonitor_TIBQ76952::read(void)
     // hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED1);
 }
 
-/*
- read word from register - BQ76952 uses direct commands with little endian data
- returns true if read was successful, false if failed
-*/
-bool AP_BattMonitor_TIBQ76952::read_word(uint8_t reg, bool use_crc, uint16_t& data) const
-{
-    printf("TIBQ76952: Reading register 0x%02X\n", reg);
-    // BQ76952 uses 7-bit direct commands for voltage readings
-    // Data is stored in little endian format as per datasheet
-    //uint8_t buf[3];
-    /*if (!dev->read_registers(reg, (uint8_t *)&buf, use_crc ? 3 : 2)) {
-        return false;
-    }*/
-    //const uint8_t send_buf[] = {0x14, 0xFF, 0xF0};
-    const uint8_t send_buf[] = {reg, 0xFF, 0xF0};
-    const uint8_t bytes_to_send = use_crc ? 3 : 2;
-    uint8_t recv_buf[3];
-    if (!dev->transfer(send_buf, bytes_to_send, recv_buf, bytes_to_send)) {
-        return false;
-    }
-    if (!dev->transfer(send_buf, bytes_to_send, recv_buf, bytes_to_send)) {
-        return false;
-    }
-
-    // BQ76952 uses little endian byte order
-    data = le16toh(UINT16_VALUE(recv_buf[1], recv_buf[0]));
-    return true;
-}
-
-/*
-  write word to a register - BQ76952 specific
-  returns true if write was successful, false if failed
-*/
-bool AP_BattMonitor_TIBQ76952::write_word(uint8_t reg, uint16_t data) const
-{
-    // BQ76952 write protocol - this will need to be adjusted based on datasheet
-    /*const uint8_t b[3] { reg, uint8_t(data & 0xff), uint8_t(data >> 8) };
-    return dev->transfer(b, sizeof(b), nullptr, 0);
-    */
-    return false;
-}
-
 uint8_t AP_BattMonitor_TIBQ76952::calc_crc8(const uint8_t *data, uint8_t len) const
 {
     uint8_t crc = 0;
@@ -363,6 +292,8 @@ uint8_t AP_BattMonitor_TIBQ76952::calc_crc8(const uint8_t *data, uint8_t len) co
     return crc;
 }
 
+
+// read from register
 bool AP_BattMonitor_TIBQ76952::read_register(uint8_t reg_addr, uint8_t *reg_data, uint8_t count) const
 {
     WITH_SEMAPHORE(dev->get_semaphore());
@@ -406,21 +337,22 @@ bool AP_BattMonitor_TIBQ76952::read_register(uint8_t reg_addr, uint8_t *reg_data
     return true;
 }
 
+// write to register
 bool AP_BattMonitor_TIBQ76952::write_register(uint8_t reg_addr, const uint8_t *reg_data, uint8_t count) const
 {
     WITH_SEMAPHORE(dev->get_semaphore());
     AP_HAL::SPIDevice* spi_dev = (AP_HAL::SPIDevice*)dev.get();
-    
+
     // For write operations, set bit 7 of the address
     uint8_t addr = 0x80 | reg_addr;
     uint8_t tx_buffer[MAX_BUFFER_SIZE] = {0};
     uint8_t rx_buffer[MAX_BUFFER_SIZE] = {0};
-    
+
     for (uint8_t i = 0; i < count; i++) {
         // Prepare transmit buffer
         tx_buffer[0] = addr;
         tx_buffer[1] = reg_data[i];
-        
+
         uint32_t len;
         if (CRC_MODE) {
             tx_buffer[2] = calc_crc8(tx_buffer, 2);
@@ -428,14 +360,14 @@ bool AP_BattMonitor_TIBQ76952::write_register(uint8_t reg_addr, const uint8_t *r
         } else {
             len = 2; // addr + data
         }
-        
+
         // Attempt transfer with retries
         bool success = false;
         for (uint8_t retry = 0; retry < MAX_RETRIES && !success; retry++) {
             if (retry > 0) {
                 hal.scheduler->delay_microseconds(500);
             }
-            
+
             if (spi_dev->transfer_fullduplex(tx_buffer, rx_buffer, len)) {
                 // Verify response
                 if (rx_buffer[0] == addr && rx_buffer[1] == reg_data[i]) {
@@ -443,14 +375,14 @@ bool AP_BattMonitor_TIBQ76952::write_register(uint8_t reg_addr, const uint8_t *r
                 }
             }
         }
-        
+
         if (!success) {
             return false;
         }
-        
+
         addr++; // Increment address for next byte
     }
-    
+
     return true;
 }
 
@@ -670,10 +602,10 @@ uint16_t AP_BattMonitor_TIBQ76952::read_alarm_status(void) const
     return 0;
 }
 
-void AP_BattMonitor_TIBQ76952::alarm_status_update(void) const
+void AP_BattMonitor_TIBQ76952::alarm_status_update(void)
 {
     uint16_t alarm_status = read_alarm_status();
-    printf("BQ76952: Alarm status: 0x%04X\n", alarm_status);
+    /*printf("BQ76952: Alarm status: 0x%04X\n", alarm_status);
     if (alarm_status & 0x8000) {
         printf("BQ76952: Alarm status protection triggered\n");
     }
@@ -685,24 +617,31 @@ void AP_BattMonitor_TIBQ76952::alarm_status_update(void) const
     }
     if (alarm_status & 0x0004) {
         printf("BQ76952: Alarm status cell balancing is active\n");
-    }
+    }*/
 
     if (alarm_status & 0x0002) {
-        uint16_t ld_voltage = read_voltage(TIBQ769x2_LDPinVoltage);
-        printf("ld_voltage: %f mV\n", ld_voltage);
-        uint16_t pack_voltage = read_voltage(TIBQ769x2_PACKPinVoltage);
-        printf("pack_voltage: %f mV\n", pack_voltage);
-        uint16_t stack_voltage = read_voltage(TIBQ769x2_StackVoltage);
-        printf("stack_voltage: %f mV\n", stack_voltage);
-        uint16_t cell_voltages[16];
+        //uint16_t load_voltage = read_voltage(TIBQ769x2_LDPinVoltage);
+        //printf("ld_voltage: %f mV\n", ld_voltage);
+
+        //uint16_t stack_voltage = read_voltage(TIBQ769x2_StackVoltage);
+        //printf("stack_voltage: %f mV\n", stack_voltage);
+        /*uint16_t cell_voltages[16];
         for (int i = 0; i < 3; i++) {
             cell_voltages[i] = read_voltage(TIBQ769x2_Cell1Voltage + i*2);
             printf("cell_voltage[%d]: %d mV\n", i, cell_voltages[i]);
-        }
+        }*/
+
     }
-    if (alarm_status & 0x0001) {
+    // read voltage
+    WITH_SEMAPHORE(accumulate.sem);
+    uint16_t pack_voltage_mv = read_voltage(TIBQ769x2_PACKPinVoltage);
+    printf("pack_voltage: %f mV\n", pack_voltage_mv);
+    accumulate.voltage = pack_voltage_mv * 0.001;
+    accumulate.count = 1;
+
+    /*if (alarm_status & 0x0001) {
         printf("BQ76952: Alarm status wakened from SLEEP mode\n");
-    }
+    }*/
 }
 
 uint16_t AP_BattMonitor_TIBQ76952::read_permanent_fail_status_A(void) const

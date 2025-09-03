@@ -444,8 +444,6 @@ protected:
     // AP_HAL::Device *dev;
     AP_HAL::OwnPtr<AP_HAL::Device> dev;
 
-    bool read_word(uint8_t reg, bool use_crc, uint16_t& data) const;
-    bool write_word(uint8_t reg, uint16_t data) const;
     uint8_t calc_crc8(const uint8_t *data, uint8_t len) const;
     bool read_register(uint8_t reg_addr, uint8_t *reg_data, uint8_t count) const;
     bool write_register(uint8_t reg_addr, const uint8_t *reg_data, uint8_t count) const;
@@ -459,7 +457,7 @@ protected:
     uint32_t read_hv_version(void) const;
     uint16_t read_voltage(uint8_t command) const;
     uint16_t read_alarm_status(void) const;
-    void alarm_status_update(void) const;
+    void alarm_status_update(void);
     uint16_t read_permanent_fail_status_A(void) const;
     uint16_t read_permanent_fail_status_B(void) const;
     uint16_t read_permanent_fail_status_C(void) const;
