@@ -46,6 +46,9 @@ extern const AP_HAL::HAL& hal;
 #define DISABLE_TS1
 #define DISABLE_TS3
 
+// Expected device IDs
+#define DEVICE_ID_TIBQ7695 0x7695
+
 // Note: BQ76952 doesn't have a simple device ID register at 0x00
 // Device identification requires subcommands, not direct commands
 
@@ -80,24 +83,85 @@ AP_BattMonitor_TIBQ76952::AP_BattMonitor_TIBQ76952(AP_BattMonitor &mon,
 void AP_BattMonitor_TIBQ76952::init(void)
 {
     dev = hal.spi->get_device(AP_BATTERY_TIBQ76952_SPI_DEVICE);
-    dev->set_speed(AP_HAL::Device::SPEED_HIGH);
-    printf("BQ76952: device init\n");
     if (!dev) {
-        hal.console->println("BQ76952: device fail");
-        // GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "BQ76952: device fail");
         return;
     }
 
-    uint32_t device_number = read_device_number();
-    if (device_number != 0x7695) {
-        printf("BQ76952: Unknown device detected - ID: 0x%08lX\n", (unsigned long)device_number);
+    // change to high speed
+    dev->set_speed(AP_HAL::Device::SPEED_HIGH);
+
+    // configure device
+    if (!configure()) {
         return;
     }
+
+    // Register periodic callback at 10hz for reading voltage
+    dev->register_periodic_callback(100000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_TIBQ76952::timer, void));
+}
+
+
+// periodic timer callback
+void AP_BattMonitor_TIBQ76952::timer(void)
+{
+    // permanent_fail_status_update();
+    alarm_status_update();
+    battery_status_update();
+
+    return;
+
+    // debug toggle 8th LED on each timer update
+    hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED8);
+
+    // Read stack voltage from BQ76952 using direct commands 0x34/0x35
+    // According to datasheet Table 4-1: Stack (VC16 pin) voltage in µV units
+    uint16_t voltage_lsb;
+    if (!read_word(REG_STACK_VOLTAGE_L, false, voltage_lsb)) {
+        voltage_lsb = 99;
+    }
+    uint16_t voltage_msb;
+    if (!read_word(REG_STACK_VOLTAGE_H, false, voltage_msb)) {
+        voltage_msb = 99;
+    }
+    /*if (!read_word(REG_PACK_VOLTAGE_L, voltage_lsb) ||
+        !read_word(REG_PACK_VOLTAGE_H, voltage_msb)) {
+        return;
+    }*/
+    /*uint16_t otp_check;
+    if (!read_word(REG_OTP_CHECK, false, otp_check)) {
+        otp_check = 99;
+    }*/
+
+    // calculate voltage
+    //float voltage_v = UINT16_VALUE(LOWBYTE(voltage_msb),LOWBYTE(voltage_lsb)) * 0.001;
+
+    WITH_SEMAPHORE(accumulate.sem);
+    accumulate.voltage = float(UINT32_VALUE(HIGHBYTE(voltage_msb), LOWBYTE(voltage_msb), HIGHBYTE(voltage_lsb), LOWBYTE(voltage_lsb))) * 0.000001;
+    accumulate.temp = 4;
+    accumulate.current = 3;
+    accumulate.count = 1;
+
+    // // debug toggle 7th LED
+    // hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED7);
+}
+
+// configure device, called repeatedly from timer()
+bool AP_BattMonitor_TIBQ76952::configure() const
+{
+    // check device id, exit on failure
+    uint32_t device_number = read_device_number();
+    if (device_number != DEVICE_ID_TIBQ7695) {
+        printf("BQ76952: Unknown device detected - ID: 0x%08lX\n", (unsigned long)device_number);
+        return false;
+    }
+
+    // check device's firmware and hardware versions
     uint32_t fw_version = read_fw_version();
     uint32_t hv_version = read_hv_version();
 
+    // debug
     printf("BQ76952 detected, fw: 0x%08lX, hw: 0x%08lX\n", (unsigned long)fw_version, (unsigned long)hv_version);
 
+    // reload and clear failure status bits
     if (read_permanent_fail_status_A() > 0 || read_permanent_fail_status_B() > 0 || read_permanent_fail_status_C() > 0 || read_permanent_fail_status_D() > 0) {
         printf("BQ76952: Permanent fail status detected\n");
         sub_command(TIBQ769x2_PF_RESET);
@@ -105,15 +169,112 @@ void AP_BattMonitor_TIBQ76952::init(void)
         permanent_fail_status_update();
     }
 
+    // wake up device
     sub_command(TIBQ769x2_EXIT_DEEPSLEEP);
     hal.scheduler->delay_microseconds(10000);
     sub_command(TIBQ769x2_SLEEP_DISABLE);
     hal.scheduler->delay_microseconds(10000);
 
+    // enable FETs so we can switch between charging and discharging
     sub_command(TIBQ769x2_FET_ENABLE);
 
-    // Register periodic callback at 10hz for reading voltage
-    dev->register_periodic_callback(100000, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_TIBQ76952::timer, void));
+    // Enter CONFIGUPDATE mode (Subcommand 0x0090) - Required to program device RAM settings
+    sub_command(TIBQ769x2_SET_CFGUPDATE);
+    
+    // 'Power Config' - 0x9234 = 0x2D80
+    // Setting the DSLP_LDO bit allows the LDOs to remain active when the device goes into Deep Sleep mode
+    // Set wake speed bits to 00 for best performance
+    set_register(TIBQ769x2_PowerConfig, 0x2D80, 2);
+    
+    // 'REG0 Config' - set REG0_EN bit to enable pre-regulator
+    set_register(TIBQ769x2_REG0Config, 0x01, 1);
+    
+    // 'REG12 Config' - Enable REG1 with 3.3V output (0x0D for 3.3V, 0x0F for 5V)
+    set_register(TIBQ769x2_REG12Config, 0x0D, 1);
+    
+    // Set DFETOFF pin to control BOTH CHG and DSG FET - 0x92FB = 0x42 (set to 0x00 to disable)
+    set_register(TIBQ769x2_DFETOFFPinConfig, 0x42, 1);
+    
+    // Set up ALERT Pin - 0x92FC = 0x2A
+    // This configures the ALERT pin to drive high (REG1 voltage) when enabled.
+    // The ALERT pin can be used as an interrupt to the MCU when a protection has triggered or new measurements are available
+    set_register(TIBQ769x2_ALERTPinConfig, 0x2A, 1);
+    
+#if defined(DISABLE_TS1)
+    set_register(TIBQ769x2_TS1Config, 0x00, 1);
+#else
+    // Set TS1 to measure Cell Temperature - 0x92FD = 0x07
+    set_register(TIBQ769x2_TS1Config, 0x07, 1);
+#endif
+
+#if defined(DISABLE_TS3)
+    set_register(TIBQ769x2_TS3Config, 0x00, 1);
+#else
+    // Set TS3 to measure FET Temperature - 0x92FF = 0x0F
+    set_register(TIBQ769x2_TS3Config, 0x0F, 1);
+#endif
+    
+    // Set HDQ to measure Cell Temperature - 0x9300 = 0x00 (No thermistor installed on EVM HDQ pin)
+    set_register(TIBQ769x2_HDQPinConfig, 0x00, 1);
+    
+    // 'VCell Mode' - Enable 16 cells - 0x9304
+    // Writing 0x0000 sets the default of 16 cells, but we'll calculate based on actual cell count
+    uint16_t vcell_mode = 0xFFFF; // Enable all 16 cells by default
+    set_register(TIBQ769x2_VCellMode, vcell_mode, 2);
+    
+#if defined(DISABLE_PROTECTION_A)
+    set_register(TIBQ769x2_EnabledProtectionsA, 0x00, 1);
+#else
+    // Enable protections in 'Enabled Protections A' 0x9261 = 0xBC
+    // Enables SCD (short-circuit), OCD1 (over-current in discharge), OCC (over-current in charge),
+    // COV (over-voltage), CUV (under-voltage)
+    set_register(TIBQ769x2_EnabledProtectionsA, 0xBC, 1);
+#endif
+    
+#if defined(DISABLE_PROTECTION_B)
+    set_register(TIBQ769x2_EnabledProtectionsB, 0x00, 1);
+#else
+    // Enable all protections in 'Enabled Protections B' 0x9262 = 0xF7
+    // Enables OTF (over-temperature FET), OTINT (internal over-temperature), OTD (over-temperature in discharge),
+    // OTC (over-temperature in charge), UTINT (internal under-temperature), UTD (under-temperature in discharge), UTC (under-temperature in charge)
+    set_register(TIBQ769x2_EnabledProtectionsB, 0xF7, 1);
+#endif
+    
+    // 'Default Alarm Mask' - 0x926D Enables the FullScan and ADScan bits, default value = 0xF800
+    set_register(TIBQ769x2_DefaultAlarmMask, 0xF882, 2);
+    
+    // Set up Cell Balancing Configuration - 0x9335 = 0x03 - Automated balancing while in Relax or Charge modes
+    set_register(TIBQ769x2_BalancingConfiguration, 0x03, 1);
+    
+    // Set up CUV (under-voltage) Threshold - 0x9275 = 0x31 (2479 mV)
+    // CUV Threshold is this value multiplied by 50.6mV
+    set_register(TIBQ769x2_CUVThreshold, 0x31, 1);
+    
+    // Set up COV (over-voltage) Threshold - 0x9278 = 0x55 (4301 mV)
+    // COV Threshold is this value multiplied by 50.6mV
+    set_register(TIBQ769x2_COVThreshold, 0x55, 1);
+    
+    // Set up OCC (over-current in charge) Threshold - 0x9280 = 0x05 (10 mV = 10A across 1mOhm sense resistor) Units in 2mV
+    set_register(TIBQ769x2_OCCThreshold, 0x05, 1);
+    
+    // Set up OCD1 Threshold - 0x9282 = 0x0A (20 mV = 20A across 1mOhm sense resistor) units of 2mV
+    set_register(TIBQ769x2_OCD1Threshold, 0x0A, 1);
+    
+    // Set up SCD Threshold - 0x9286 = 0x05 (100 mV = 100A across 1mOhm sense resistor) 0x05=100mV
+    set_register(TIBQ769x2_SCDThreshold, 0x05, 1);
+    
+    // Set up SCD Delay - 0x9287 = 0x03 (30 us) Enabled with a delay of (value - 1) * 15 μs; min value of 1
+    set_register(TIBQ769x2_SCDDelay, 0x03, 1);
+    
+    // Set up SCDL Latch Limit to 1 to set SCD recovery only with load removal 0x9295 = 0x01
+    // If this is not set, then SCD will recover based on time (SCD Recovery Time parameter).
+    set_register(TIBQ769x2_SCDLLatchLimit, 0x01, 1);
+    
+    // Exit CONFIGUPDATE mode - Subcommand 0x0092
+    sub_command(TIBQ769x2_EXIT_CFGUPDATE);
+
+    // report success
+    return true;
 }
 
 /// read the battery_voltage, should be called at 10hz
@@ -452,147 +613,6 @@ void AP_BattMonitor_TIBQ76952::set_register(uint16_t reg_addr, uint32_t reg_data
             break;
         }
     }
-}
-
-void AP_BattMonitor_TIBQ76952::timer(void)
-{
-    // permanent_fail_status_update();
-    alarm_status_update();
-    battery_status_update();
-
-    return;
-
-    // debug toggle 8th LED on each timer update
-    hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED8);
-
-    // Read stack voltage from BQ76952 using direct commands 0x34/0x35
-    // According to datasheet Table 4-1: Stack (VC16 pin) voltage in µV units
-    uint16_t voltage_lsb;
-    if (!read_word(REG_STACK_VOLTAGE_L, false, voltage_lsb)) {
-        voltage_lsb = 99;
-    }
-    uint16_t voltage_msb;
-    if (!read_word(REG_STACK_VOLTAGE_H, false, voltage_msb)) {
-        voltage_msb = 99;
-    }
-    /*if (!read_word(REG_PACK_VOLTAGE_L, voltage_lsb) ||
-        !read_word(REG_PACK_VOLTAGE_H, voltage_msb)) {
-        return;
-    }*/
-    /*uint16_t otp_check;
-    if (!read_word(REG_OTP_CHECK, false, otp_check)) {
-        otp_check = 99;
-    }*/
-
-    // calculate voltage
-    //float voltage_v = UINT16_VALUE(LOWBYTE(voltage_msb),LOWBYTE(voltage_lsb)) * 0.001;
-
-    WITH_SEMAPHORE(accumulate.sem);
-    accumulate.voltage = float(UINT32_VALUE(HIGHBYTE(voltage_msb), LOWBYTE(voltage_msb), HIGHBYTE(voltage_lsb), LOWBYTE(voltage_lsb))) * 0.000001;
-    accumulate.temp = 4;
-    accumulate.current = 3;
-    accumulate.count = 1;
-
-    // // debug toggle 7th LED
-    // hal.gpio->toggle(HAL_GPIO_PIN_BMS_LED7);
-}
-
-void AP_BattMonitor_TIBQ76952::configure(void) const
-{
-    // Enter CONFIGUPDATE mode (Subcommand 0x0090) - Required to program device RAM settings
-    sub_command(TIBQ769x2_SET_CFGUPDATE);
-    
-    // 'Power Config' - 0x9234 = 0x2D80
-    // Setting the DSLP_LDO bit allows the LDOs to remain active when the device goes into Deep Sleep mode
-    // Set wake speed bits to 00 for best performance
-    set_register(TIBQ769x2_PowerConfig, 0x2D80, 2);
-    
-    // 'REG0 Config' - set REG0_EN bit to enable pre-regulator
-    set_register(TIBQ769x2_REG0Config, 0x01, 1);
-    
-    // 'REG12 Config' - Enable REG1 with 3.3V output (0x0D for 3.3V, 0x0F for 5V)
-    set_register(TIBQ769x2_REG12Config, 0x0D, 1);
-    
-    // Set DFETOFF pin to control BOTH CHG and DSG FET - 0x92FB = 0x42 (set to 0x00 to disable)
-    set_register(TIBQ769x2_DFETOFFPinConfig, 0x42, 1);
-    
-    // Set up ALERT Pin - 0x92FC = 0x2A
-    // This configures the ALERT pin to drive high (REG1 voltage) when enabled.
-    // The ALERT pin can be used as an interrupt to the MCU when a protection has triggered or new measurements are available
-    set_register(TIBQ769x2_ALERTPinConfig, 0x2A, 1);
-    
-#if defined(DISABLE_TS1)
-    set_register(TIBQ769x2_TS1Config, 0x00, 1);
-#else
-    // Set TS1 to measure Cell Temperature - 0x92FD = 0x07
-    set_register(TIBQ769x2_TS1Config, 0x07, 1);
-#endif
-
-#if defined(DISABLE_TS3)
-    set_register(TIBQ769x2_TS3Config, 0x00, 1);
-#else
-    // Set TS3 to measure FET Temperature - 0x92FF = 0x0F
-    set_register(TIBQ769x2_TS3Config, 0x0F, 1);
-#endif
-    
-    // Set HDQ to measure Cell Temperature - 0x9300 = 0x00 (No thermistor installed on EVM HDQ pin)
-    set_register(TIBQ769x2_HDQPinConfig, 0x00, 1);
-    
-    // 'VCell Mode' - Enable 16 cells - 0x9304
-    // Writing 0x0000 sets the default of 16 cells, but we'll calculate based on actual cell count
-    uint16_t vcell_mode = 0xFFFF; // Enable all 16 cells by default
-    set_register(TIBQ769x2_VCellMode, vcell_mode, 2);
-    
-#if defined(DISABLE_PROTECTION_A)
-    set_register(TIBQ769x2_EnabledProtectionsA, 0x00, 1);
-#else
-    // Enable protections in 'Enabled Protections A' 0x9261 = 0xBC
-    // Enables SCD (short-circuit), OCD1 (over-current in discharge), OCC (over-current in charge),
-    // COV (over-voltage), CUV (under-voltage)
-    set_register(TIBQ769x2_EnabledProtectionsA, 0xBC, 1);
-#endif
-    
-#if defined(DISABLE_PROTECTION_B)
-    set_register(TIBQ769x2_EnabledProtectionsB, 0x00, 1);
-#else
-    // Enable all protections in 'Enabled Protections B' 0x9262 = 0xF7
-    // Enables OTF (over-temperature FET), OTINT (internal over-temperature), OTD (over-temperature in discharge),
-    // OTC (over-temperature in charge), UTINT (internal under-temperature), UTD (under-temperature in discharge), UTC (under-temperature in charge)
-    set_register(TIBQ769x2_EnabledProtectionsB, 0xF7, 1);
-#endif
-    
-    // 'Default Alarm Mask' - 0x926D Enables the FullScan and ADScan bits, default value = 0xF800
-    set_register(TIBQ769x2_DefaultAlarmMask, 0xF882, 2);
-    
-    // Set up Cell Balancing Configuration - 0x9335 = 0x03 - Automated balancing while in Relax or Charge modes
-    set_register(TIBQ769x2_BalancingConfiguration, 0x03, 1);
-    
-    // Set up CUV (under-voltage) Threshold - 0x9275 = 0x31 (2479 mV)
-    // CUV Threshold is this value multiplied by 50.6mV
-    set_register(TIBQ769x2_CUVThreshold, 0x31, 1);
-    
-    // Set up COV (over-voltage) Threshold - 0x9278 = 0x55 (4301 mV)
-    // COV Threshold is this value multiplied by 50.6mV
-    set_register(TIBQ769x2_COVThreshold, 0x55, 1);
-    
-    // Set up OCC (over-current in charge) Threshold - 0x9280 = 0x05 (10 mV = 10A across 1mOhm sense resistor) Units in 2mV
-    set_register(TIBQ769x2_OCCThreshold, 0x05, 1);
-    
-    // Set up OCD1 Threshold - 0x9282 = 0x0A (20 mV = 20A across 1mOhm sense resistor) units of 2mV
-    set_register(TIBQ769x2_OCD1Threshold, 0x0A, 1);
-    
-    // Set up SCD Threshold - 0x9286 = 0x05 (100 mV = 100A across 1mOhm sense resistor) 0x05=100mV
-    set_register(TIBQ769x2_SCDThreshold, 0x05, 1);
-    
-    // Set up SCD Delay - 0x9287 = 0x03 (30 us) Enabled with a delay of (value - 1) * 15 μs; min value of 1
-    set_register(TIBQ769x2_SCDDelay, 0x03, 1);
-    
-    // Set up SCDL Latch Limit to 1 to set SCD recovery only with load removal 0x9295 = 0x01
-    // If this is not set, then SCD will recover based on time (SCD Recovery Time parameter).
-    set_register(TIBQ769x2_SCDLLatchLimit, 0x01, 1);
-    
-    // Exit CONFIGUPDATE mode - Subcommand 0x0092
-    sub_command(TIBQ769x2_EXIT_CFGUPDATE);
 }
 
 uint32_t AP_BattMonitor_TIBQ76952::read_device_number(void) const

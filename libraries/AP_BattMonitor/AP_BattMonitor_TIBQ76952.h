@@ -467,8 +467,12 @@ protected:
     void permanent_fail_status_update(void) const;
     uint16_t read_battery_status(void) const;
     void battery_status_update(void) const;
-    void configure(void) const;
-    void timer(void);
+
+    // periodic timer callback
+    void timer();
+
+    // configure device
+    bool configure() const;
 
     bool configured;
     bool callback_registered;
