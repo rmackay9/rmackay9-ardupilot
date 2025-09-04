@@ -312,11 +312,11 @@ void NavEKF3_core::FuseOptFlow(const of_elements &ofDataDelayed, bool really_fus
     // the corrected value is the predicted range from the sensor focal point to the
     // centre of the image on the ground assuming flat terrain
     Vector3F posOffsetBody = ofDataDelayed.body_offset - accelPosOffset;
-    if (!posOffsetBody.is_zero()) {
+    /*if (!posOffsetBody.is_zero()) {
         Vector3F posOffsetEarth = prevTnb.mul_transpose(posOffsetBody);
         range -= posOffsetEarth.z / prevTnb.c.z;
-    }
-    
+    }*/
+
 #if APM_BUILD_TYPE(APM_BUILD_Rover)
     // override with user specified height (if given, for rover)
     if (ofDataDelayed.heightOverride > 0) {
