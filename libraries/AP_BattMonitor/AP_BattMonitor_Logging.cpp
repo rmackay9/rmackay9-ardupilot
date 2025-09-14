@@ -74,16 +74,24 @@ void AP_BattMonitor_Backend::Log_Write_BCL(const uint8_t instance, const uint64_
 // @Field: Instance: battery instance number
 // @Field: V13: thirteenth cell voltage
 // @Field: V14: fourteenth cell voltage
+// @Field: V15: fifteenth cell voltage
+// @Field: V16: sixteenth cell voltage
+// @Field: V17: seventeenth cell voltage
+// @Field: V18: eighteenth cell voltage
         AP::logger().WriteStreaming(
             "BCL2",
-            "TimeUS,Instance,V13,V14",
-            "s#vv",
-            "F-CC",
-            "QBHH",
+            "TimeUS,Instance,V13,V14,V15,V16,V17,V18",
+            "s#vvvvvv",
+            "F-CCCCCC",
+            "QBHHHHHH",
             time_us,
             instance,
             _state.cell_voltages.cells[ARRAY_SIZE(cell_pkt.cell_voltages)+0] + 1, // add 1mv
-            _state.cell_voltages.cells[ARRAY_SIZE(cell_pkt.cell_voltages)+1] + 1  // add 1mv
+            _state.cell_voltages.cells[ARRAY_SIZE(cell_pkt.cell_voltages)+1] + 1, // add 1mv
+            _state.cell_voltages.cells[ARRAY_SIZE(cell_pkt.cell_voltages)+2] + 1, // add 1mv
+            _state.cell_voltages.cells[ARRAY_SIZE(cell_pkt.cell_voltages)+3] + 1, // add 1mv
+            _state.cell_voltages.cells[ARRAY_SIZE(cell_pkt.cell_voltages)+4] + 1, // add 1mv
+            _state.cell_voltages.cells[ARRAY_SIZE(cell_pkt.cell_voltages)+5] + 1  // add 1mv
             );
     }
 #endif
