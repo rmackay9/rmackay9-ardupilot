@@ -13,20 +13,21 @@ local loop_time = 5000 -- number of ms between runs
 local AHRS_ID                   = uint32_t(163)
 local AHRS2_ID                  = uint32_t(178)
 local ATTITUDE_ID               = uint32_t(30)
---local EKF_STATUS_REPORT_ID      = uint32_t(193)
---local GLOBAL_POSITION_INT_ID    = uint32_t(33)
+local EKF_STATUS_REPORT_ID      = uint32_t(193)
+local GLOBAL_POSITION_INT_ID    = uint32_t(33)
 --local GPS_RAW_INT_ID            = uint32_t(24)
 --local LOCAL_POSITION_NED_ID     = uint32_t(32)
---local NAV_CONTROLLER_OUTPUT_ID  = uint32_t(62)
+local NAV_CONTROLLER_OUTPUT_ID  = uint32_t(62)
 --local POWER_STATUS_ID           = uint32_t(125)
 --local RAW_IMU_ID                = uint32_t(27)
 --local RC_CHANNELS_ID            = uint32_t(65)
---local SERVO_OUTPUT_RAW_ID       = uint32_t(36)
+local SERVO_OUTPUT_RAW_ID       = uint32_t(36)
 --local SYS_STATUS_ID             = uint32_t(1)
 --local SYSTEM_TIME_ID            = uint32_t(2)
---local VFR_HUD_ID                = uint32_t(74)
---local VIBRATION_ID              = uint32_t(241)
+local VFR_HUD_ID                = uint32_t(74)
+local VIBRATION_ID              = uint32_t(241)
 --local WIND_ID                   = uint32_t(168)
+local CAMERA_THERMAL_RANGE_ID   = uint32_t(277)
 
 -- serial port
 local serial_port = 0
@@ -34,8 +35,15 @@ local serial_port = 0
 -- intervals is a table which contains a table for each entry we want to adjust
 -- each entry is arranged as {the serial link to adjust, the mavlink message ID, and the broadcast interval in Hz}
 local intervals = {{serial_port, ATTITUDE_ID, 2.0}, -- ATTITUDE, 2Hz
-                   {serial_port, AHRS_ID, 5.0},     -- AHRS, 5Hz
+                   {serial_port, AHRS_ID, 2.0},     -- AHRS, 5Hz
                    {serial_port, AHRS2_ID, 0},      -- AHRS2, 0hz
+                   {serial_port, EKF_STATUS_REPORT_ID, 1},      -- EKF_STATUS_REPORT, 0hz
+                   {serial_port, GLOBAL_POSITION_INT_ID, 1},    -- GLOBAL_POSITION_INT_ID, 1hz
+                   {serial_port, NAV_CONTROLLER_OUTPUT_ID, 1},  -- NAV_CONTROLLER_OUTPUT_ID, 1hz
+                   {serial_port, SERVO_OUTPUT_RAW_ID, 1},       -- SERVO_OUTPUT_RAW_ID, 1hz
+                   {serial_port, VFR_HUD_ID, 1},                -- VFR_HUD_ID, 1hz
+                   {serial_port, VIBRATION_ID, 1},              -- VIBRATION_ID, 1hz
+                   {serial_port, CAMERA_THERMAL_RANGE_ID, 1},   -- CAMERA_THERMAL_RANGE_ID, 1hz
                   }
 
 -- print welcome message
