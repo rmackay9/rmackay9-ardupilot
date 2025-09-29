@@ -1135,6 +1135,10 @@ void AP_Mount_Siyi::send_camera_thermal_range(mavlink_channel_t chan) const
         timeout ? NaNf : _thermal.min_C,     // min in degC
         timeout ? NaNf : _thermal.min_pos.x, // min x position
         timeout ? NaNf : _thermal.min_pos.y);// min y position
+
+    // send min/max temp as named values which are easy to graph
+    gcs().send_named_float("TempMaxC", timeout ? 0 : _thermal.max_C);
+    gcs().send_named_float("TempMinC", timeout ? 0 :_thermal.min_C);
 }
 #endif
 
