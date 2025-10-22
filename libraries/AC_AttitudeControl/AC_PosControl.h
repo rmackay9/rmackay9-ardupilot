@@ -566,6 +566,13 @@ public:
     // When enabled, disables use of horizontal velocity estimates.
     void set_vibe_comp(bool on_off) { _vibe_comp_enabled = on_off; }
 
+    // Reset handling method
+    enum class EKFResetMethod : uint8_t {
+        SlewTarget = 0,
+        ResetTarget = 1
+    };
+    void set_reset_handling_method(EKFResetMethod reset_method) { _ekf_reset_method = reset_method; }
+
     // Returns confidence (0–1) in vertical control authority based on output usage.
     // Used to assess throttle margin and PID effectiveness.
     float get_vel_U_control_ratio() const { return constrain_float(_vel_u_control_ratio, 0.0f, 1.0f); }
@@ -749,6 +756,7 @@ protected:
     // ekf reset handling
     uint32_t    _ekf_ne_reset_ms;       // system time of last recorded ekf ne position reset
     uint32_t    _ekf_u_reset_ms;        // system time of last recorded ekf altitude reset
+    EKFResetMethod _ekf_reset_method;   // EKF reset handling method.  Loiter should use ResetTarget, Auto should use SlewTarget
 
     // high vibration handling
     bool        _vibe_comp_enabled;     // true when high vibration compensation is on
