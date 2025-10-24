@@ -381,6 +381,9 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
     }
 #endif
 
+    // set ekf reset handling method
+    pos_control->set_reset_handling_method(new_flightmode->handle_ekf_reset_smoothly() ? AC_PosControl::EKFResetMethod::SlewTarget : AC_PosControl::EKFResetMethod::ResetTarget);
+
     // update notify object
     notify_flight_mode();
 

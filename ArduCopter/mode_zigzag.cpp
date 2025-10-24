@@ -578,4 +578,20 @@ float ModeZigZag::crosstrack_error_m() const
     return is_auto ? wp_nav->crosstrack_error_m() : 0;
 }
 
+// determine EKF reset handling method based on Guide submode
+bool ModeZigZag::handle_ekf_reset_smoothly() const
+{
+    // ekf reset handling depends upon submode
+    switch (stage) {
+    case ZigZagState::STORING_POINTS:
+    case ZigZagState::MANUAL_REGAIN:
+        return false;
+    case ZigZagState::AUTO:
+        return true;
+    }
+
+    // should never reach here but just in case
+    return true;
+}
+
 #endif // MODE_ZIGZAG_ENABLED

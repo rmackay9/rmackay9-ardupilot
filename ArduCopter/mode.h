@@ -137,6 +137,7 @@ public:
     virtual bool allows_autotune() const { return false; }
     virtual bool allows_flip() const { return false; }
     virtual bool crash_check_enabled() const { return true; }
+    virtual bool handle_ekf_reset_smoothly() const { return true; }
 
     // "no pilot input" here means eg. in RC failsafe
     virtual bool allows_entry_in_rc_failsafe() const { return true; }
@@ -494,6 +495,7 @@ public:
     bool allows_flip() const override { return true; }
     bool allows_auto_trim() const override { return true; }
     bool allows_save_trim() const override { return true; }
+    bool handle_ekf_reset_smoothly() const override { return false; }
 #if FRAME_CONFIG == HELI_FRAME
     bool allows_inverted() const override { return true; };
 #endif
@@ -857,6 +859,7 @@ public:
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(AP_Arming::Method method) const override { return false; };
     bool is_autopilot() const override { return true; }
+    bool handle_ekf_reset_smoothly() const override { return false; }
 
     void timeout_to_loiter_ms(uint32_t timeout_ms);
 
@@ -1082,6 +1085,7 @@ public:
     bool is_autopilot() const override { return true; }
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool in_guided_mode() const override { return true; }
+    bool handle_ekf_reset_smoothly() const override;
 
     bool requires_terrain_failsafe() const override { return true; }
 
@@ -1280,8 +1284,8 @@ public:
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(AP_Arming::Method method) const override { return false; };
     bool is_autopilot() const override { return true; }
-
     bool is_landing() const override { return true; };
+    bool handle_ekf_reset_smoothly() const override { return false; }
 
 #if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
     // Return the type of this mode for use by advanced failsafe
@@ -1329,6 +1333,7 @@ public:
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool allows_autotune() const override { return true; }
     bool allows_auto_trim() const override { return true; }
+    bool handle_ekf_reset_smoothly() const override { return false; }
 
 #if FRAME_CONFIG == HELI_FRAME
     bool allows_inverted() const override { return true; };
@@ -1379,6 +1384,7 @@ public:
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool allows_autotune() const override { return true; }
     bool allows_auto_trim() const override { return true; }
+    bool handle_ekf_reset_smoothly() const override { return false; }
 
 protected:
 
@@ -1971,6 +1977,7 @@ public:
     bool allows_arming(AP_Arming::Method method) const override { return true; }
     bool is_autopilot() const override { return true; }
     bool has_user_takeoff(bool must_navigate) const override { return true; }
+    bool handle_ekf_reset_smoothly() const override;
 
     // save current position as A or B.  If both A and B have been saved move to the one specified
     void save_or_move_to_destination(Destination ab_dest);
