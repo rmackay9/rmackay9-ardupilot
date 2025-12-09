@@ -86,7 +86,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_POS_P
     // @DisplayName: Position (down) controller P gain
-    // @Description: Position (down) controller P gain.  Converts the difference between the desired altitude and actual altitude into a climb or descent rate which is passed to the throttle rate controller.  (Previously _POSZ_P)
+    // @Description: Position (down) controller P gain. Converts the difference between the desired altitude and actual altitude into a climb or descent rate which is passed to the throttle rate controller. Previously _POSZ_P.
     // @Range: 1.000 4.000
     // @Increment: 0.1
     // @User: Standard
@@ -98,7 +98,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _NE_POS_P
     // @DisplayName: Position (horizontal) controller P gain
-    // @Description: Position controller P gain.  Converts the distance (in the latitude direction) to the target location into a desired speed which is then passed to the loiter latitude rate controller.  (Previously _POSXY_P)
+    // @Description: Position controller P gain. Converts the distance (in the latitude direction) to the target location into a desired speed which is then passed to the loiter latitude rate controller. Previously _POSXY_P.
     // @Range: 0.500 2.000
     // @Increment: 0.1
     // @User: Standard
@@ -108,7 +108,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _ANGLE_MAX
     // @DisplayName: Position Control Angle Max
-    // @Description: Maximum lean angle autopilot can request.  Set to zero to use ANGLE_MAX parameter value
+    // @Description: Maximum lean angle autopilot can request. Set to zero to use ANGLE_MAX parameter value
     // @Units: deg
     // @Range: 0 45
     // @Increment: 1
@@ -137,42 +137,42 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_VEL_P
     // @DisplayName: Velocity (down) controller P gain
-    // @Description: Velocity (down) controller P gain.  Converts the difference between desired vertical speed and actual speed into a desired acceleration that is passed to the throttle acceleration controller.  (Previously _VELZ_P)
+    // @Description: Velocity (down) controller P gain. Converts the difference between desired vertical speed and actual speed into a desired acceleration that is passed to the throttle acceleration controller. Previously _VELZ_P.
     // @Range: 1.000 8.000
     // @Increment: 0.1
     // @User: Standard
 
     // @Param: _D_VEL_I
     // @DisplayName: Velocity (down) controller I gain
-    // @Description: Velocity (down) controller I gain.  Corrects long-term difference in desired velocity to a target acceleration.  (Previously _VELZ_I)
+    // @Description: Velocity (down) controller I gain. Corrects long-term difference in desired velocity to a target acceleration. Previously _VELZ_I.
     // @Range: 0.00 8.00
     // @Increment: 0.1
     // @User: Advanced
 
     // @Param: _D_VEL_IMAX
     // @DisplayName: Velocity (down) controller I gain maximum
-    // @Description: Velocity (down) controller I gain maximum.  Constrains the target acceleration that the I gain will output. (_VELZ_IMAX * 0.01)
+    // @Description: Velocity (down) controller I gain maximum. Constrains the target acceleration that the I gain will output. If upgrading from 4.6 this is _VELZ_IMAX * 0.01.
     // @Range: 1.000 10.000
     // @Increment: 1.0
     // @User: Standard
 
     // @Param: _D_VEL_D
     // @DisplayName: Velocity (down) controller D gain
-    // @Description: Velocity (down) controller D gain.  Corrects short-term changes in velocity.  (Previously _VELZ_D)
+    // @Description: Velocity (down) controller D gain. Corrects short-term changes in velocity. Previously _VELZ_D.
     // @Range: 0.00 2.00
     // @Increment: 0.1
     // @User: Advanced
 
     // @Param: _D_VEL_FF
     // @DisplayName: Velocity (down) controller Feed Forward gain
-    // @Description: Velocity (down) controller Feed Forward gain.  Produces an output that is proportional to the magnitude of the target.  (Previously _VELZ_FF)
+    // @Description: Velocity (down) controller Feed Forward gain. Produces an output that is proportional to the magnitude of the target. Previously _VELZ_FF.
     // @Range: 0.00 2.00
     // @Increment: 0.1
     // @User: Advanced
 
     // @Param: _D_VEL_FLTE
     // @DisplayName: Velocity (down) error filter
-    // @Description: Velocity (down) error filter.  This filter (in Hz) is applied to the input for P and I terms.  (Previously _VELZ_FLTE)
+    // @Description: Velocity (down) error filter. This filter (in Hz) is applied to the input for P and I terms. Previously _VELZ_FLTE.
     // @Range: 0 100
     // @Increment: 1.0
     // @Units: Hz
@@ -180,7 +180,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_VEL_FLTD
     // @DisplayName: Velocity (down) input filter for D term
-    // @Description: Velocity (down) input filter for D term.  This filter (in Hz) is applied to the input for D terms.  (Previously _VELZ_FLTD)
+    // @Description: Velocity (down) input filter for D term. This filter (in Hz) is applied to the input for D terms. Previously _VELZ_FLTD.
     // @Range: 0 100
     // @Increment: 1.0
     // @Units: Hz
@@ -189,21 +189,21 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_ACC_P
     // @DisplayName: Acceleration (down) controller P gain
-    // @Description: Acceleration (down) controller P gain.  Converts the difference between desired vertical acceleration and actual acceleration into a motor output. (_ACCZ_P * 0.1)
+    // @Description: Acceleration (down) controller P gain. Converts the difference between desired vertical acceleration and actual acceleration into a motor output. If upgrading from 4.6 this is _ACCZ_P * 0.1.
     // @Range: 0.010 0.250
     // @Increment: 0.005
     // @User: Standard
 
     // @Param: _D_ACC_I
     // @DisplayName: Acceleration (down) controller I gain
-    // @Description: Acceleration (down) controller I gain.  Corrects long-term difference in desired vertical acceleration and actual acceleration. (_ACCZ_I * 0.1)
+    // @Description: Acceleration (down) controller I gain. Corrects long-term difference in desired vertical acceleration and actual acceleration. If upgrading from 4.6 this is _ACCZ_I * 0.1.
     // @Range: 0.000 0.500
     // @Increment: 0.005
     // @User: Standard
 
     // @Param: _D_ACC_IMAX
     // @DisplayName: Acceleration (down) controller I gain maximum
-    // @Description: Acceleration (down) controller I gain maximum.  Constrains the maximum pwm that the I term will generate. (_ACCZ_IMAX * 0.001)
+    // @Description: Acceleration (down) controller I gain maximum. Constrains the maximum pwm that the I term will generate. If upgrading from 4.6 this is _ACCZ_IMAX * 0.001.
     // @Range: 0.0 1.0
     // @Increment: 0.1
     // @Units: d%
@@ -211,21 +211,21 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_ACC_D
     // @DisplayName: Acceleration (down) controller D gain
-    // @Description: Acceleration (down) controller D gain.  Compensates for short-term change in desired vertical acceleration vs actual acceleration. (_ACCZ_D * 0.1)
+    // @Description: Acceleration (down) controller D gain. Compensates for short-term change in desired vertical acceleration vs actual acceleration. If upgrading from 4.6 this is _ACCZ_D * 0.1.
     // @Range: 0.000 0.050
     // @Increment: 0.005
     // @User: Standard
 
     // @Param: _D_ACC_FF
     // @DisplayName: Acceleration (down) controller feed forward
-    // @Description: Acceleration (down) controller feed forward. (_ACCZ_FF * 0.1)
+    // @Description: Acceleration (down) controller feed forward. If upgrading from 4.6 this is _ACCZ_FF * 0.1.
     // @Range: 0.00 0.1
     // @Increment: 0.01
     // @User: Standard
 
     // @Param: _D_ACC_FLTT
     // @DisplayName: Acceleration (down) controller target frequency in Hz
-    // @Description: Acceleration (down) controller target frequency in Hz.  (Previously _ACCZ_FLTT)
+    // @Description: Acceleration (down) controller target frequency in Hz. Previously _ACCZ_FLTT.
     // @Range: 1 50
     // @Increment: 1
     // @Units: Hz
@@ -233,7 +233,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_ACC_FLTE
     // @DisplayName: Acceleration (down) controller error frequency in Hz
-    // @Description: Acceleration (down) controller error frequency in Hz.  (Previously _ACCZ_FLTE)
+    // @Description: Acceleration (down) controller error frequency in Hz. Previously _ACCZ_FLTE.
     // @Range: 1 100
     // @Increment: 1
     // @Units: Hz
@@ -241,7 +241,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_ACC_FLTD
     // @DisplayName: Acceleration (down) controller derivative frequency in Hz
-    // @Description: Acceleration (down) controller derivative frequency in Hz.  (Previously _ACCZ_FLTD)
+    // @Description: Acceleration (down) controller derivative frequency in Hz. Previously _ACCZ_FLTD.
     // @Range: 1 100
     // @Increment: 1
     // @Units: Hz
@@ -256,55 +256,55 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _D_ACC_PDMX
     // @DisplayName: Acceleration (down) controller PD sum maximum
-    // @Description: Acceleration (down) controller PD sum maximum.  The maximum/minimum value that the sum of the P and D term can output. (_ACCZ_P * 0.1)
+    // @Description: Acceleration (down) controller PD sum maximum. The maximum/minimum value that the sum of the P and D term can output. If upgrading from 4.6 this is _ACCZ_P * 0.1.
     // @Range: 0 1
     // @Increment: 0.1
     // @Units: d%
 
     // @Param: _D_ACC_D_FF
     // @DisplayName: Accel (down) Derivative FeedForward Gain
-    // @Description: FF D Gain which produces an output that is proportional to the rate of change of the target. (_ACCZ_P * 0.1)
+    // @Description: FF D Gain which produces an output that is proportional to the rate of change of the target. If upgrading from 4.6 this is _ACCZ_P * 0.1.
     // @Range: 0.000 0.050
     // @Increment: 0.005
     // @User: Advanced
 
     // @Param: _D_ACC_NTF
     // @DisplayName: Accel (down) Target notch filter index
-    // @Description: Accel (down) Target notch filter index.  (Previously _ACCZ_NTF)
+    // @Description: Accel (down) Target notch filter index. If upgrading from 4.6 this is Previously _ACCZ_NTF.
     // @Range: 1 8
     // @User: Advanced
 
     // @Param: _D_ACC_NEF
     // @DisplayName: Accel (down) Error notch filter index
-    // @Description: Accel (down) Error notch filter index.  (Previously _ACCZ_NEF)
+    // @Description: Accel (down) Error notch filter index. If upgrading from 4.6 this is Previously _ACCZ_NEF.
     // @Range: 1 8
     // @User: Advanced
     AP_SUBGROUPINFO(_pid_accel_d_m, "_D_ACC_", 13, AC_PosControl, AC_PID),
 
     // @Param: _NE_VEL_P
     // @DisplayName: Velocity (horizontal) P gain
-    // @Description: Velocity (horizontal) P gain.  Converts the difference between desired and actual velocity to a target acceleration.  (Previously _VELXY_P)
+    // @Description: Velocity (horizontal) P gain. Converts the difference between desired and actual velocity to a target acceleration. Previously _VELXY_P.
     // @Range: 0.1 6.0
     // @Increment: 0.1
     // @User: Advanced
 
     // @Param: _NE_VEL_I
     // @DisplayName: Velocity (horizontal) I gain
-    // @Description: Velocity (horizontal) I gain.  Corrects long-term difference between desired and actual velocity to a target acceleration.  (Previously _VELXY_I)
+    // @Description: Velocity (horizontal) I gain. Corrects long-term difference between desired and actual velocity to a target acceleration. Previously _VELXY_I.
     // @Range: 0.02 1.00
     // @Increment: 0.01
     // @User: Advanced
 
     // @Param: _NE_VEL_D
     // @DisplayName: Velocity (horizontal) D gain
-    // @Description: Velocity (horizontal) D gain.  Corrects short-term changes in velocity.  (Previously _VELXY_D)
+    // @Description: Velocity (horizontal) D gain. Corrects short-term changes in velocity. Previously _VELXY_D.
     // @Range: 0.00 1.00
     // @Increment: 0.001
     // @User: Advanced
 
     // @Param: _NE_VEL_IMAX
     // @DisplayName: Velocity (horizontal) integrator maximum
-    // @Description: Velocity (horizontal) integrator maximum.  Constrains the target acceleration that the I gain will output. (_VELXY_IMAX * 0.01)
+    // @Description: Velocity (horizontal) integrator maximum. Constrains the target acceleration that the I gain will output. If upgrading from 4.6 this is _VELXY_IMAX * 0.01.
     // @Range: 0 4500
     // @Increment: 10
     // @Units: cm/s/s
@@ -312,7 +312,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _NE_VEL_FLTE
     // @DisplayName: Velocity (horizontal) input filter
-    // @Description: Velocity (horizontal) input filter.  This filter (in Hz) is applied to the input for P and I terms.  (Previously _VELXY_FLTE)
+    // @Description: Velocity (horizontal) input filter. This filter (in Hz) is applied to the input for P and I terms. Previously _VELXY_FLTE.
     // @Range: 0 100
     // @Increment: 1
     // @Units: Hz
@@ -320,7 +320,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _NE_VEL_FLTD
     // @DisplayName: Velocity (horizontal) input filter
-    // @Description: Velocity (horizontal) input filter.  This filter (in Hz) is applied to the input for D term.  (Previously _VELXY_FLTD)
+    // @Description: Velocity (horizontal) input filter. This filter (in Hz) is applied to the input for D term. Previously _VELXY_FLTD.
     // @Range: 0 100
     // @Increment: 1
     // @Units: Hz
@@ -328,7 +328,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 
     // @Param: _NE_VEL_FF
     // @DisplayName: Velocity (horizontal) feed forward gain
-    // @Description: Velocity (horizontal) feed forward gain.  Converts the difference between desired velocity to a target acceleration.  (Previously _VELXY_FF)
+    // @Description: Velocity (horizontal) feed forward gain. Converts the difference between desired velocity to a target acceleration. Previously _VELXY_FF.
     // @Range: 0.0 6.0
     // @Increment: 0.1
     // @User: Advanced
