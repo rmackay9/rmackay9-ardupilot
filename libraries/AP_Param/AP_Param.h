@@ -512,9 +512,12 @@ public:
 
     // move all parameters from a class to a new location
     // is_top_level: Is true if the class had its own top level key, param_key. It is false if the class was a subgroup
+    // parent_idx: For nested subgroups (e.g., QuadPlane's pos_control), this is the index of the parent group.
+    //             Set to 0 for classes that are direct children of the top-level group.
     static void         convert_class(uint16_t param_key, void *object_pointer,
                                         const struct AP_Param::GroupInfo *group_info,
-                                        uint16_t old_index, bool is_top_level, bool recurse_sub_groups = false);
+                                        uint16_t old_index, bool is_top_level, bool recurse_sub_groups = false,
+                                        uint16_t parent_idx = 0);
 
     /*
       fetch a parameter value based on the index within a group. This

@@ -1853,14 +1853,21 @@ void AC_PosControl::convert_parameters()
     AP_Param::convert_old_parameter(&psc_d_acc_imax_info, 0.001f);
 
     // parameters that are simply moved with no scaling.  Params that have already been moved above are not affected
+    // For QuadPlane, pos_control is nested within the quadplane group at index 17, so we need parent_idx=17
+#if APM_BUILD_TYPE(APM_BUILD_ArduPlane)
+    constexpr uint16_t parent_idx = 17;  // Q_P is at index 17 within QuadPlane var_info
+#else
+    constexpr uint16_t parent_idx = 0;   // Copter: pos_control is direct child of top-level group
+#endif
+
     // move _pid_vel_d_m parameters from slot 3 to slot 12.  _VELZ_ has become _D_VEL_
-    AP_Param::convert_class(k_param_psc_key, &_pid_vel_d_m, _pid_vel_d_m.var_info, 3, false);
+    AP_Param::convert_class(k_param_psc_key, &_pid_vel_d_m, _pid_vel_d_m.var_info, 3, false, false, parent_idx);
 
     // move _pid_accel_d_m from slot 4 to 13.  _ACCZ_ has become _D_ACC_
-    AP_Param::convert_class(k_param_psc_key, &_pid_accel_d_m, _pid_accel_d_m.var_info, 4, false);
+    AP_Param::convert_class(k_param_psc_key, &_pid_accel_d_m, _pid_accel_d_m.var_info, 4, false, false, parent_idx);
 
     // move _pid_vel_ne_m from 6 to 14.  _VELXY_ has become _NE_VEL_
-    AP_Param::convert_class(k_param_psc_key, &_pid_vel_ne_m, _pid_vel_ne_m.var_info, 6, false);
+    AP_Param::convert_class(k_param_psc_key, &_pid_vel_ne_m, _pid_vel_ne_m.var_info, 6, false, false, parent_idx);
 
     // store PSC_D_ACC_P as flag that parameter conversion was completed
     _pid_accel_d_m.kP().save(true);

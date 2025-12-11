@@ -2058,11 +2058,15 @@ void AP_Param::convert_old_parameters_scaled(const struct ConversionInfo *conver
 
 // move all parameters from a class to a new location
 // is_top_level: Is true if the class had its own top level key, param_key. It is false if the class was a subgroup
+// parent_idx: For nested subgroups (e.g., QuadPlane's pos_control), this is the index of the parent group
 void AP_Param::convert_class(uint16_t param_key, void *object_pointer,
                                     const struct AP_Param::GroupInfo *group_info,
-                                    uint16_t old_index, bool is_top_level, bool recurse_sub_groups)
+                                    uint16_t old_index, bool is_top_level, bool recurse_sub_groups,
+                                    uint16_t parent_idx)
 {
     const uint8_t group_shift = is_top_level ? 0 : 6;
+    // For nested subgroups (parent_idx != 0), we need an additional 6-bit shift
+    const uint8_t nested_shift = (parent_idx != 0) ? 6 : 0;
 
     for (uint8_t i=0; group_info[i].type != AP_PARAM_NONE; i++) {
         struct ConversionInfo info;
@@ -2085,7 +2089,14 @@ void AP_Param::convert_class(uint16_t param_key, void *object_pointer,
             continue;
         }
 
-        info.old_group_element = (idx << group_shift) + old_index;
+        // Calculate old_group_element accounting for nesting level
+        // For nested subgroups: (idx << (group_shift + nested_shift)) + (parent_idx << group_shift) + old_index
+        // For direct subgroups: (idx << group_shift) + old_index
+        if (parent_idx != 0) {
+            info.old_group_element = (idx << (group_shift + nested_shift)) + (parent_idx << group_shift) + old_index;
+        } else {
+            info.old_group_element = (idx << group_shift) + old_index;
+        }
 
         uint8_t old_value[type_size(info.type)];
         AP_Param *ap = (AP_Param *)&old_value[0];
