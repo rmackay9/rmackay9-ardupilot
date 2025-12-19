@@ -19,6 +19,7 @@
 
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
+#include <AP_Baro/AP_Baro.h>
 #include "AP_RangeFinder.h"
 #include "AP_RangeFinder_Backend.h"
 
@@ -61,6 +62,8 @@ void AP_RangeFinder_Backend::update_status(RangeFinder::RangeFinder_State &state
 {
     // check distance
     if (state_arg.distance_m > max_distance_cm() * 0.01f) {
+        set_status(state_arg, RangeFinder::Status::OutOfRangeHigh);
+    } else if (AP_Baro().get_altitude() > max_distance_cm() * 1.3) {
         set_status(state_arg, RangeFinder::Status::OutOfRangeHigh);
     } else if (state_arg.distance_m < min_distance_cm() * 0.01f) {
         set_status(state_arg, RangeFinder::Status::OutOfRangeLow);
