@@ -63,7 +63,7 @@ void AP_RangeFinder_Backend::update_status(RangeFinder::RangeFinder_State &state
     // check distance
     if (state_arg.distance_m > max_distance_cm() * 0.01f) {
         set_status(state_arg, RangeFinder::Status::OutOfRangeHigh);
-    } else if (AP_Baro().get_altitude() > max_distance_cm() * 1.3) {
+    } else if (AP_Baro().get_altitude() > max_distance_cm() * 0.13f) {
         set_status(state_arg, RangeFinder::Status::OutOfRangeHigh);
     } else if (state_arg.distance_m < min_distance_cm() * 0.01f) {
         set_status(state_arg, RangeFinder::Status::OutOfRangeLow);
