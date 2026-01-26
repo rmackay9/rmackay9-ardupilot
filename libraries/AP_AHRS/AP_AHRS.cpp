@@ -1524,6 +1524,10 @@ void AP_AHRS::record_origin()
     _origin_lat.set_and_save_ifchanged(state.origin.lat * 1.0e-7);
     _origin_lng.set_and_save_ifchanged(state.origin.lng * 1.0e-7);
     _origin_alt.set_and_save_ifchanged(state.origin.alt * 1.0e-2);
+
+    // debug
+    GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Recorded origin: lat %.7f lng %.7f alt %.2f m",
+                  _origin_lat.get(), _origin_lng.get(), _origin_alt.get());
 }
 
 // Set the origin to the last recorded location if option bit set and not using GPS
@@ -1553,7 +1557,19 @@ bool AP_AHRS::use_recorded_origin_maybe()
         int32_t(_origin_alt.get() * 100),
         Location::AltFrame::ABSOLUTE
     };
-    return set_origin(loc);
+
+    // debug
+    const bool success = set_origin(loc);
+
+    if (success) {
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Using recorded origin: lat %.7f lng %.7f alt %.2f m",
+                      _origin_lat.get(), _origin_lng.get(), _origin_alt.get());
+    } else {
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Failed to use recorded origin: lat %.7f lng %.7f alt %.2f m",
+                      _origin_lat.get(), _origin_lng.get(), _origin_alt.get());
+    }
+    
+    return success;
 }
 
 #if AP_AHRS_POSITION_RESET_ENABLED
