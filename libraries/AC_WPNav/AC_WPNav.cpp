@@ -4,70 +4,21 @@
 extern const AP_HAL::HAL& hal;
 
 // Default waypoint navigation constraints
-#define WPNAV_WP_SPEED_CMS             1000.0f     // default horizontal speed between waypoints (cm/s)
-#define WPNAV_WP_SPEED_MIN_MS             0.01f    // minimum horizontal speed allowed (m/s)
-#define WPNAV_WP_RADIUS_CM              200.0f     // default radius within which a waypoint is considered reached (cm)
-#define WPNAV_WP_RADIUS_MIN_CM            5.0f     // minimum allowable waypoint radius (cm)
-#define WPNAV_WP_SPEED_UP_CMS           250.0f     // default maximum climb speed (cm/s)
-#define WPNAV_WP_SPEED_DOWN_CMS         150.0f     // default maximum descent speed (cm/s)
-#define WPNAV_WP_ACCEL_Z_DEFAULT_CMSS   100.0f     // default vertical acceleration limit (cm/s²)
+#define WPNAV_WP_SPEED_MS               10.0f      // default horizontal speed between waypoints (m/s)
+#define WPNAV_WP_SPEED_MIN_MS            0.01f     // minimum horizontal speed allowed (m/s)
+#define WPNAV_WP_RADIUS_M                2.0f      // default radius within which a waypoint is considered reached (m)
+#define WPNAV_WP_RADIUS_MIN_M            0.05f     // minimum allowable waypoint radius (m)
+#define WPNAV_WP_SPEED_UP_MS             2.5f      // default maximum climb speed (m/s)
+#define WPNAV_WP_SPEED_DOWN_MS           1.5f      // default maximum descent speed (m/s)
+#define WPNAV_WP_ACCEL_Z_DEFAULT_MSS     1.0f      // default vertical acceleration limit (m/s²)
 
 const AP_Param::GroupInfo AC_WPNav::var_info[] = {
-    // index 0 was used for the old orientation matrix
-
-    // @Param: SPEED
-    // @DisplayName: Waypoint Horizontal Speed Target
-    // @Description: Defines the speed in cm/s which the aircraft will attempt to maintain horizontally during a WP mission
-    // @Units: cm/s
-    // @Range: 10 2000
-    // @Increment: 50
-    // @User: Standard
-    AP_GROUPINFO("SPEED",       0, AC_WPNav, _wp_speed_cms, WPNAV_WP_SPEED_CMS),
-
-    // @Param: RADIUS
-    // @DisplayName: Waypoint Radius
-    // @Description: Defines the distance from a waypoint, that when crossed indicates the wp has been hit.
-    // @Units: cm
-    // @Range: 5 1000
-    // @Increment: 1
-    // @User: Standard
-    AP_GROUPINFO("RADIUS",      1, AC_WPNav, _wp_radius_cm, WPNAV_WP_RADIUS_CM),
-
-    // @Param: SPEED_UP
-    // @DisplayName: Waypoint Climb Speed Target
-    // @Description: Defines the speed in cm/s which the aircraft will attempt to maintain while climbing during a WP mission
-    // @Units: cm/s
-    // @Range: 10 1000
-    // @Increment: 50
-    // @User: Standard
-    AP_GROUPINFO("SPEED_UP",    2, AC_WPNav, _wp_speed_up_cms, WPNAV_WP_SPEED_UP_CMS),
-
-    // @Param: SPEED_DN
-    // @DisplayName: Waypoint Descent Speed Target
-    // @Description: Defines the speed in cm/s which the aircraft will attempt to maintain while descending during a WP mission
-    // @Units: cm/s
-    // @Range: 10 500
-    // @Increment: 10
-    // @User: Standard
-    AP_GROUPINFO("SPEED_DN",    3, AC_WPNav, _wp_speed_down_cms, WPNAV_WP_SPEED_DOWN_CMS),
-
-    // @Param: ACCEL
-    // @DisplayName: Waypoint Acceleration 
-    // @Description: Defines the horizontal acceleration in cm/s/s used during missions
-    // @Units: cm/s/s
-    // @Range: 50 500
-    // @Increment: 10
-    // @User: Standard
-    AP_GROUPINFO("ACCEL",       5, AC_WPNav, _wp_accel_cmss, WPNAV_ACCELERATION_MS * 100.0),
-
-    // @Param: ACCEL_Z
-    // @DisplayName: Waypoint Vertical Acceleration
-    // @Description: Defines the vertical acceleration in cm/s/s used during missions
-    // @Units: cm/s/s
-    // @Range: 50 500
-    // @Increment: 10
-    // @User: Standard
-    AP_GROUPINFO("ACCEL_Z",     6, AC_WPNav, _wp_accel_z_cmss, WPNAV_WP_ACCEL_Z_DEFAULT_CMSS),
+    // 0 was SPEED
+    // 1 was RADIUS
+    // 2 was SPEED_UP
+    // 3 was SPEED_DN
+    // 5 was ACCEL
+    // 6 was ACCEL_Z
 
     // @Param: RFND_USE
     // @DisplayName: Waypoint missions use rangefinder for terrain following
@@ -92,14 +43,70 @@ const AP_Param::GroupInfo AC_WPNav::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("TER_MARGIN",  12, AC_WPNav, _terrain_margin_m, 10.0),
 
-    // @Param: ACCEL_C
-    // @DisplayName: Waypoint Cornering Acceleration
-    // @Description: Defines the maximum cornering acceleration in cm/s/s used during missions.  If zero uses 2x accel value.
-    // @Units: cm/s/s
-    // @Range: 0 500
-    // @Increment: 10
+    // 13 was ACCEL_C
+
+    // @Param: SPEED
+    // @DisplayName: Waypoint Horizontal Speed Target
+    // @Description: Speed in m/s which the aircraft will attempt to maintain horizontally during a WP mission
+    // @Units: m/s
+    // @Range: 0.10 20.00
+    // @Increment: 0.10
     // @User: Standard
-    AP_GROUPINFO("ACCEL_C",     13, AC_WPNav, _wp_accel_c_cmss, 0.0),
+    AP_GROUPINFO("SPEED", 14, AC_WPNav, _wp_speed_ms, WPNAV_WP_SPEED_MS),
+
+    // @Param: RADIUS
+    // @DisplayName: Waypoint Radius
+    // @Description: Distance from a waypoint, that when crossed indicates the wp has been reached.
+    // @Units: m
+    // @Range: 0.05 10.00
+    // @Increment: 0.01
+    // @User: Standard
+    AP_GROUPINFO("RADIUS", 15, AC_WPNav, _wp_radius_m, WPNAV_WP_RADIUS_M),
+
+    // @Param: SPEED_UP
+    // @DisplayName: Waypoint Climb Speed Target
+    // @Description: Speed in m/s which the aircraft will attempt to maintain while climbing during a WP mission
+    // @Units: m/s
+    // @Range: 0.10 10.00
+    // @Increment: 0.10
+    // @User: Standard
+    AP_GROUPINFO("SPEED_UP", 16, AC_WPNav, _wp_speed_up_ms, WPNAV_WP_SPEED_UP_MS),
+
+    // @Param: SPEED_DN
+    // @DisplayName: Waypoint Descent Speed Target
+    // @Description: Speed in m/s which the aircraft will attempt to maintain while descending during a WP mission
+    // @Units: m/s
+    // @Range: 0.10 10.00
+    // @Increment: 0.10
+    // @User: Standard
+    AP_GROUPINFO("SPEED_DN", 17, AC_WPNav, _wp_speed_down_ms, WPNAV_WP_SPEED_DOWN_MS),
+
+    // @Param: ACCEL
+    // @DisplayName: Waypoint Acceleration 
+    // @Description: Horizontal acceleration in m/s/s used during missions
+    // @Units: m/s/s
+    // @Range: 0.50 5.00
+    // @Increment: 0.10
+    // @User: Standard
+    AP_GROUPINFO("ACCEL", 18, AC_WPNav, _wp_accel_mss, WPNAV_ACCELERATION_MS),
+
+    // @Param: ACCEL_Z
+    // @DisplayName: Waypoint Vertical Acceleration
+    // @Description: Vertical acceleration in m/s/s used during missions
+    // @Units: m/s/s
+    // @Range: 0.50 5.00
+    // @Increment: 0.10
+    // @User: Standard
+    AP_GROUPINFO("ACCEL_Z", 19, AC_WPNav, _wp_accel_z_mss, WPNAV_WP_ACCEL_Z_DEFAULT_MSS),
+
+    // @Param: ACCEL_CNR
+    // @DisplayName: Waypoint Cornering Acceleration
+    // @Description: Maximum cornering acceleration in m/s/s used during missions.  If zero uses 2x accel value.
+    // @Units: m/s/s
+    // @Range: 0 5.00
+    // @Increment: 0.10
+    // @User: Standard
+    AP_GROUPINFO("ACCEL_CNR", 20, AC_WPNav, _wp_accel_c_mss, 0.0),
 
     AP_GROUPEND
 };
@@ -117,10 +124,10 @@ AC_WPNav::AC_WPNav(const AP_AHRS_View& ahrs, AC_PosControl& pos_control, const A
     _flags.reached_destination = false;
     _flags.fast_waypoint = false;
 
-    // initialise old WPNAV_SPEED values
-    _last_wp_speed_cms = _wp_speed_cms;
-    _last_wp_speed_up_cms = _wp_speed_up_cms;
-    _last_wp_speed_down_cms = get_default_speed_down_cms();
+    // initialise old WP_SPEED values
+    _last_wp_speed_ms = _wp_speed_ms;
+    _last_wp_speed_up_ms = _wp_speed_up_ms;
+    _last_wp_speed_down_ms = get_default_speed_down_ms();
 }
 
 // Returns the expected source of terrain data when using alt-above-terrain commands.
@@ -156,10 +163,10 @@ AC_WPNav::TerrainSource AC_WPNav::get_terrain_source() const
 void AC_WPNav::wp_and_spline_init_m(float speed_ms, Vector3p stopping_point_ned_m)
 {    
     // ensure waypoint radius is not below minimum allowed value
-    _wp_radius_cm.set_and_save_ifchanged(MAX(_wp_radius_cm, WPNAV_WP_RADIUS_MIN_CM));
+    _wp_radius_m.set_and_save_ifchanged(MAX(_wp_radius_m, WPNAV_WP_RADIUS_MIN_M));
 
     // ensure waypoint speed is not below minimum allowed value
-    _wp_speed_cms.set_and_save_ifchanged(MAX(_wp_speed_cms, WPNAV_WP_SPEED_MIN_MS * 100.0));
+    _wp_speed_ms.set_and_save_ifchanged(MAX(_wp_speed_ms, WPNAV_WP_SPEED_MIN_MS));
 
     // initialise position controller
     _pos_control.D_init_controller_stopping_point();
@@ -527,7 +534,7 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
     if (!_this_leg_is_spline) {
         // update target position, velocity and acceleration
         target_pos_ned_m = _origin_ned_m;
-        s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _wp_radius_cm * 0.01, get_corner_acceleration_mss(), _flags.fast_waypoint, _track_dt_scalar * vel_dt_scalar * dt, target_pos_ned_m, target_vel_ned_ms, target_accel_ned_mss);
+        s_finished = _scurve_this_leg.advance_target_along_track(_scurve_prev_leg, _scurve_next_leg, _wp_radius_m, get_corner_acceleration_mss(), _flags.fast_waypoint, _track_dt_scalar * vel_dt_scalar * dt, target_pos_ned_m, target_vel_ned_ms, target_accel_ned_mss);
     } else {
         // splinetarget_vel
         target_vel_ned_ms = curr_target_vel_ned_ms;
@@ -558,7 +565,7 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
             } else {
                 // regular waypoints also require the copter to be within the waypoint radius
                 const Vector3f dist_to_dest_m = (curr_pos_ned_m - _destination_ned_m).tofloat();
-                if (dist_to_dest_m.length_squared() <= sq(_wp_radius_cm * 0.01)) {
+                if (dist_to_dest_m.length_squared() <= sq(_wp_radius_m)) {
                     _flags.reached_destination = true;
                 }
             }
@@ -628,20 +635,20 @@ bool AC_WPNav::update_wpnav()
 {
     // check for changes in WPNAV_SPEED parameter (horizontal speed target)
     if (_check_wp_speed_change) {
-        if (!is_equal(_wp_speed_cms.get(), _last_wp_speed_cms)) {
+        if (!is_equal(_wp_speed_ms.get(), _last_wp_speed_ms)) {
             // apply new WPNAV_SPEED value
             set_speed_NE_ms(get_default_speed_NE_ms());
-            _last_wp_speed_cms = _wp_speed_cms;
+            _last_wp_speed_ms = _wp_speed_ms;
         }
     }
     // check for climb and descent speed updates
-    if (!is_equal(_wp_speed_up_cms.get(), _last_wp_speed_up_cms)) {
+    if (!is_equal(_wp_speed_up_ms.get(), _last_wp_speed_up_ms)) {
         set_speed_up_ms(get_default_speed_up_ms());
-        _last_wp_speed_up_cms = _wp_speed_up_cms;
+        _last_wp_speed_up_ms = _wp_speed_up_ms;
     }
-    if (!is_equal(_wp_speed_down_cms.get(), _last_wp_speed_down_cms)) {
+    if (!is_equal(_wp_speed_down_ms.get(), _last_wp_speed_down_ms)) {
         set_speed_down_ms(get_default_speed_down_ms());
-        _last_wp_speed_down_cms = _wp_speed_down_cms;
+        _last_wp_speed_down_ms = _wp_speed_down_ms;
     }
 
     // advance the waypoint target based on current position and timing
