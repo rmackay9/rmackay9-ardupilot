@@ -11761,8 +11761,8 @@ Also, ignores heartbeats not from our target system'''
         targetpos = self.mav.location()
         wp_accuracy = None
         if self.is_copter() or self.is_heli():
-            wp_accuracy = self.get_parameter("WPNAV_RADIUS", attempts=2)
-            wp_accuracy = wp_accuracy * 0.01  # cm to m
+            wp_accuracy = self.get_parameter("WP_RADIUS", attempts=2)
+            wp_accuracy = wp_accuracy
         if self.is_plane() or self.is_rover():
             wp_accuracy = self.get_parameter("WP_RADIUS", attempts=2)
         if wp_accuracy is None:
@@ -12067,10 +12067,7 @@ Also, ignores heartbeats not from our target system'''
         target_speed = Vector3(1.0, 0.0, 0.0)
 
         wp_accuracy = None
-        if self.is_copter() or self.is_heli():
-            wp_accuracy = self.get_parameter("WPNAV_RADIUS", attempts=2)
-            wp_accuracy = wp_accuracy * 0.01  # cm to m
-        if self.is_plane() or self.is_rover():
+        if self.is_copter() or self.is_heli() or self.is_plane() or self.is_rover():
             wp_accuracy = self.get_parameter("WP_RADIUS", attempts=2)
         if wp_accuracy is None:
             raise ValueError()
