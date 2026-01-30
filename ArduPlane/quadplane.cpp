@@ -63,9 +63,9 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("PILOT_ACCEL_Z",  19, QuadPlane, pilot_accel_z_mss,  2.5),
 
-    // @Group: WP_
+    // @Group: W_
     // @Path: ../libraries/AC_WPNav/AC_WPNav.cpp
-    AP_SUBGROUPPTR(wp_nav, "WP_",  20, QuadPlane, AC_WPNav),
+    AP_SUBGROUPPTR(wp_nav, "W_",  20, QuadPlane, AC_WPNav),
 
     // @Param: RC_SPEED
     // @DisplayName: RC output speed in Hz
@@ -597,8 +597,8 @@ static const struct AP_Param::defaults_table_struct defaults_table[] = {
     { "Q_LOIT_BRK_ACC_M", 0.5 },
     { "Q_LOIT_BRK_JRK_M", 2.5 },
     { "Q_LOIT_SPEED_MS",  5.0 },
-    { "Q_WP_SPEED",       500 },
-    { "Q_WP_ACCEL",       100 },
+    { "Q_W_SPEED",        5.0 },
+    { "Q_W_ACCEL",        1.0 },
     { "Q_P_JERK_NE",      2   },
     // lower rotational accel limits
     { "Q_A_ACCEL_R_MAX", 40000 },
@@ -830,6 +830,9 @@ bool QuadPlane::setup(void)
 
     // upgrade position controller parameters added Dec 2025
     pos_control->convert_parameters();
+
+    // upgrade waypoint navigation parameters
+    wp_nav->convert_parameters();
 
     // upgrade loiter navigation parameters
     loiter_nav->convert_parameters();
@@ -2590,7 +2593,7 @@ void QuadPlane::vtol_position_controller(void)
         if (poscontrol.reached_wp_speed ||
             rel_groundspeed_sq < sq(wp_speed_ms) ||
             wp_speed_ms > 1.35*scaled_wp_speed_ms) {
-            // once we get below the Q_WP_SPEED then we don't want to
+            // once we get below the Q_W_SPEED then we don't want to
             // speed up again. At that point we should fly within the
             // limits of the configured VTOL controller we also apply
             // this limit when we are more than 45 degrees off the
