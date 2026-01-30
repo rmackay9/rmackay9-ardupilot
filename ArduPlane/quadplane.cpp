@@ -65,7 +65,7 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
 
     // @Group: WP_
     // @Path: ../libraries/AC_WPNav/AC_WPNav.cpp
-    AP_SUBGROUPPTR(wp_nav, "WP_",  20, QuadPlane, AC_WPNav),
+    AP_SUBGROUPPTR(wp_nav, "W_",  20, QuadPlane, AC_WPNav),
 
     // @Param: RC_SPEED
     // @DisplayName: RC output speed in Hz
@@ -597,8 +597,8 @@ static const struct AP_Param::defaults_table_struct defaults_table[] = {
     { "Q_LOIT_BRK_ACCEL", 50.0 },
     { "Q_LOIT_BRK_JERK",  250 },
     { "Q_LOIT_SPEED",     500 },
-    { "Q_WP_SPEED",       500 },
-    { "Q_WP_ACCEL",       100 },
+    { "Q_W_SPEED",       500 },
+    { "Q_W_ACCEL",       100 },
     { "Q_P_JERK_NE",      2   },
     // lower rotational accel limits
     { "Q_A_ACCEL_R_MAX", 40000 },
