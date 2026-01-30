@@ -2587,7 +2587,7 @@ void QuadPlane::vtol_position_controller(void)
         if (poscontrol.reached_wp_speed ||
             rel_groundspeed_sq < sq(wp_speed_ms) ||
             wp_speed_ms > 1.35*scaled_wp_speed_ms) {
-            // once we get below the Q_WP_SPEED then we don't want to
+            // once we get below the Q_W_SPEED then we don't want to
             // speed up again. At that point we should fly within the
             // limits of the configured VTOL controller we also apply
             // this limit when we are more than 45 degrees off the
