@@ -1308,6 +1308,11 @@ void Copter::load_parameters(void)
     // convert LAND parameters
     copter.mode_land.convert_params();
 
+#if AP_AVOIDANCE_ENABLED
+    // convert AC_Avoid parameters
+    copter.avoid.convert_params();
+#endif
+
     // setup AP_Param frame type flags
     AP_Param::set_frame_type_flags(AP_PARAM_FRAME_COPTER);
 }
