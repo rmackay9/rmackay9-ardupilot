@@ -1313,6 +1313,11 @@ void Copter::load_parameters(void)
     copter.mode_poshold.convert_params();
 #endif
 
+#if AP_AVOIDANCE_ENABLED
+    // convert AC_Avoid parameters
+    copter.avoid.convert_params();
+#endif
+
     // setup AP_Param frame type flags
     AP_Param::set_frame_type_flags(AP_PARAM_FRAME_COPTER);
 }
