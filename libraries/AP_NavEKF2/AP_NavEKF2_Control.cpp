@@ -436,9 +436,11 @@ bool NavEKF2_core::setOriginLLH(const Location &loc)
 // returns false if the origin has already been set
 bool NavEKF2_core::setOrigin(const Location &loc)
 {
-    // if the origin is valid reject setting a new origin
+    // check if the origin is valid
     if (validOrigin) {
-        return false;
+        // return true if origin has not changed
+        // reject attempts to move the origin
+        return (EKF_origin.same_loc_as(loc));
     }
 
     EKF_origin = loc;
