@@ -1604,10 +1604,13 @@ bool ModeAuto::set_next_wp(const AP_Mission::Mission_Command& current_cmd, const
 
     // whether vehicle should stop at the target position depends upon the next command
     switch (next_cmd.id) {
-    case MAV_CMD_NAV_WAYPOINT:
-    case MAV_CMD_NAV_LOITER_UNLIM:
     case MAV_CMD_NAV_VTOL_LAND:
     case MAV_CMD_NAV_LAND:
+        // ensure landing alt is zero
+        next_cmd.content.location.alt = 0;
+        FALLTHROUGH;
+    case MAV_CMD_NAV_WAYPOINT:
+    case MAV_CMD_NAV_LOITER_UNLIM:
 #if AP_MISSION_NAV_PAYLOAD_PLACE_ENABLED
     case MAV_CMD_NAV_PAYLOAD_PLACE:
 #endif
@@ -1656,7 +1659,11 @@ void ModeAuto::do_land(const AP_Mission::Mission_Command& cmd)
         Location default_loc = copter.current_loc;
         subtract_pos_offsets(default_loc);
 
-        const Location target_loc = loc_from_cmd(cmd, default_loc);
+        // ensure landing alt is zero
+        AP_Mission::Mission_Command cmd_alt_zero = cmd;
+        cmd_alt_zero.content.location.alt = 0;
+
+        const Location target_loc = loc_from_cmd(cmd_alt_zero, default_loc);
         if (!wp_start(target_loc)) {
             // failure to set next destination can only be because of missing terrain data
             copter.failsafe_terrain_on_event();
