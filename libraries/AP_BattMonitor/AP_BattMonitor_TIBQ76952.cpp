@@ -669,7 +669,7 @@ bool AP_BattMonitor_TIBQ76952::configure()
 #endif
 
     // enable REG1 3.3v to provide power to the MCU
-    set_register(TIBQ769x2_REG12Config, 0x01, 1);
+    set_register(TIBQ769x2_REG12Config, 0x0D, 1);
 
     // wake up device
     sub_command(TIBQ769x2_EXIT_DEEPSLEEP);
