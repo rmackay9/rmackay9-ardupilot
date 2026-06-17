@@ -492,6 +492,28 @@ extern const AP_HAL::HAL& hal;
 #define HAL_BATTMON_BQ76952_MAX_VOLTAGE 50.0f
 #endif
 
+// Default theoretical values for 1 mOhm sense resistor (datasheet section 10.10).
+// Boards with different resistor values should override in hwdef.
+#ifndef HAL_BATTMON_BQ76952_CC_GAIN
+#define HAL_BATTMON_BQ76952_CC_GAIN 0x40EF41F2
+#endif
+
+#ifndef HAL_BATTMON_BQ76952_CAPACITY_GAIN
+#define HAL_BATTMON_BQ76952_CAPACITY_GAIN 0x4A081C6A
+#endif
+
+// REG12 config defaults to REG1=3.3V only. Boards that need REG2 (for example LED rail)
+// should override in hwdef with HAL_BATTMON_BQ76952_REG12_CONFIG.
+#ifndef HAL_BATTMON_BQ76952_REG12_CONFIG
+#define HAL_BATTMON_BQ76952_REG12_CONFIG 0x0D
+#endif
+
+// REG12 runtime control: bit0=REG1 enable, bit1=REG2 enable.
+// Boards that need REG2 powered at runtime should override this in hwdef.
+#ifndef HAL_BATTMON_BQ76952_REG12_CONTROL
+#define HAL_BATTMON_BQ76952_REG12_CONTROL 0x01
+#endif
+
 const AP_Param::GroupInfo AP_BattMonitor_TIBQ76952::var_info[] = {
 
     // @Param: CFG_UPDATE
@@ -519,13 +541,13 @@ const AP_BattMonitor_TIBQ76952::ConfigurationSetting AP_BattMonitor_TIBQ76952::c
     // 'Power Config' - 0x9234 = 0x2D80
     // Setting the DSLP_LDO bit allows the LDOs to remain active when the device goes into Deep Sleep mode
     // Set wake speed bits to 00 for best performance
-    {TIBQ769x2_PowerConfig, 0x2D80, 2},
+    {TIBQ769x2_PowerConfig, 0x2980, 2},
 
-    // 'REG0 Config' - set REG0_EN bit to enable pre-regulator
+     // 'REG0 Config' - set REG0_EN bit to enable pre-regulator
     {TIBQ769x2_REG0Config, 0x01, 1},
 
-    // 'REG12 Config' - Enable REG1 with 3.3V output (0x0D for 3.3V, 0x0F for 5V)
-    {TIBQ769x2_REG12Config, 0x0D, 1},
+    // 'REG12 Config' - board-specific LDO setup (default REG1 3.3V)
+    {TIBQ769x2_REG12Config, HAL_BATTMON_BQ76952_REG12_CONFIG, 1},
 
     // Set DFETOFF pin to control BOTH CHG and DSG FET - 0x92FB = 0x42 (set to 0x00 to disable)
     {TIBQ769x2_DFETOFFPinConfig, 0x42, 1},
@@ -562,7 +584,7 @@ const AP_BattMonitor_TIBQ76952::ConfigurationSetting AP_BattMonitor_TIBQ76952::c
     // Enable protections in 'Enabled Protections A' 0x9261 = 0xBC
     // Enables SCD (short-circuit), OCD1 (over-current in discharge), OCC (over-current in charge),
     // COV (over-voltage), CUV (under-voltage)
-    {TIBQ769x2_EnabledProtectionsA, 0xBC, 1},
+    {TIBQ769x2_EnabledProtectionsA, 0x88, 1},
 #endif
 
 #if defined(DISABLE_PROTECTION_B)
@@ -573,6 +595,8 @@ const AP_BattMonitor_TIBQ76952::ConfigurationSetting AP_BattMonitor_TIBQ76952::c
     // OTC (over-temperature in charge), UTINT (internal under-temperature), UTD (under-temperature in discharge), UTC (under-temperature in charge)
     {TIBQ769x2_EnabledProtectionsB, 0xF7, 1},
 #endif
+
+    {TIBQ769x2_EnabledProtectionsC, 0x00, 1},
 
     // 'Default Alarm Mask' - 0x926D Enables the FullScan and ADScan bits, default value = 0xF800
     {TIBQ769x2_DefaultAlarmMask, 0xF882, 2},
@@ -603,6 +627,12 @@ const AP_BattMonitor_TIBQ76952::ConfigurationSetting AP_BattMonitor_TIBQ76952::c
     // Set up SCDL Latch Limit to 1 to set SCD recovery only with load removal 0x9295 = 0x01
     // If this is not set, then SCD will recover based on time (SCD Recovery Time parameter).
     {TIBQ769x2_SCDLLatchLimit, 0x01, 1},
+
+    // CC Gain
+    {TIBQ769x2_CCGain, HAL_BATTMON_BQ76952_CC_GAIN, 4},
+
+    // Capacity Gain
+    {TIBQ769x2_CapacityGain, HAL_BATTMON_BQ76952_CAPACITY_GAIN, 4},
 };
 
 // initialise the TIBQ76952 battery monitor
@@ -689,14 +719,29 @@ bool AP_BattMonitor_TIBQ76952::configure()
     Debug("BQ76952 detected, fw: 0x%08lX, hw: 0x%08lX", (unsigned long)fw_version, (unsigned long)hw_version);
 #endif
 
-    // enable REG1 3.3v to provide power to the MCU
-    set_register(TIBQ769x2_REG12Config, 0x0D, 1);
+    // Apply board-specific REG12 config setting.
+    set_register(TIBQ769x2_REG12Config, HAL_BATTMON_BQ76952_REG12_CONFIG, 1);
 
     // wake up device
     sub_command(TIBQ769x2_EXIT_DEEPSLEEP);
     hal.scheduler->delay(10);
     sub_command(TIBQ769x2_SLEEP_DISABLE);
     hal.scheduler->delay(10);
+
+    // Apply runtime REG12 output enable (works even when CFG_UPDATE is disabled).
+    sub_command(TIBQ769x2_REG12_CONTROL, HAL_BATTMON_BQ76952_REG12_CONTROL, CommandType::WRITE);
+    hal.scheduler->delay(2);
+
+    // Read back configured REG12 RAM value for debug visibility.
+    uint8_t reg12_cfg_readback = 0;
+    if (sub_command(TIBQ769x2_REG12Config, 0, CommandType::READ, &reg12_cfg_readback, 1)) {
+        Debug("BQ76952: REG12 cfg wanted=0x%02x got=0x%02x ctrl=0x%02x",
+              (unsigned)HAL_BATTMON_BQ76952_REG12_CONFIG,
+              (unsigned)reg12_cfg_readback,
+              (unsigned)HAL_BATTMON_BQ76952_REG12_CONTROL);
+    } else {
+        Debug("BQ76952: REG12 cfg readback failed");
+    }
 
     // clear any remaining permanent failure alerts
     direct_command(TIBQ769x2_PFAlertA, 0xFF, CommandType::WRITE);
