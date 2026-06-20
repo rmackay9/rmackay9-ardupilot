@@ -424,10 +424,10 @@ extern const AP_HAL::HAL& hal;
 #define TIBQ769x2_SWAP_TO_SPI 0x7C35
 #define TIBQ769x2_SWAP_TO_HDQ 0x7C40
 
-// bit masks
-#define MfgStatusInit_FET_EN 0x08   //bit 4
-#define FET_STATUS_DSG_FET_EN 0x04  //bit 3
-#define FET_STATUS_CHG_FET_EN 0x01  //bit 1
+// Fet Status bits
+#define MfgStatusInit_FET_EN  (1 << 3)  // FET enable bit in Mfg Status Init register
+#define FET_STATUS_CHG_FET_EN (1 << 0)  // CHG FET enable bit in FET Status register
+#define FET_STATUS_DSG_FET_EN (1 << 2)  // DSG FET enable bit in FET Status register
 
 // Alarm Status bits
 #define ALARM_STATUS_WAKE       (1 << 0)    // device is wakened from sleep mode
@@ -500,6 +500,10 @@ extern const AP_HAL::HAL& hal;
 
 #ifndef HAL_BATTMON_BQ76952_CAPACITY_GAIN
 #define HAL_BATTMON_BQ76952_CAPACITY_GAIN 0x4A081C6A
+#endif
+
+#ifndef HAL_BATTMON_BQ76952_SCD_THRESHOLD
+#define HAL_BATTMON_BQ76952_SCD_THRESHOLD 0x05
 #endif
 
 // REG12 config defaults to REG1=3.3V only. Boards that need REG2 (for example LED rail)
@@ -618,8 +622,9 @@ const AP_BattMonitor_TIBQ76952::ConfigurationSetting AP_BattMonitor_TIBQ76952::c
     // Set up OCD1 Threshold - 0x9282 = 0x0A (20 mV = 20A across 1mOhm sense resistor) units of 2mV
     {TIBQ769x2_OCD1Threshold, 0x0A, 1},
 
-    // Set up SCD Threshold - 0x9286 = 0x05 (100 mV = 100A across 1mOhm sense resistor) 0x05=100mV
-    {TIBQ769x2_SCDThreshold, 0x05, 1},
+    // Set up SCD Threshold - 0x9286 = 0x05 (100 mV = 200A across 0.5mOhm sense resistor)
+    // 0x01 = 20mV, 0x02 = 40mV, 0x03 = 60mV, 0x04 = 80mV, 0x05 = 100mV, 0x06 = 125mV, 0x07 = 150mV, 0x08 = 175mV, 0x09 = 200mV, 0x0A = 225mV, 0x0B = 250mV, 0x0C = 300mV, 0x0D = 350mV, 0x0E = 400mV, 0x0F = 450mV, 0x10 = 500mV
+    {TIBQ769x2_SCDThreshold, HAL_BATTMON_BQ76952_SCD_THRESHOLD, 1},
 
     // Set up SCD Delay - 0x9287 = 0x03 (30 us) Enabled with a delay of (value - 1) * 15 μs; min value of 1
     {TIBQ769x2_SCDDelay, 0x03, 1},
