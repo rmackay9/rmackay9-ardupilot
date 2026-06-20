@@ -5,9 +5,12 @@
 class BatteryBMS {
 public:
     friend class AP_Periph_FW;
+    // Constructor
+    BatteryBMS(void);
 
     // main update function
     void update(void);
+    static const struct AP_Param::GroupInfo var_info[];
 
 private:
 
@@ -16,9 +19,6 @@ private:
 
     // check and handle button press events
     void handle_button_press();
-
-    // request display of battery SOC percentage using LEDs
-    void request_display_percentage();
 
     // display battery SOC percentage using LEDs
     void display_percentage();
@@ -32,13 +32,18 @@ private:
     // update the LEDs. called regularly from update()
     void update_led_state(void);
 
+    // start IDLE state and record start time 
+    void start_idle(void);
+
     // BMS state machine variables
     enum class BmsState : uint8_t {
-        IDLE = 0,
+        BOOT = 0,
+        IDLE,
         POWERING_ON,
         POWERED_ON,
         POWERING_OFF,
-        POWERED_OFF
+        POWERED_OFF,
+        DEEPSLEEP
     };
 
     // request change in bms state. the only valid inputs are POWERED_ON and POWERING_OFF
@@ -65,12 +70,12 @@ private:
 
     // BMS state machine variables
     BmsState bms_state, req_bms_state;  // current and requested BMS states
+    uint32_t bms_idle_start_ms;        // system time of last state machine update
     uint32_t bms_last_update_ms;        // system time of last state machine update
     uint8_t bms_transition_counter;     // transition counter also used for animation
 
     // LED display variables
     uint32_t led_last_update_ms;        // system time of last LED update.  used to rate limit LED updates to 20hz
-    uint32_t led_display_soc_start_ms;  // system time that SOC display started.  0 if not displaying SOC
     uint8_t led_charging_animation_step; // LED charging animation step
     static const uint32_t LED_UPDATE_INTERVAL_MS = 50;  // update LEDs at 20hz
     static const uint32_t LED_DISPLAY_SOC_DURATION_MS = 1000;   // Display SOC percentage for 1 second

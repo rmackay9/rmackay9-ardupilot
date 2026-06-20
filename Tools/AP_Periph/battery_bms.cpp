@@ -21,11 +21,30 @@
 #include "stdio.h"
 #include "battery_bms.h"
 
+#define DEBUG_PRINT 1
+
+#if DEBUG_PRINT
+ # define Debug(fmt, args ...) do {printf(fmt "\n", ## args);} while(0)
+#else
+ # define Debug(fmt, args ...)
+#endif
+
+#define IDLE_TIMEOUT_THRESHOLD_MS 2000
+#define BOOT_PERCENTAGE_DISPLAY_MS 300
+
 extern const AP_HAL::HAL &hal;
 extern AP_Periph_FW periph;
 
 // GPIO pins used for BMS LEDs
 const uint8_t BatteryBMS::led_gpios[] = {AP_PERIPH_BMS_LED_PINS};
+
+const AP_Param::GroupInfo BatteryBMS::var_info[] = {
+};
+
+BatteryBMS::BatteryBMS(void)
+{
+    AP_Param::setup_object_defaults(this, var_info);
+}
 
 // configure gpio pins. returns true once configured
 bool BatteryBMS::configured()
@@ -67,21 +86,34 @@ void BatteryBMS::update(void)
         return;
     }
 
+    // update BMS state machine
+    update_bms_state();
+
 #ifdef HAL_GPIO_PIN_BMS_BTN1
     // check and handle button press events
     handle_button_press();
 #endif
 
-    // update BMS state machine
-    update_bms_state();
-
     // update LED state machine
     update_led_state();
+}
+
+void BatteryBMS::start_idle(void)
+{
+    bms_idle_start_ms = AP_HAL::millis();
+    bms_state = BmsState::IDLE;
+#if DEBUG_PRINT
+        Debug("BOOT complete, now enter IDLE t:%u", bms_idle_start_ms);
+#endif
 }
 
 // check and handle button press events
 void BatteryBMS::handle_button_press(void)
 {
+    if (bms_state == BmsState::BOOT) {
+        // do nothing during boot
+        return;
+    }
     // we take action in these cases
     //   1. button is released after being pressed between 10ms an 1 sec, we display the battery percentage (short press)
     //   2. button is pressed for at least 1 second (long press), we start the power-up or power-down counter and animation
@@ -100,6 +132,9 @@ void BatteryBMS::handle_button_press(void)
 
     // check if button has just been pressed (transition from released to pressed)
     if (button_pressed && !button.pressed_prev) {
+        if (bms_state == BmsState::IDLE || bms_state == BmsState::DEEPSLEEP) {
+            start_idle();
+        }
         // record time button was pressed
         button.pressed_start_ms = now_ms;
 
@@ -111,25 +146,11 @@ void BatteryBMS::handle_button_press(void)
 
     // calculate how long the button was pressed including when button has just been released
     const uint32_t press_duration_ms = (button_pressed || button.pressed_prev) ? (now_ms - button.pressed_start_ms) : 0;
-    const bool short_press = (press_duration_ms > BUTTON_SHORT_PRESS_THRESHOLD_MS) && (press_duration_ms < BUTTON_LONG_PRESS_THRESHOLD_MS);
     const bool long_press = (press_duration_ms >= BUTTON_LONG_PRESS_THRESHOLD_MS);
-
-    // check if button has just been released (transition from pressed to released)
-    bool button_released = false;
-    if (!button_pressed && button.pressed_prev) {
-        button.pressed_start_ms = 0;
-        button_released = true;
-    }
 
     // update button state for next iteration
     button.pressed_prev = button_pressed;
 
-    // handle release after short press
-    // displays battery SOC percentage on LEDs and prints voltages to the console
-    if (short_press && button_released) {
-        request_display_percentage();
-        return;
-    }
 
     // handle long press event
     // starts power on/off sequence
@@ -139,6 +160,9 @@ void BatteryBMS::handle_button_press(void)
         button.long_press_handled = true;
 
         switch (bms_state) {
+        case BmsState::BOOT:
+            // do nothing during boot
+            break;
         case BmsState::IDLE:
         case BmsState::POWERING_OFF:
         case BmsState::POWERED_OFF:
@@ -150,14 +174,22 @@ void BatteryBMS::handle_button_press(void)
             // if battery if on, request power off
             request_bms_state(BmsState::POWERED_OFF);
             break;
+        case BmsState::DEEPSLEEP:
+            periph.battery_lib.set_deepsleep_mode(0, false);
+            request_bms_state(BmsState::POWERED_ON);
+            // do nothing in deepsleep
+            break;
         }
         return;
     }
 
     // handle release after long press
-    if (long_press && button_released) {
+    if (long_press && /*button_released*/ false) {
         // if the BMS is transitioning to powered on or off, abort the transition
         switch (bms_state) {
+        case BmsState::BOOT:
+            // do nothing during boot
+            break;
         case BmsState::POWERING_ON:
             // request power off
             request_bms_state(BmsState::POWERED_OFF);
@@ -170,15 +202,12 @@ void BatteryBMS::handle_button_press(void)
         case BmsState::POWERED_OFF:
             // BMS/battery have already completed the power on/off action -- do nothing
             break;
+        case BmsState::DEEPSLEEP:
+            // do nothing in deepsleep
+            break;
         }
         return;
     }
-}
-
-// request display of battery percentage using LEDs
-void BatteryBMS::request_display_percentage()
-{
-    led_display_soc_start_ms = AP_HAL::millis();
 }
 
 // display battery SOC percentage using LEDs
@@ -257,24 +286,16 @@ void BatteryBMS::set_led_pattern(uint8_t pattern)
 // LED state machine - manages LED display based on battery state
 void BatteryBMS::update_led_state(void)
 {
+    if (bms_state == BmsState::BOOT) {
+        // do nothing during boot
+        return;
+    }
     // slow down LED updates
     const uint32_t now_ms = AP_HAL::millis();
     if (now_ms - led_last_update_ms < LED_UPDATE_INTERVAL_MS) {
         return;
     }
     led_last_update_ms = now_ms;
-
-    // display state-of-charge (SOC) percentage
-    if (led_display_soc_start_ms > 0) {
-        // display SOC percentage
-        display_percentage();
-
-        // turn off SOC display after 1 second
-        if (now_ms - led_display_soc_start_ms >= LED_DISPLAY_SOC_DURATION_MS) {
-            led_display_soc_start_ms = 0;
-        }
-        return;
-    }
 
     // handle POWERING_ON / OFF transition
     if (bms_state == BmsState::POWERING_ON || bms_state == BmsState::POWERING_OFF) {
@@ -341,21 +362,65 @@ bool BatteryBMS::request_bms_state(BmsState new_state)
 // update bms state.  transitions bms_state to req_bms_state
 void BatteryBMS::update_bms_state()
 {
+    uint32_t now_ms = AP_HAL::millis();
+
+    // BOOT state handling
+    if (bms_state == BmsState::BOOT) {
+        if (!periph.battery_lib.healthy()) {
+            return;
+        }
+        display_percentage();
+        hal.scheduler->delay(BOOT_PERCENTAGE_DISPLAY_MS);
+        set_led_pattern(0x00);
+        // after boot, move to IDLE state
+        start_idle();
+        return;
+    }
+
+    if (bms_state == BmsState::DEEPSLEEP) {
+        // do nothing -- MCU is powered off
+        // with external 5V input from CAN BUS is able to upgrade firmware and set params 
+        periph.battery_lib.set_deepsleep_mode(0, true); // make sure BMS is in deepsleep
+        return;
+    }
+
+    if (bms_state == BmsState::IDLE) {
+        if (periph.battery_lib.get_charging_state() == AP_BattMonitor::ChargingState::CHARGING
+            || periph.battery_lib.get_charging_state() == AP_BattMonitor::ChargingState::DISCHARGING) {
+                bms_idle_start_ms = now_ms; // reset idle timer if battery starts charging or discharging
+            return;
+        } 
+        if (now_ms - bms_idle_start_ms  > IDLE_TIMEOUT_THRESHOLD_MS) {
+#if DEBUG_PRINT
+            Debug("IDLE timeout, now enter deepsleep, t:%u", now_ms);
+#endif
+            // MCU will be powered off
+            periph.battery_lib.set_deepsleep_mode(0, true);
+            bms_state = BmsState::DEEPSLEEP;
+            return;
+        }
+    }
+
     // return immediately if current state matches requested state or requested state is IDLE
-    if (bms_state == req_bms_state || req_bms_state == BmsState::IDLE) {
+    // if (bms_state == req_bms_state || req_bms_state == BmsState::IDLE) {
+    //     return;
+    // }
+
+    if (req_bms_state == BmsState::IDLE) {
         return;
     }
 
     // rate limit state transitions to match LED update interval (~1.2 seconds for full animation)
-    uint32_t now_ms = AP_HAL::millis();
     if (now_ms - bms_last_update_ms < LED_UPDATE_INTERVAL_MS) {
         return;
     }
     bms_last_update_ms = now_ms;
-
     // handle request to power on
     if (req_bms_state == BmsState::POWERED_ON) {
         switch (bms_state) {
+        case BmsState::BOOT:
+            // do nothing during boot
+            break;
         case BmsState::IDLE:
         case BmsState::POWERING_OFF:
         case BmsState::POWERED_OFF:
@@ -366,13 +431,24 @@ void BatteryBMS::update_bms_state()
         case BmsState::POWERING_ON:
             bms_transition_counter++;
             if (bms_transition_counter >= 8) {
-                bms_state = BmsState::POWERED_ON;
-                bms_transition_counter = 0;
+                // bms_state = BmsState::POWERED_ON;
                 periph.battery_lib.set_powered_state(0, true);
-            }
+                if (periph.battery_lib.get_charging_state() == AP_BattMonitor::ChargingState::DISCHARGING) {
+                    bms_transition_counter = 0;
+                    bms_state = BmsState::POWERED_ON;
+                } else if (bms_transition_counter > 50) {
+                    //fallback
+                    request_bms_state(BmsState::POWERED_OFF);
+                    bms_state = BmsState::POWERING_OFF;
+                    bms_transition_counter = 0;
+                }
+            } 
             break;
         case BmsState::POWERED_ON:
             // already powered on -- do nothing
+            break;
+        case BmsState::DEEPSLEEP:
+            // do nothing in deepsleep
             break;
         }
         return;
@@ -381,9 +457,12 @@ void BatteryBMS::update_bms_state()
     // handle request to power off
     if (req_bms_state == BmsState::POWERED_OFF) {
         switch (bms_state) {
+        case BmsState::BOOT:
+            break;
         case BmsState::IDLE:
         case BmsState::POWERED_OFF:
-            // already powered off -- do nothing
+            // already powered off -- move to idle state 
+            bms_state = BmsState::IDLE;
             break;
         case BmsState::POWERED_ON:
             // move to powering off state
@@ -403,8 +482,21 @@ void BatteryBMS::update_bms_state()
                 periph.battery_lib.set_powered_state(0, false);
             }
             break;
+        case BmsState::DEEPSLEEP:
+            // do nothing in deepsleep
+            break;
         }
         return;
+    }
+
+    if (bms_state == BmsState::POWERED_OFF) {
+        // after being powered off, move to IDLE state after a delay
+        if (now_ms - bms_last_update_ms > 2000) {
+            start_idle();
+#if DEBUG_PRINT
+            Debug("POWERED_OFF complete, now enter IDLE t:%u", now_ms);
+#endif
+        }
     }
 }
 
