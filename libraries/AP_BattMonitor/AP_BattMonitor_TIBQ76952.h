@@ -5,6 +5,7 @@
 #if AP_BATTERY_TIBQ76952_ENABLED
 
 #include <AP_Common/AP_Common.h>
+#include <AP_Param/AP_Param.h>
 #include <AP_HAL/I2CDevice.h>
 #include "AP_BattMonitor_Backend.h"
 
@@ -12,7 +13,12 @@ class AP_BattMonitor_TIBQ76952 : public AP_BattMonitor_Backend
 {
 public:
     // inherit constructor
-    using AP_BattMonitor_Backend::AP_BattMonitor_Backend;
+    // using AP_BattMonitor_Backend::AP_BattMonitor_Backend;
+
+    /// Constructor
+    AP_BattMonitor_TIBQ76952(AP_BattMonitor &mon,
+                             AP_BattMonitor::BattMonitor_State &mon_state,
+                             AP_BattMonitor_Params &params);
 
     // initialise
     void init() override;
@@ -20,14 +26,20 @@ public:
     // read the latest battery voltage
     void read() override;
 
+
     // battery capabilities
     bool has_cell_voltages() const override { return true; }
     bool has_temperature() const override { return true; }
     bool has_current() const override { return true; }
     bool get_cycle_count(uint16_t &cycles) const override { return false; }
 
+    bool healthy() const;
     // set desired powered state (enabled/disabled) by enabling/disabling discharge FET
     void set_powered_state(bool power_on) override;
+
+    void set_deepsleep_mode(bool deepsleep) override;
+
+    static const struct AP_Param::GroupInfo var_info[];
 
 protected:
 
@@ -45,14 +57,15 @@ protected:
     bool configure();
 
     // read state from BMS device
-    void read_voltage_current_temperature();
-    void read_charging_state();
+    void update();
 
     // read bytes from a register. returns true on success
     bool read_register(uint8_t reg_addr, uint8_t *reg_data, uint8_t len) const;
 
     // write a single byte to consecutive registers. returns true on success
     bool write_register(uint8_t reg_addr, const uint8_t *reg_data, uint8_t len) const;
+
+    uint8_t calculate_checksum(const uint8_t* data, uint8_t len) const;
 
     // read or write a direct command. returns true on success
     // direct commands are send using a 7-bit command address and may trigger an action or read/write a datavalue
@@ -77,8 +90,17 @@ protected:
     // this includes delays so it should only be called during startup configuration
     uint32_t sub_command_read_4bytes(uint16_t reg) const;
 
+    AP_Int8 cfg_update;
+
     AP_HAL::I2CDevice *dev; // I2C device
     bool configured;        // true once device has been configured
+
+    // BQ76952 status flags
+    bool waken;
+    bool permanent_failure;    // true if BQ reports permanent failure, in which case we consider the battery unhealthy
+    bool safety_fault;         // true if BQ reports a safety fault, in which case we consider the battery unhealthy
+    bool fuse_blown;         // true if BQ reports fuse blown, in which case we consider the battery unhealthy
+    bool fullscan_completed;   // true once we've completed a full scan of all cells (used for determining when to trust cell voltage readings)
 
     // configuration settings to write during setup
     static const struct ConfigurationSetting {
