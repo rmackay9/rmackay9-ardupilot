@@ -245,6 +245,7 @@ public:
     // Set powered state (Solar Panels, BMS)
     void set_powered_state_to_all(const bool power_on);
     void set_powered_state(const uint8_t instance, const bool power_on);
+    void set_deepsleep_mode(const uint8_t instance, const bool deepsleep);
 
     bool option_is_set(uint8_t instance, AP_BattMonitor_Params::Options option) const;
 

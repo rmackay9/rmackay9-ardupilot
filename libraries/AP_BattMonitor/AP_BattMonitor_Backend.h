@@ -92,6 +92,9 @@ public:
     // set desired powered state (enabled/disabled)
     virtual void set_powered_state(bool power_on) {};
 
+    // set deep sleep mode (low power consumption)
+    virtual void set_deepsleep_mode(bool deepsleep) {};
+
     // Update an ESC telemetry channel's power information
     void update_esc_telem_outbound();
 

@@ -1222,6 +1222,13 @@ void AP_BattMonitor::set_powered_state(const uint8_t instance, const bool power_
     }
 }
 
+void AP_BattMonitor::set_deepsleep_mode(const uint8_t instance, const bool deepsleep)
+{
+    if (instance < _num_instances && drivers[instance] != nullptr) {
+        drivers[instance]->set_deepsleep_mode(deepsleep);
+    }
+}
+
 /*
   check that all configured battery monitors are healthy
  */
