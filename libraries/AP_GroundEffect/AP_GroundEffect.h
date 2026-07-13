@@ -110,11 +110,8 @@ public:
     // (e.g. Copter's Throw mode)
     void enable_takeoff_comp(bool b) { _takeoff_comp_enabled = b; }
 
-    // mode-specific override for the slow-horizontal check: vehicle
-    // pre-evaluates "I'm in a manual-attitude mode AND the requested
-    // attitude is near level" and passes the boolean result here. Lets
-    // the library stay ignorant of vehicle mode enums and attitude
-    // controllers.
+    // mode-specific override for the slow-horizontal check
+    // should be set to true in angle control modes (e.g AltHold) with angle target < 7.5deg
     void set_pilot_demanding_slow_horizontal(bool b) { _pilot_slow_horizontal = b; }
 
     // vehicle's high-vibration flag, forwarded to AHRS get_velocity_D()
