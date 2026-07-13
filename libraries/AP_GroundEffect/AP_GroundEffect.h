@@ -140,22 +140,6 @@ public:
     //                   false the takeoff timer/altitude reference is held)
     void update(bool armed, bool land_complete, bool throttle_up);
 
-    bool takeoff_expected() const
-    {
-        return _state.takeoff_expected;
-    }
-    bool touchdown_expected() const
-    {
-        return _state.touchdown_expected;
-    }
-
-    // returns true when the library is configured to emit signals.
-    // GNDEFF_ALT < 0 is the disable sentinel.
-    bool enabled() const
-    {
-        return !is_negative(_alt_m);
-    }
-
 private:
     AP_Float _alt_m;       // altitude threshold; <0 disables the library entirely
     AP_Float _timeout_s;   // minimum hold time before altitude check is allowed to release
