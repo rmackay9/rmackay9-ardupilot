@@ -99,10 +99,7 @@ public:
     // can not take the controller as a constructor argument because it
     // typically lives inside the vehicle's static parameter object, which
     // is built before AC_PosControl is allocated.
-    void set_pos_control(const AC_PosControl &pos_control)
-    {
-        _pos_control = &pos_control;
-    }
+    void set_pos_control(const AC_PosControl &pos_control) { _pos_control = &pos_control; }
 
     // Mode-conditional and sensor-derived signal setters. The vehicle
     // calls these when the underlying state changes (per-tick polling is
@@ -111,24 +108,17 @@ public:
     // allow the takeoff_expected window while armed and landed. Defaults
     // to true; set false in modes that never want the takeoff signal
     // (e.g. ArduCopter THROW mode).
-    void set_takeoff_expected(bool b)
-    {
-        _takeoff_expected = b;
-    }
+    void set_takeoff_expected(bool b) { _takeoff_expected = b; }
+
     // mode-specific override for the slow-horizontal check: vehicle
     // pre-evaluates "I'm in a manual-attitude mode AND the requested
     // attitude is near level" and passes the boolean result here. Lets
     // the library stay ignorant of vehicle mode enums and attitude
     // controllers.
-    void set_pilot_demanding_slow_horizontal(bool b)
-    {
-        _pilot_slow_horizontal = b;
-    }
+    void set_pilot_demanding_slow_horizontal(bool b) { _pilot_slow_horizontal = b; }
+
     // vehicle's high-vibration flag, forwarded to AHRS get_velocity_D()
-    void set_high_vibrations(bool b)
-    {
-        _high_vibrations = b;
-    }
+    void set_high_vibrations(bool b) { _high_vibrations = b; }
 
     // Per-cycle entry point. Queries AHRS and the wired AC_PosControl,
     // runs the detector, and pushes set_takeoff_expected /
@@ -147,7 +137,7 @@ private:
     const AC_PosControl *_pos_control;
 
     // mode/sensor-derived inputs, updated via setters
-    bool _takeoff_expected{true};
+    bool _takeoff_expected = true;
     bool _pilot_slow_horizontal;
     bool _high_vibrations;
 
