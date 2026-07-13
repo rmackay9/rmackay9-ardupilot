@@ -46,8 +46,8 @@ const AP_Param::GroupInfo AP_GroundEffect::var_info[] = {
     AP_GROUPINFO("ALT", 2, AP_GroundEffect, _alt_m, 0.5),
 
     // @Param: TMO
-    // @DisplayName: Takeoff Ground Effect Timeout
-    // @Description: Ground effect compensation timeout after liftoff. Compensation is turned off this many seconds after takeoff AND the vehicle has climbed at least GNDEFF_ALT. Compensation is also disabled after 5sec regardless of this timeout or the vehicle's altitude. Zero disables this timeout and only the altitude check is applied. Vehicles with strong baro disturbance from propwash should use values of 2 to 5 sec. This does not affect the compensation during touchdown.
+    // @DisplayName: Ground Effect Takeoff Timeout
+    // @Description: Ground effect compensation timeout after takeoff. Compensation is turned off this many seconds after takeoff AND the vehicle has climbed at least GNDEFF_ALT. Compensation is also disabled after 5sec regardless of this timeout or the vehicle's altitude. Zero disables this timeout and only the altitude check is applied. Vehicles with strong baro disturbance from propwash should use values of 2 to 5 sec. This does not affect the compensation during touchdown.
     // @Range: 0 5
     // @Units: s
     // @User: Advanced
