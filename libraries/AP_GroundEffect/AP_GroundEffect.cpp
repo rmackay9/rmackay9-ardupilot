@@ -102,10 +102,8 @@ void AP_GroundEffect::update(bool armed, bool land_complete, bool throttle_up)
     // EKF3's optflow AGL KF; terrain database covers GPS + onboard tiles;
     // otherwise fall back to height-since-takeoff and assume flat ground.
     float height_m = 0;
-    bool height_is_agl = false;
-    if (ahrs.get_hagl(height_m)) {
-        height_is_agl = true;
-    }
+    bool height_is_agl = ahrs.get_hagl(height_m);
+
 #if AP_TERRAIN_AVAILABLE
     if (!height_is_agl) {
         AP_Terrain *terrain = AP::terrain();
