@@ -105,10 +105,10 @@ public:
     // calls these when the underlying state changes (per-tick polling is
     // also fine).
 
-    // allow the takeoff_expected window while armed and landed. Defaults
-    // to true; set false in modes that never want the takeoff signal
-    // (e.g. ArduCopter THROW mode).
-    void set_takeoff_expected(bool b) { _takeoff_expected = b; }
+    // Enable ground effect compensation during takeoff.
+    // Defaults to true, set to false in modes that disable ground effect compensation
+    // (e.g. Copter's Throw mode)
+    void enable_takeoff_comp(bool b) { _takeoff_comp_enabled = b; }
 
     // mode-specific override for the slow-horizontal check: vehicle
     // pre-evaluates "I'm in a manual-attitude mode AND the requested
@@ -137,7 +137,7 @@ private:
     const AC_PosControl *_pos_control;
 
     // mode/sensor-derived inputs, updated via setters
-    bool _takeoff_expected = true;
+    bool _takeoff_comp_enabled = true;
     bool _pilot_slow_horizontal;
     bool _high_vibrations;
 
