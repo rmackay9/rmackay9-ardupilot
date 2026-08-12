@@ -56,7 +56,7 @@
 // For touchdown_expected (which the vehicle may evaluate minutes later,
 // hundreds of metres from launch) it is not, so path 2 additionally
 // requires the vehicle to be within
-// AP_GROUNDEFFECT_TAKEOFF_DRIFT_MAX_M of the takeoff XY position before
+// AP_GROUNDEFFECT_TAKEOFF_DRIFT_NE_MAX_M of the takeoff XY position before
 // the touchdown altitude gate is allowed to fire. Drift further than
 // that and touchdown_expected stays false regardless of motion, since
 // we have no basis to believe the ground below is at takeoff elevation.

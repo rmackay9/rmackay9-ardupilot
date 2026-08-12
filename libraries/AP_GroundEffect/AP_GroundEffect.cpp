@@ -29,7 +29,7 @@
 // no rangefinder/terrain, disable the touchdown altitude gate once the
 // vehicle has drifted this far horizontally from where it lifted off, as
 // the terrain elevation under it may differ from the launch site
-#define AP_GROUNDEFFECT_TAKEOFF_DRIFT_MAX_M 20.0f
+#define AP_GROUNDEFFECT_TAKEOFF_DRIFT_NE_MAX_M 20.0f
 
 const AP_Param::GroupInfo AP_GroundEffect::var_info[] = {
 
@@ -140,7 +140,7 @@ void AP_GroundEffect::update(bool armed, bool land_complete, bool throttle_up)
     //   - GNDEFF_ALT <= 0: legacy behaviour, any gentle descent counts
     //   - HAGL: trust height_m directly
     //   - relative-to-takeoff fallback with horizontal position: only
-    //     trust the gate while still within AP_GROUNDEFFECT_TAKEOFF_DRIFT_MAX_M
+    //     trust the gate while still within AP_GROUNDEFFECT_TAKEOFF_DRIFT_NE_MAX_M
     //     of the launch point; further out we cannot assume the ground
     //     beneath us is at the takeoff elevation
     //   - baro-only fallback (no horizontal position): assume flat ground
@@ -150,8 +150,8 @@ void AP_GroundEffect::update(bool armed, bool land_complete, bool throttle_up)
     } else if (height_is_agl || !have_pos_ne) {
         near_ground = height_m < _alt_m;
     } else {
-        const float drift_m = (pos_ne_m - _state.takeoff_pos_ne_m).length();
-        near_ground = (drift_m < AP_GROUNDEFFECT_TAKEOFF_DRIFT_MAX_M)
+        const float drift_ne_m = (pos_ne_m - _state.takeoff_pos_ne_m).length();
+        near_ground = (drift_ne_m < AP_GROUNDEFFECT_TAKEOFF_DRIFT_NE_MAX_M)
                       && (height_m < _alt_m);
     }
 
