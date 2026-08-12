@@ -20,7 +20,6 @@
 #include "AP_GroundEffect.h"
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_HAL/AP_HAL.h>
-#include <AP_Terrain/AP_Terrain.h>
 #include <AC_AttitudeControl/AC_PosControl.h>
 
 // hard cap on the takeoff_expected window, irrespective of GNDEFF_TMO
@@ -102,18 +101,6 @@ void AP_GroundEffect::update(bool armed, bool land_complete, bool throttle_up)
     // otherwise fall back to height-since-takeoff and assume flat ground.
     float height_m = 0;
     bool height_is_agl = ahrs.get_hagl(height_m);
-
-#if AP_TERRAIN_AVAILABLE
-    if (!height_is_agl) {
-        AP_Terrain *terrain = AP::terrain();
-        // extrapolate=false: with no tiles loaded, height_above_terrain
-        // still "succeeds" by returning the raw AMSL altitude, which we
-        // do not want; require real data.
-        if (terrain != nullptr && terrain->height_above_terrain(height_m, false)) {
-            height_is_agl = true;
-        }
-    }
-#endif
     if (!height_is_agl) {
         height_m = -pos_d_m - _state.takeoff_alt_m;
     }
