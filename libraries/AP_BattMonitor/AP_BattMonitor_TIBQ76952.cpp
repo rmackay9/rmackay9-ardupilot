@@ -488,6 +488,11 @@ extern const AP_HAL::HAL& hal;
 #define HAL_BATTMON_BQ76952_DISCHARGE_THRESHOLD_V (AP_BATTMON_CELL_COUNT * 2)
 #endif
 
+// Charging current detection threshold in amps
+#ifndef HAL_BATTMON_BQ76952_CHARGING_THRESHOLD_A
+#define HAL_BATTMON_BQ76952_CHARGING_THRESHOLD_A 0.5
+#endif
+
 #define DEBUG_PRINT 1
 
 #if DEBUG_PRINT
@@ -882,8 +887,8 @@ void AP_BattMonitor_TIBQ76952::read_charging_state()
         // take semaphore before accessing accumulate struct
         WITH_SEMAPHORE(accumulate_sem);
 
-        // Charging if current is positive
-        if (accumulate.current > 0) {
+        // Charging if average current is above threshold
+        if ((accumulate.count > 0) && (accumulate.current / accumulate.count > HAL_BATTMON_BQ76952_CHARGING_THRESHOLD_A)) {
             new_state = AP_BattMonitor::ChargingState::CHARGING;
         } else {
             // Discharging if pack voltage above threshold
