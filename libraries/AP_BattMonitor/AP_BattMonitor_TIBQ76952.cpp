@@ -669,6 +669,13 @@ void AP_BattMonitor_TIBQ76952::read(void)
     update_consumed(_state, dt_us);
     _state.last_time_micros = tnow;
 
+    // on first reading, estimate consumed capacity from cell voltages
+    // the consumed capacity is not retained while the MCU is powered down
+    if (!soc_initialised) {
+        reset_remaining(estimate_soc_from_cell_voltage());
+        soc_initialised = true;
+    }
+
     // clear accumulate structure
     accumulate = {};
 }
@@ -896,6 +903,20 @@ void AP_BattMonitor_TIBQ76952::read_charging_state()
     }
 
     _state.charging_state = new_state;
+}
+
+// estimate state of charge (0-100%) from the average cell voltage
+// this is only accurate when the battery is at rest
+float AP_BattMonitor_TIBQ76952::estimate_soc_from_cell_voltage() const
+{
+    uint32_t total_mv = 0;
+    for (uint8_t i = 0; i < AP_BATTMON_CELL_COUNT; i++) {
+        total_mv += _state.cell_voltages.cells[i];
+    }
+    const float avg_cell_voltage = total_mv * 0.001f / AP_BATTMON_CELL_COUNT;
+
+    // linear mapping of 3.0V (0%) to 4.2V (100%)
+    return constrain_float((avg_cell_voltage - 3.0f) * 100.0f / 1.2f, 0, 100);
 }
 
 // check if the BMS should sleep
