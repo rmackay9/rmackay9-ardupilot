@@ -892,27 +892,25 @@ bool AP_BattMonitor_TIBQ76952::read_voltage_current_temperature()
 // read battery charging state (e.g. idle, charging, discharging)
 void AP_BattMonitor_TIBQ76952::read_charging_state()
 {
-    AP_BattMonitor::ChargingState new_state = _state.charging_state;
+    // take semaphore before accessing accumulate struct
+    WITH_SEMAPHORE(accumulate_sem);
 
-    const uint16_t alarm_raw_status = direct_command_read_2bytes(TIBQ769x2_AlarmRawStatus);
-    if (!(alarm_raw_status & ALARM_STATUS_WAKE)) {
-        new_state = AP_BattMonitor::ChargingState::IDLE;
+    // keep previous state if accumulated readings have just been consumed by read()
+    if (accumulate.count == 0) {
+        return;
+    }
+
+    AP_BattMonitor::ChargingState new_state = AP_BattMonitor::ChargingState::IDLE;
+
+    // Charging if average current is above threshold
+    if (accumulate.current / accumulate.count > HAL_BATTMON_BQ76952_CHARGING_THRESHOLD_A) {
+        new_state = AP_BattMonitor::ChargingState::CHARGING;
     } else {
-        // take semaphore before accessing accumulate struct
-        WITH_SEMAPHORE(accumulate_sem);
-
-        // Charging if average current is above threshold
-        if ((accumulate.count > 0) && (accumulate.current / accumulate.count > HAL_BATTMON_BQ76952_CHARGING_THRESHOLD_A)) {
-            new_state = AP_BattMonitor::ChargingState::CHARGING;
-        } else {
-            // Discharging if pack voltage above threshold
-            // Note: after charging stops this will momentarily report discharging but this is unavoidable
-            const uint16_t pack_voltage = direct_command_read_2bytes(TIBQ769x2_PACKPinVoltage);
-            if (pack_voltage > (HAL_BATTMON_BQ76952_DISCHARGE_THRESHOLD_V * 100)) {
-                new_state = AP_BattMonitor::ChargingState::DISCHARGING;
-            } else {
-                new_state = AP_BattMonitor::ChargingState::IDLE;
-            }
+        // Discharging if pack voltage above threshold
+        // Note: after charging stops this will momentarily report discharging but this is unavoidable
+        const uint16_t pack_voltage = direct_command_read_2bytes(TIBQ769x2_PACKPinVoltage);
+        if (pack_voltage > (HAL_BATTMON_BQ76952_DISCHARGE_THRESHOLD_V * 100)) {
+            new_state = AP_BattMonitor::ChargingState::DISCHARGING;
         }
     }
 
