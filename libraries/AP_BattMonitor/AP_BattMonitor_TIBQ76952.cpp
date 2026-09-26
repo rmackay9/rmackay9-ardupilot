@@ -503,6 +503,12 @@ extern const AP_HAL::HAL& hal;
 #define HAL_BATTMON_BQ76952_DISCHARGE_DELAY_MS 2000
 #endif
 
+// Deep sleep wake delay in milliseconds
+// if the MCU remains powered for this long after the TIBQ device enters deep sleep it is woken
+#ifndef HAL_BATTMON_BQ76952_DEEPSLEEP_WAKE_MS
+#define HAL_BATTMON_BQ76952_DEEPSLEEP_WAKE_MS 2000
+#endif
+
 #define DEBUG_PRINT 1
 
 #if DEBUG_PRINT
@@ -707,6 +713,22 @@ void AP_BattMonitor_TIBQ76952::set_powered_state(bool power_on)
 // periodic timer callback
 void AP_BattMonitor_TIBQ76952::timer(void)
 {
+    // handle deep sleep
+    // normally the MCU loses power shortly after the TIBQ device enters deep sleep
+    // if the MCU remains powered (e.g. via CAN) the TIBQ device is woken and the sleep timeout is increased
+    if (deep_sleep_req_ms != 0) {
+        if (AP_HAL::millis() - deep_sleep_req_ms < HAL_BATTMON_BQ76952_DEEPSLEEP_WAKE_MS) {
+            // readings are not updated while the TIBQ device is in deep sleep
+            return;
+        }
+        Debug("BQ76952: MCU still powered, waking from deep sleep");
+        deep_sleep_req_ms = 0;
+        sleep_timeout_extended = true;
+
+        // reconfigure TIBQ device which exits deep sleep and restores FET state
+        configured = false;
+    }
+
     // configure device if required
     if (!configure()) {
         return;
@@ -847,7 +869,7 @@ bool AP_BattMonitor_TIBQ76952::check_configuration_ok() const
 // returns true if the device is configured and responding to commands
 bool AP_BattMonitor_TIBQ76952::healthy() const
 {
-    if (!configured || bms_fault) {
+    if (!configured || bms_fault || (deep_sleep_req_ms != 0)) {
         return false;
     }
 
@@ -970,8 +992,9 @@ void AP_BattMonitor_TIBQ76952::check_sleep_timeout()
         return;
     }
 
-    // check for timeout
-    if (now_ms - activity_timer_ms > sleep_timeout_sec * 1000) {
+    // check for timeout, timeout is 10x longer if MCU remained powered after a previous deep sleep
+    const uint32_t timeout_ms = uint32_t(sleep_timeout_sec) * 1000 * (sleep_timeout_extended ? 10 : 1);
+    if (now_ms - activity_timer_ms > timeout_ms) {
         // reset activity counter to avoid resending sleep commands in case BMS decides not to sleep
         activity_timer_ms = now_ms;
 
@@ -981,6 +1004,7 @@ void AP_BattMonitor_TIBQ76952::check_sleep_timeout()
         // sleep mode commands must be sent twice
         indirect_send_command(TIBQ769x2_DEEPSLEEP);
         indirect_send_command(TIBQ769x2_DEEPSLEEP);
+        deep_sleep_req_ms = now_ms;
     }
 }
 
