@@ -496,6 +496,13 @@ extern const AP_HAL::HAL& hal;
 #define HAL_BATTMON_BQ76952_CHARGING_THRESHOLD_A 0.5
 #endif
 
+// Discharge detection delay in milliseconds
+// pack voltage must remain above the discharge threshold for this long before discharging is reported
+// this avoids falsely reporting discharging while the charger's output voltage decays after it is disconnected
+#ifndef HAL_BATTMON_BQ76952_DISCHARGE_DELAY_MS
+#define HAL_BATTMON_BQ76952_DISCHARGE_DELAY_MS 2000
+#endif
+
 #define DEBUG_PRINT 1
 
 #if DEBUG_PRINT
@@ -905,12 +912,21 @@ void AP_BattMonitor_TIBQ76952::read_charging_state()
     // Charging if average current is above threshold
     if (accumulate.current / accumulate.count > HAL_BATTMON_BQ76952_CHARGING_THRESHOLD_A) {
         new_state = AP_BattMonitor::ChargingState::CHARGING;
+        pack_voltage_high_ms = 0;
     } else {
-        // Discharging if pack voltage above threshold
-        // Note: after charging stops this will momentarily report discharging but this is unavoidable
+        // Discharging if pack voltage remains above threshold for HAL_BATTMON_BQ76952_DISCHARGE_DELAY_MS
+        // Note: the delay avoids reporting discharging while the charger's output voltage decays after it is disconnected
         const uint16_t pack_voltage = direct_command_read_2bytes(TIBQ769x2_PACKPinVoltage);
         if (pack_voltage > (HAL_BATTMON_BQ76952_DISCHARGE_THRESHOLD_V * 100)) {
-            new_state = AP_BattMonitor::ChargingState::DISCHARGING;
+            const uint32_t now_ms = AP_HAL::millis();
+            if (pack_voltage_high_ms == 0) {
+                pack_voltage_high_ms = now_ms;
+            }
+            if (now_ms - pack_voltage_high_ms >= HAL_BATTMON_BQ76952_DISCHARGE_DELAY_MS) {
+                new_state = AP_BattMonitor::ChargingState::DISCHARGING;
+            }
+        } else {
+            pack_voltage_high_ms = 0;
         }
     }
 

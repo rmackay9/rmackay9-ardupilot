@@ -130,6 +130,7 @@ protected:
     bool bms_fault;         // true if BMS reports some kind of failure or fault
     uint16_t sleep_timeout_sec = 30;    // battery BMS sleep timeout in seconds
     uint32_t activity_timer_ms; // timestamp of last activity, used to determine if sleep mode
+    uint32_t pack_voltage_high_ms;  // system time pack voltage climbed above discharge threshold.  0 if below threshold
 };
 
 #endif // AP_BATTERY_TIBQ76952_ENABLED
