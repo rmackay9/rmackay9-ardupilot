@@ -794,6 +794,9 @@ bool AP_BattMonitor_TIBQ76952::configure()
         }
     }
 
+    // restart sleep timeout
+    activity_timer_ms = AP_HAL::millis();
+
     // mark configuration as complete to prevent repeated attempts
     configured = true;
     Debug("BQ76952: Configuration complete");
