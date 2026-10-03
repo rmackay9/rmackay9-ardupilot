@@ -10,6 +10,6 @@ Sends the FOLLOW_TARGET mavlink message to allow other vehicles to follow this o
 ## How To Use
 
 1. copy this script to the autopilot's "scripts" directory
-2. within the "scripts" directory create a "modules" directory
-3. copy the MAVLink/mavlink_msgs_xxx files to the "scripts" directory
+2. within the "scripts" directory create a "modules/MAVLink" directory
+3. copy the AP_Scripting/modules/MAVLink/mavlink_msgs_xxx files to the "scripts/modules/MAVLink" directory
 4. the FOLLOW_TARGET message will be published at 10hz
